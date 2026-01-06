@@ -1,0 +1,24 @@
+# Node modules
+react_ui/node_modules/
+
+# Temp directories
+temp_decompiled/
+temp_rename/
+debug_decompiled/
+
+# Windows reserved names
+nul
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
