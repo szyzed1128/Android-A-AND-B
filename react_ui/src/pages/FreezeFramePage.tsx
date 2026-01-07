@@ -28,11 +28,7 @@ const FreezeFramePage: React.FC = () => {
   };
 
   useEffect(() => {
-    setLoading(true);
-    safeCall('readFreezeFrameAsync', 0);
-  }, []);
-
-  useEffect(() => {
+    // 1. 先注册回调
     const handler = (rawData: any) => {
       let parsed = rawData;
       if (typeof rawData === 'string') {
@@ -53,6 +49,12 @@ const FreezeFramePage: React.FC = () => {
     };
 
     (window as any).onReadFreezeFrameSuccess = handler;
+
+    // 2. 再发起请求
+    setLoading(true);
+    safeCall('readFreezeFrameAsync', 0);
+
+    // 3. 清理
     return () => {
       (window as any).onReadFreezeFrameSuccess = null;
     };

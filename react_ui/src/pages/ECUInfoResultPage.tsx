@@ -35,12 +35,8 @@ const ECUInfoResultPage: React.FC = () => {
   };
 
   useEffect(() => {
-    setReading(true);
-    safeCall('readECUInfoAsync', JSON.stringify(indices));
-  }, [indices]);
-
-  useEffect(() => {
-    const handler = (rawData: any) => {
+    // 1. 先注册回调
+    const successHandler = (rawData: any) => {
       let data = rawData;
       if (typeof rawData === 'string') {
         try {
@@ -66,11 +62,17 @@ const ECUInfoResultPage: React.FC = () => {
       setReading(false);
     };
 
-    (window as any).onReadECUInfoSuccess = handler;
+    (window as any).onReadECUInfoSuccess = successHandler;
+
+    // 2. 再发起请求
+    setReading(true);
+    safeCall('readECUInfoAsync', JSON.stringify(indices));
+
+    // 3. 清理
     return () => {
       (window as any).onReadECUInfoSuccess = null;
     };
-  }, []);
+  }, [indices]);
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f7f8fa' }}>
