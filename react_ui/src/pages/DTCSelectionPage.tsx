@@ -54,6 +54,16 @@ const DTCSelectionPage: React.FC = () => {
     );
   };
 
+  const isAllSelected = ecuList.length > 0 && selectedIndices.length === ecuList.length;
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIndices([]);
+    } else {
+      setSelectedIndices(ecuList.map((_, index) => index));
+    }
+  };
+
   const handleStart = () => {
     navigate('/dtc-result', { state: { indices: selectedIndices, ecuList } });
   };
@@ -69,8 +79,22 @@ const DTCSelectionPage: React.FC = () => {
             <div style={{ marginTop: 12 }}>正在加载ECU列表...</div>
           </div>
         ) : (
-          <Checkbox.Group value={selectedIndices} onChange={value => setSelectedIndices(value as number[])}>
-            <Cell.Group>
+          <Cell.Group>
+              <Cell
+                clickable
+                title="全选"
+                icon={
+                  <Checkbox
+                    shape="square"
+                    checked={isAllSelected}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectAll();
+                    }}
+                  />
+                }
+                onClick={handleSelectAll}
+              />
               {ecuList.map((item, index) => (
                 <Cell
                   key={index}
@@ -91,7 +115,6 @@ const DTCSelectionPage: React.FC = () => {
                 />
               ))}
             </Cell.Group>
-          </Checkbox.Group>
         )}
       </div>
 
