@@ -75,7 +75,7 @@ const HomePage = () => {
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f7f8fa' }}>
-      <NavBar title="OBD 智能终端" />
+      <NavBar title="OBD 智能终端" leftArrow={false} />
       
       <div style={{ padding: 16, flex: 1 }}>
         {/* 状态卡片 */}
