@@ -1,15 +1,13 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useContext } from 'react';
+import { AppContext } from './AppContext';
 
 export const useOBD = () => {
-  const [status, setStatus] = useState<string>('Disconnected');
+  const context = useContext(AppContext);
+  const status = context?.connectionStatus || 'Disconnected';
   const [pidData, setPidData] = useState<any>(null);
 
   useEffect(() => {
-    (window as any).onOBDStatusChanged = (newStatus: string) => {
-      console.log('OBD Status:', newStatus);
-      setStatus(newStatus);
-    };
-
+    // Only listen for PID data here. Status is handled globally in App.tsx
     (window as any).onPIDValueChanged = (data: any) => {
       if (typeof data === 'string') {
         try {
@@ -23,7 +21,6 @@ export const useOBD = () => {
     };
 
     return () => {
-      (window as any).onOBDStatusChanged = null;
       (window as any).onPIDValueChanged = null;
     };
   }, []);
