@@ -11,6 +11,7 @@ import DTCResultPage from './pages/DTCResultPage';
 import ECUInfoSelectionPage from './pages/ECUInfoSelectionPage';
 import ECUInfoResultPage from './pages/ECUInfoResultPage';
 import FreezeFramePage from './pages/FreezeFramePage';
+import LiveDataPage from './pages/LiveDataPage';
 import './App.css';
 
 // 全局监听器组件：负责监听 Bridge 事件并同步到 Context
@@ -142,6 +143,7 @@ export default function App() {
             <Route path="/ecu-info" element={<ECUInfoSelectionPage />} />
             <Route path="/ecu-info-result" element={<ECUInfoResultPage />} />
             <Route path="/freeze-frame" element={<FreezeFramePage />} />
+            <Route path="/live-data" element={<LiveDataPage />} />
           </Routes>
         </HashRouter>
       </ConfigProvider>
