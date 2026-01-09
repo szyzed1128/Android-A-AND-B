@@ -78,6 +78,19 @@ const ECUInfoResultPage: React.FC = () => {
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f7f8fa' }}>
       <NavBar title="ECU 标识信息" leftText="返回" onClickLeft={() => navigate(-1)} />
 
+      <style>{`
+        .sticky-collapse .rv-collapse-item__title {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          background-color: #ffffff;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .sticky-collapse .rv-collapse-item__title--expanded {
+          border-bottom: 1px solid #f0f0f0;
+        }
+      `}</style>
+
       <div style={{ flex: 1, overflow: 'auto', padding: '8px 12px' }}>
         {reading ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
@@ -88,7 +101,7 @@ const ECUInfoResultPage: React.FC = () => {
         ) : items.length === 0 ? (
           <Empty description="未获取到ECU信息" />
         ) : (
-          <Collapse>
+          <Collapse className="sticky-collapse">
             {items.map((item, index) => (
               <Collapse.Item key={index} title={item.name}>
                 <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, color: '#333' }}>{item.info}</div>

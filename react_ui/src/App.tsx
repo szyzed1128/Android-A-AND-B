@@ -1,6 +1,6 @@
 import React, { useContext, useEffect } from 'react';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import { ConfigProvider, NavBar, Grid, Button, Toast, Badge } from 'react-vant';
+import { ConfigProvider, NavBar, Grid, Button, Toast } from 'react-vant';
 import { Exchange, Warning, PlayCircle, InfoO, Setting, WapHome } from '@react-vant/icons';
 import { useOBD } from './hooks/useOBD';
 import { AppProvider, AppContext } from './hooks/AppContext';
@@ -37,7 +37,7 @@ const GlobalListener = () => {
 };
 
 const HomePage = () => {
-  const { status, safeCall } = useOBD(); // status now comes from AppContext
+  const { status, safeCall } = useOBD();
   const navigate = useNavigate();
   const appContext = useContext(AppContext);
 
@@ -46,13 +46,32 @@ const HomePage = () => {
   }
 
   const { selectedProfile, selectedDevice } = appContext;
+
   const profileDisplay = selectedProfile
     ? `${selectedProfile.brand} ${selectedProfile.name}`
     : '未选择车型';
   const deviceDisplay = selectedDevice ? selectedDevice.name : '未选择设备';
   
-  const isConnected = status === 'ConnectedToECU' || status === 'ConnectedToELM' || status === 'ConnectingToELM' || status === 'ConnectingToECU';
+  const isConnected =
+    status === 'ConnectedToECU' ||
+    status === 'ConnectedToELM' ||
+    status === 'ConnectingToELM' ||
+    status === 'ConnectingToECU';
   const isFullyConnected = status === 'ConnectedToECU';
+
+  const elmStatus =
+    status === 'ConnectingToELM'
+      ? '连接中'
+      : status === 'ConnectedToELM' || status === 'ConnectingToECU' || status === 'ConnectedToECU'
+      ? '已连接'
+      : '未连接';
+  const ecuStatus =
+    status === 'ConnectingToECU' ? '连接中' : status === 'ConnectedToECU' ? '已连接' : '未连接';
+  const elmColor =
+    elmStatus === '已连接' ? '#07c160' : elmStatus === '连接中' ? '#1989fa' : '#969799';
+  const ecuColor =
+    ecuStatus === '已连接' ? '#07c160' : ecuStatus === '连接中' ? '#1989fa' : '#969799';
+  const statusItemStyle = { display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 };
 
   const menuItems = [
     { text: '实时数据', icon: <PlayCircle />, disabled: !isFullyConnected, path: '/live-data' },
@@ -68,7 +87,9 @@ const HomePage = () => {
     if (item.disabled) {
       if (isConnected && (item.text === '车辆配置' || item.text === '蓝牙连接')) {
         Toast.info('请先断开连接');
+        return;
       }
+      Toast.info('请先连接车辆');
       return;
     }
     navigate(item.path);
@@ -80,9 +101,18 @@ const HomePage = () => {
       
       <div style={{ padding: 16, flex: 1 }}>
         {/* 状态卡片 */}
-        <div style={{ background: '#fff', padding: 16, borderRadius: 8, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 14 }}>当前车型: {profileDisplay}</span>
-            <Badge content={status} color={isFullyConnected ? '#07c160' : (isConnected ? '#1989fa' : '#ee0a24')} />
+        <div
+          style={{
+            background: '#fff',
+            padding: 16,
+            borderRadius: 8,
+            marginBottom: 16,
+            display: 'flex',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+          }}
+        >
+          <span style={{ fontSize: 14 }}>当前车型: {profileDisplay}</span>
         </div>
 
         {/* 6宫格菜单 */}
@@ -101,6 +131,26 @@ const HomePage = () => {
 
       {/* 底部控制栏 */}
       <div style={{ padding: 16, background: '#fff' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-around',
+            marginBottom: 16,
+            padding: '10px',
+            background: '#f5f6f7',
+            borderRadius: '8px',
+          }}
+        >
+          <div style={statusItemStyle}>
+            <span>ELM: </span>
+            <span style={{ color: elmColor }}>{elmStatus}</span>
+          </div>
+          <div style={statusItemStyle}>
+            <span>ECU: </span>
+            <span style={{ color: ecuColor }}>{ecuStatus}</span>
+          </div>
+        </div>
+
         <div style={{ marginBottom: 8, textAlign: 'center', color: '#666', fontSize: 12 }}>
           当前设备: {deviceDisplay}
         </div>

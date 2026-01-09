@@ -353,14 +353,14 @@ const LiveDataPage: React.FC = () => {
       return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 80 }}>
           <Loading type="spinner" vertical>
-            Loading PID list...
+            正在加载数据项...
           </Loading>
         </div>
       );
     }
 
     if (pidList.length === 0) {
-      return <Empty description="No PID data available" />;
+      return <Empty description="暂无数据" />;
     }
 
     const items = getCurrentPageItems();
@@ -375,8 +375,8 @@ const LiveDataPage: React.FC = () => {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f7f8fa' }}>
       <NavBar
-        title="Live Data"
-        leftText="Back"
+        title="实时数据"
+        leftText="返回"
         onClickLeft={() => navigate(-1)}
       />
 
@@ -399,11 +399,11 @@ const LiveDataPage: React.FC = () => {
             onClick={() => handlePageChange(currentPage - 1)}
             icon={<ArrowLeft />}
           >
-            Previous
+            上一页
           </Button>
           <span style={{ fontSize: 14, color: '#646566' }}>
-            Page {currentPage + 1} / {totalPages}
-            {reading && <span style={{ marginLeft: 8, color: '#07c160' }}>Reading...</span>}
+            第 {currentPage + 1} / {totalPages} 页
+            {reading && <span style={{ marginLeft: 8, color: '#07c160' }}>读取中...</span>}
           </span>
           <Button
             size="small"
@@ -412,7 +412,7 @@ const LiveDataPage: React.FC = () => {
             iconPosition="right"
             icon={<Arrow />}
           >
-            Next
+            下一页
           </Button>
         </div>
       )}
