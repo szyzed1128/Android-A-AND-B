@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout android:id="@id/CellLayout" android:paddingLeft="10.0dip" android:paddingTop="4.0dip" android:paddingRight="10.0dip" android:paddingBottom="4.0dip" android:layout_width="fill_parent" android:layout_height="fill_parent" android:minHeight="44.0dip"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <ImageView android:id="@id/CellIcon" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginLeft="2.0dip" android:layout_marginRight="12.0dip" android:scaleType="fitXY" android:layout_alignParentLeft="true" android:layout_centerVertical="true" />
+    <LinearLayout android:orientation="vertical" android:id="@id/CellBody" android:paddingLeft="4.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_toLeftOf="@id/CellAccessoryView" android:layout_toRightOf="@id/CellIcon" android:layout_centerVertical="true">
+        <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@id/CellContentStack" android:layout_width="fill_parent" android:layout_height="wrap_content" android:weightSum="1.0">
+            <TextView android:ellipsize="end" android:gravity="left" android:layout_gravity="left|center" android:id="@id/CellTitle" android:paddingRight="6.0dip" android:layout_width="0.0dip" android:layout_height="wrap_content" android:singleLine="true" android:layout_weight="1.0" />
+        </LinearLayout>
+        <TextView android:gravity="left" android:layout_gravity="left" android:id="@id/CellDescription" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginTop="2.0dip" />
+    </LinearLayout>
+    <LinearLayout android:gravity="center_vertical" android:id="@id/CellAccessoryView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentRight="true" android:layout_centerVertical="true" />
+    <TextView android:textSize="10.0sp" android:textColor="#ffff0000" android:gravity="right" android:id="@id/CellHintText" android:visibility="gone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentTop="true" android:layout_alignParentRight="true" />
+</RelativeLayout>

@@ -138,6 +138,15 @@ def main():
         shutil.copy2(modified_dll, target_dll)
         log("DLL 注入完成")
 
+    # 4.6 复制修改后的 styles.xml 文件（如果存在）
+    modified_styles = os.path.join(BASE_DIR, "temp_inspect", "res", "values", "styles.xml")
+    log(f"检查修改后的 styles.xml: {modified_styles}")
+    if os.path.exists(modified_styles):
+        log("正在注入修改后的 styles.xml...")
+        target_styles = os.path.join(TEMP_WORK_DIR, "res", "values", "styles.xml")
+        shutil.copy2(modified_styles, target_styles)
+        log("styles.xml 注入完成")
+
     # 5. 回编译
     log("正在重新编译 APK...")
     unsigned_apk = os.path.join(OUTPUT_DIR, "unsigned.apk")

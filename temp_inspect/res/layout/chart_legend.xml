@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:id="@id/legendViewGroup" android:layout_width="wrap_content" android:layout_height="wrap_content"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <crc64204ae6d284429e79.ChartLegendTitleView android:gravity="center" android:id="@id/legendHeader" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_margin="2.0dip" android:maxLines="1" />
+    <crc64204ae6d284429e79.ChartLegendScrollView android:id="@id/chartLegendScrollView" android:layout_width="wrap_content" android:layout_height="wrap_content">
+        <HorizontalScrollView android:id="@id/legendScrollView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerHorizontal="true">
+            <crc64204ae6d284429e79.ChartLegendItemsLayout android:orientation="horizontal" android:id="@id/legendItemsLayout" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        </HorizontalScrollView>
+    </crc64204ae6d284429e79.ChartLegendScrollView>
+</LinearLayout>
