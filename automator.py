@@ -123,6 +123,21 @@ def main():
             # 如果是文件 (如 index.html)
             shutil.copy2(s, d)
 
+    # 4.5 复制修改后的 DLL 文件（如果存在）
+    modified_dll = os.path.join(BASE_DIR, "temp_inspect", "unknown", "assemblies", "CarDemo.dll")
+    log(f"检查修改后的 DLL: {modified_dll}")
+    log(f"DLL 文件存在: {os.path.exists(modified_dll)}")
+    if os.path.exists(modified_dll):
+        log("正在注入修改后的 CarDemo.dll...")
+        target_dll = os.path.join(TEMP_WORK_DIR, "unknown", "assemblies", "CarDemo.dll")
+        log(f"目标路径: {target_dll}")
+        target_dir = os.path.dirname(target_dll)
+        if not os.path.exists(target_dir):
+            log(f"目标目录不存在，创建: {target_dir}")
+            os.makedirs(target_dir)
+        shutil.copy2(modified_dll, target_dll)
+        log("DLL 注入完成")
+
     # 5. 回编译
     log("正在重新编译 APK...")
     unsigned_apk = os.path.join(OUTPUT_DIR, "unsigned.apk")

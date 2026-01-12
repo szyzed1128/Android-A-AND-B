@@ -37,7 +37,7 @@ const GlobalListener = () => {
 };
 
 const HomePage = () => {
-  const { status, safeCall } = useOBD();
+  const { safeCall } = useOBD();
   const navigate = useNavigate();
   const appContext = useContext(AppContext);
 
@@ -45,8 +45,7 @@ const HomePage = () => {
     throw new Error('HomePage must be used within AppProvider');
   }
 
-  const { selectedProfile, selectedDevice } = appContext;
-
+  const { selectedProfile, selectedDevice, connectionStatus: status } = appContext;
   const profileDisplay = selectedProfile
     ? `${selectedProfile.brand} ${selectedProfile.name}`
     : '未选择车型';
@@ -116,7 +115,7 @@ const HomePage = () => {
         </div>
 
         {/* 6宫格菜单 */}
-        <Grid columnNum={2} gutter={10}>
+        <Grid columnNum={2} gutter={10} key={status}>
           {menuItems.map((item, index) => (
             <Grid.Item 
               key={index} 
