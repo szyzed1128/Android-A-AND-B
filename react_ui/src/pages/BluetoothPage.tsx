@@ -1,13 +1,7 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { NavBar, Cell, Button, Loading, Field, Toast } from 'react-vant';
-import { AppContext } from '../hooks/AppContext';
-
-interface ScanEvent {
-  type: string;
-  name?: string;
-  address: string;
-}
+import { NavBar, Cell, Button, Loading, Field, Toast, Tag } from 'react-vant';
+import { AppContext, ScannedDevice } from '../hooks/AppContext';
 
 const BluetoothPage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,9 +11,15 @@ const BluetoothPage: React.FC = () => {
     throw new Error('BluetoothPage must be used within AppProvider');
   }
 
-  const { selectedDevice, setSelectedDevice } = appContext;
-  const [devices, setDevices] = useState<ScanEvent[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
+  const {
+    selectedDevice,
+    setSelectedDevice,
+    scannedDevices,
+    isScanning,
+    setIsScanning,
+    clearScannedDevices
+  } = appContext;
+
   const [manualVisible, setManualVisible] = useState(false);
   const [manualAddress, setManualAddress] = useState(selectedDevice?.address || '');
 
@@ -27,6 +27,7 @@ const BluetoothPage: React.FC = () => {
     const bridge = (window as any).JSBridge;
     if (bridge && typeof bridge[method] === 'function') {
       try {
+        console.log(`Calling JSBridge.${method}()`);
         return bridge[method]();
       } catch (e) {
         console.error(`JSBridge.${method} error:`, e);
@@ -38,44 +39,32 @@ const BluetoothPage: React.FC = () => {
   }, []);
 
   const startScan = useCallback(() => {
-    setDevices([]);
+    clearScannedDevices();
     callBridge('startBTScan');
     setIsScanning(true);
-  }, [callBridge]);
+  }, [callBridge, clearScannedDevices, setIsScanning]);
 
   const stopScan = useCallback(() => {
     callBridge('stopBTScan');
     setIsScanning(false);
-  }, [callBridge]);
+  }, [callBridge, setIsScanning]);
 
+  // 对设备列表排序：valid: true 的设备置顶
+  const sortedDevices = useMemo(() => {
+    return [...scannedDevices].sort((a, b) => {
+      if (a.valid && !b.valid) return -1;
+      if (!a.valid && b.valid) return 1;
+      return 0;
+    });
+  }, [scannedDevices]);
+
+  // 进入页面时自动获取一次设备列表
   useEffect(() => {
-    const handleScan = (data: any) => {
-      let payload: ScanEvent | null = null;
-      try {
-        payload = typeof data === 'string' ? JSON.parse(data) : data;
-      } catch (e) {
-        console.error('Failed to parse scan data:', e, data);
-      }
-
-      if (!payload || payload.type !== 'discovered' || !payload.address) {
-        return;
-      }
-
-      setDevices(prev =>
-        prev.some(item => item.address === payload!.address)
-          ? prev
-          : [...prev, { name: payload!.name || '未知设备', address: payload!.address }]
-      );
-    };
-
-    (window as any).onBTScanEvent = handleScan;
     startScan();
-
     return () => {
       stopScan();
-      (window as any).onBTScanEvent = null;
     };
-  }, [startScan, stopScan]);
+  }, []);
 
   const handleRefresh = () => {
     stopScan();
@@ -116,21 +105,26 @@ const BluetoothPage: React.FC = () => {
         {isScanning && (
           <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 8, color: '#666' }}>
             <Loading type="spinner" />
-            <div>正在扫描设备...</div>
+            <div>正在扫描设备... ({scannedDevices.length} 个)</div>
           </div>
         )}
 
         <Cell.Group>
-          {devices.map((device, index) => (
+          {sortedDevices.map((device, index) => (
             <Cell
               key={device.address || index}
               clickable
-              title={device.name || '未知设备'}
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>{device.name || '未知设备'}</span>
+                  {device.valid && <Tag type="primary" size="medium">OBD</Tag>}
+                </div>
+              }
               label={device.address}
               onClick={() => handleSelect(device)}
             />
           ))}
-          {!devices.length && !isScanning && (
+          {!sortedDevices.length && !isScanning && (
             <Cell title="暂无设备" label="请确认蓝牙已开启后点击刷新" />
           )}
         </Cell.Group>

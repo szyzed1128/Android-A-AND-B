@@ -1,4 +1,4 @@
-import{r as c,R as ie}from"./vant-77bbca91.js";/**
+import{r as c,R as ie}from"./vant-2841af07.js";/**
  * @remix-run/router v1.23.1
  *
  * Copyright (c) Remix Software Inc.

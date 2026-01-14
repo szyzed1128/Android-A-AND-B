@@ -221,7 +221,7 @@
                 <span class="status-value disconnected" id="ecu-status">Disconnected</span>
             </div>
             <div class="buttons-container">
-                <button class="btn btn-connect" id="btn-connect" onclick="JSBridge.connectAsync()">CONNECT</button>
+                <button class="btn btn-connect" id="btn-connect" onclick="JSBridge.connectAsync('wifi', '192.168.0.10:35000')">CONNECT</button>
                 <button class="btn btn-demo" onclick="invokeCSharp()">Demo</button>
             </div>
         </div>

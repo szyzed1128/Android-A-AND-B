@@ -36,6 +36,49 @@ const GlobalListener = () => {
   return null;
 };
 
+// 蓝牙扫描全局监听器：负责监听蓝牙扫描事件并同步到 Context
+const BTScanListener = () => {
+  const context = useContext(AppContext);
+  if (!context) return null;
+  const { setScannedDevices } = context;
+
+  useEffect(() => {
+    console.log('BTScanListener mounted');
+    (window as any).onBTScanEvent = (data: any) => {
+      console.log('onBTScanEvent', data);
+
+      let payload: { type?: string; name?: string; address?: string } | null = null;
+      try {
+        payload = typeof data === 'string' ? JSON.parse(data) : data;
+      } catch (e) {
+        console.error('Failed to parse BT scan data:', e, data);
+        return;
+      }
+
+      if (!payload || payload.type !== 'discovered' || !payload.address) {
+        return;
+      }
+
+      const newDevice = {
+        name: payload.name || '未知设备',
+        address: payload.address,
+        valid: payload.valid,
+        paired: payload.paired
+      };
+      setScannedDevices(prev =>
+        prev.some(d => d.address === newDevice.address) ? prev : [...prev, newDevice]
+      );
+    };
+
+    return () => {
+      console.log('BTScanListener unmounted');
+      (window as any).onBTScanEvent = null;
+    };
+  }, [setScannedDevices]);
+
+  return null;
+};
+
 const HomePage = () => {
   const { safeCall } = useOBD();
   const navigate = useNavigate();
@@ -181,6 +224,7 @@ export default function App() {
   return (
     <AppProvider>
       <GlobalListener />
+      <BTScanListener />
       <ConfigProvider>
         <HashRouter>
           <Routes>
