@@ -4,9 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
     <title>OBD Smart Terminal</title>
-    <script type="module" crossorigin src="./assets/index-58cbcea4.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/vant-2841af07.js">
-    <link rel="modulepreload" crossorigin href="./assets/react-146ede5f.js">
+    <!-- 最早拦截原生弹窗，防止 C# evaluateJavascript 调用 alert -->
+    <script>
+      (function() {
+        window._originalAlert = window.alert;
+        window._originalConfirm = window.confirm;
+        window._alertQueue = [];
+
+        window.alert = function(message) {
+          console.log('[拦截弹窗]', message);
+          // 将消息存入队列，等 React 加载后处理
+          window._alertQueue.push({ type: 'alert', message: String(message || '') });
+          // 阻止原生弹窗
+        };
+
+        window.confirm = function(message) {
+          console.log('[拦截确认框]', message);
+          return true;
+        };
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-3b94cc3e.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vant-5b02619c.js">
+    <link rel="modulepreload" crossorigin href="./assets/react-60ed565d.js">
     <link rel="stylesheet" href="./assets/vant-20cc16eb.css">
     <link rel="stylesheet" href="./assets/index-d0eeee43.css">
     <script type="module">import.meta.url;import("_").catch(()=>1);async function* g(){};if(location.protocol!="file:"){window.__vite_is_modern_browser=true}</script>
@@ -16,7 +36,7 @@
     <div id="root"></div>
     
     <script nomodule>!function(){var e=document,t=e.createElement("script");if(!("noModule"in t)&&"onbeforeload"in t){var n=!1;e.addEventListener("beforeload",(function(e){if(e.target===t)n=!0;else if(!e.target.hasAttribute("nomodule")||!n)return;e.preventDefault()}),!0),t.type="module",t.src=".",e.head.appendChild(t),t.remove()}}();</script>
-    <script nomodule crossorigin id="vite-legacy-polyfill" src="./assets/polyfills-legacy-7dc56bb7.js"></script>
-    <script nomodule crossorigin id="vite-legacy-entry" data-src="./assets/index-legacy-f4008602.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
+    <script nomodule crossorigin id="vite-legacy-polyfill" src="./assets/polyfills-legacy-7884e585.js"></script>
+    <script nomodule crossorigin id="vite-legacy-entry" data-src="./assets/index-legacy-77c3845d.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
   </body>
 </html>

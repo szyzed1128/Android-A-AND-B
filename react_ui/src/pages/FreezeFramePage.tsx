@@ -28,35 +28,37 @@ const FreezeFramePage: React.FC = () => {
   };
 
   useEffect(() => {
-    // 1. 先注册回调
-    const handler = (rawData: any) => {
+    // 监听全局 OBD CustomEvent（由 App.tsx OBDCallbackBridge 派发）
+    const handleSuccess = (e: Event) => {
+      const rawData = (e as CustomEvent).detail;
       let parsed = rawData;
       if (typeof rawData === 'string') {
         try {
           parsed = JSON.parse(rawData);
-        } catch (e) {
-          console.error('Failed to parse freeze frame data:', e);
+        } catch (err) {
+          console.error('Failed to parse freeze frame data:', err);
           parsed = [];
         }
       }
-
-      if (!Array.isArray(parsed)) {
-        parsed = [];
-      }
-
+      if (!Array.isArray(parsed)) parsed = [];
       setData(parsed as FreezeFrameItem[]);
       setLoading(false);
     };
 
-    (window as any).onReadFreezeFrameSuccess = handler;
+    const handleFinish = () => {
+      setLoading(false);
+    };
 
-    // 2. 再发起请求
+    window.addEventListener('obd:onReadFreezeFrameSuccess', handleSuccess);
+    window.addEventListener('obd:onReadFreezeFrameFinish', handleFinish);
+
+    // 发起请求
     setLoading(true);
     safeCall('readFreezeFrameAsync', 0);
 
-    // 3. 清理
     return () => {
-      (window as any).onReadFreezeFrameSuccess = null;
+      window.removeEventListener('obd:onReadFreezeFrameSuccess', handleSuccess);
+      window.removeEventListener('obd:onReadFreezeFrameFinish', handleFinish);
     };
   }, []);
 

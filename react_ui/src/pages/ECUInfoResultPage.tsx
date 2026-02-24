@@ -35,20 +35,17 @@ const ECUInfoResultPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // 1. 先注册回调
-    const successHandler = (rawData: any) => {
-      let data = rawData;
-      if (typeof rawData === 'string') {
+    // 监听全局 OBD CustomEvent（由 App.tsx OBDCallbackBridge 派发）
+    const handleSuccess = (e: Event) => {
+      let data = (e as CustomEvent).detail;
+      if (typeof data === 'string') {
         try {
-          data = JSON.parse(rawData);
-        } catch (e) {
-          console.error('Failed to parse ECU info data:', e);
+          data = JSON.parse(data);
+        } catch (err) {
+          console.error('Failed to parse ECU info data:', err);
         }
       }
-
-      if (!Array.isArray(data)) {
-        data = [];
-      }
+      if (!Array.isArray(data)) data = [];
 
       const formatted: ECUInfoItem[] = [];
       for (let i = 0; i < data.length; i += 2) {
@@ -57,20 +54,18 @@ const ECUInfoResultPage: React.FC = () => {
           info: (data[i + 1] ?? '').toString().replace(/\u0000/g, ''),
         });
       }
-
       setItems(formatted);
       setReading(false);
     };
 
-    (window as any).onReadECUInfoSuccess = successHandler;
+    window.addEventListener('obd:onReadECUInfoSuccess', handleSuccess);
 
-    // 2. 再发起请求
+    // 发起请求
     setReading(true);
     safeCall('readECUInfoAsync', JSON.stringify(indices));
 
-    // 3. 清理
     return () => {
-      (window as any).onReadECUInfoSuccess = null;
+      window.removeEventListener('obd:onReadECUInfoSuccess', handleSuccess);
     };
   }, [indices]);
 

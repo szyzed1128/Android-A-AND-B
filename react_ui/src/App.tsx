@@ -27,6 +27,22 @@ const GlobalListener = () => {
       setConnectionStatus(newStatus);
     };
 
+    // 触发 WebSocket 初始化（云端模式）
+    // 这会让 C# 侧的 OBDCloudManager 初始化 WebSocket 连接
+    const bridge = (window as any).JSBridge;
+    if (bridge && typeof bridge.callCSharpMethod === 'function') {
+      console.log('Triggering WebSocket initialization...');
+      try {
+        bridge.callCSharpMethod('initWebSocket');
+        // WebSocket 初始化成功只意味着网络层就绪，不是 OBD 设备已连接
+        // 真正的连接状态由后端 OBDDataReader.CurrentStatus 决定
+        // 这里不再设置 ConnectedToELM 状态
+        console.log('WebSocket initialization triggered');
+      } catch (e) {
+        console.warn('initWebSocket call failed (expected in non-cloud mode):', e);
+      }
+    }
+
     return () => {
       console.log('GlobalListener unmounted');
       (window as any).onOBDStatusChanged = null;
@@ -75,6 +91,98 @@ const BTScanListener = () => {
       (window as any).onBTScanEvent = null;
     };
   }, [setScannedDevices]);
+
+  return null;
+};
+
+// OBD回调全局桥接：持久化注册所有CarScanner OBD回调
+// 解决问题：C#调用 window.onReadFreezeFrameSuccess() 时页面可能已卸载导致 ReferenceError
+// 方案：全局回调派发 CustomEvent，各页面监听事件而非直接赋值 window.onXxx
+const OBDCallbackBridge = () => {
+  useEffect(() => {
+    const OBD_CALLBACKS = [
+      'onReadDTCSuccess', 'onReadDTCError', 'onReadDTCFinish',
+      'onClearDTCSuccess', 'onClearDTCError', 'onClearDTCFinish',
+      'onReadECUInfoSuccess', 'onReadECUInfoError',
+      'onReadFreezeFrameSuccess', 'onReadFreezeFrameError', 'onReadFreezeFrameFinish',
+      'onPIDValueChanged',
+    ];
+
+    OBD_CALLBACKS.forEach(name => {
+      (window as any)[name] = (...args: any[]) => {
+        const data = args[0] ?? null;
+        // 1. 派发 CustomEvent，当前已挂载的页面组件可监听
+        window.dispatchEvent(new CustomEvent(`obd:${name}`, { detail: data }));
+        // 2. 转发给 OBDCloudManager → WebSocket → B端（云端模式下使用）
+        try {
+          const b = (window as any).JSBridge;
+          if (b && typeof b.uiCallback === 'function') {
+            b.uiCallback(name, JSON.stringify(data));
+          }
+        } catch (_) {
+          // 非云端模式下 uiCallback 可能不存在，忽略
+        }
+      };
+    });
+
+    // 这些是持久回调，不在 cleanup 中移除
+  }, []);
+
+  return null;
+};
+
+// 后端就绪检测器：App 启动时检测后端是否初始化完成
+const BackendReadyChecker = () => {
+  const context = useContext(AppContext);
+  if (!context) return null;
+  const { setIsBackendReady } = context;
+
+  useEffect(() => {
+    console.log('BackendReadyChecker started');
+    let retryCount = 0;
+    const maxRetries = 60; // 最多检测60秒
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const checkBackend = (): boolean => {
+      try {
+        const bridge = (window as any).JSBridge;
+        if (bridge && typeof bridge.getBrands === 'function') {
+          const result = bridge.getBrands();
+          if (result) {
+            const data = typeof result === 'string' ? JSON.parse(result) : result;
+            if (data && data.length > 0) {
+              console.log('Backend is ready!');
+              setIsBackendReady(true);
+              return true;
+            }
+          }
+        }
+      } catch (e) {
+        console.log(`Backend check attempt ${retryCount + 1} failed:`, e);
+      }
+      return false;
+    };
+
+    // 第一次立即检测
+    if (checkBackend()) return;
+
+    // 开始轮询检测
+    timer = setInterval(() => {
+      retryCount++;
+      if (checkBackend()) {
+        if (timer) clearInterval(timer);
+        return;
+      }
+      if (retryCount >= maxRetries) {
+        if (timer) clearInterval(timer);
+        console.log('Backend ready check timeout');
+      }
+    }, 1000);
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [setIsBackendReady]);
 
   return null;
 };
@@ -225,6 +333,7 @@ export default function App() {
     <AppProvider>
       <GlobalListener />
       <BTScanListener />
+      <OBDCallbackBridge />
       <ConfigProvider>
         <HashRouter>
           <Routes>

@@ -30,47 +30,43 @@ const DTCResultPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // 1. 先注册所有回调（原生端期望 Success/Error/Finish 三个回调都存在）
-    const successHandler = (rawData: any) => {
+    // 监听全局 OBD CustomEvent（由 App.tsx OBDCallbackBridge 派发）
+    const handleSuccess = (e: Event) => {
+      const rawData = (e as CustomEvent).detail;
       console.log('onReadDTCSuccess called:', rawData);
       let parsed = rawData;
       if (typeof rawData === 'string') {
         try {
           parsed = JSON.parse(rawData);
-        } catch (e) {
-          console.error('Failed to parse DTC data:', e);
+        } catch (err) {
+          console.error('Failed to parse DTC data:', err);
         }
       }
-
-      if (!Array.isArray(parsed)) {
-        parsed = [];
-      }
-
+      if (!Array.isArray(parsed)) parsed = [];
       setResults(parsed as any[][]);
     };
 
-    const errorHandler = (error: any) => {
-      console.error('onReadDTCError called:', error);
+    const handleError = (e: Event) => {
+      console.error('onReadDTCError:', (e as CustomEvent).detail);
     };
 
-    const finishHandler = () => {
+    const handleFinish = () => {
       console.log('onReadDTCFinish called');
       setReading(false);
     };
 
-    (window as any).onReadDTCSuccess = successHandler;
-    (window as any).onReadDTCError = errorHandler;
-    (window as any).onReadDTCFinish = finishHandler;
+    window.addEventListener('obd:onReadDTCSuccess', handleSuccess);
+    window.addEventListener('obd:onReadDTCError', handleError);
+    window.addEventListener('obd:onReadDTCFinish', handleFinish);
 
-    // 2. 回调注册完成后，再发起请求
+    // 发起请求
     setReading(true);
     safeCall('readDTCAsync', JSON.stringify(indices));
 
-    // 3. 清理函数
     return () => {
-      (window as any).onReadDTCSuccess = null;
-      (window as any).onReadDTCError = null;
-      (window as any).onReadDTCFinish = null;
+      window.removeEventListener('obd:onReadDTCSuccess', handleSuccess);
+      window.removeEventListener('obd:onReadDTCError', handleError);
+      window.removeEventListener('obd:onReadDTCFinish', handleFinish);
     };
   }, [indices]);
 

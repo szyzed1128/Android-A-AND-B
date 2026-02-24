@@ -204,7 +204,9 @@ const LiveDataPage: React.FC = () => {
       }
     };
 
-    (window as any).onPIDValueChanged = pidValueHandler;
+    // 监听全局 OBD CustomEvent（由 App.tsx OBDCallbackBridge 派发）
+    const customEventHandler = (e: Event) => pidValueHandler((e as CustomEvent).detail);
+    window.addEventListener('obd:onPIDValueChanged', customEventHandler);
 
     const result = safeCall('getPIDList');
     let list: PIDItem[] = [];
@@ -236,7 +238,7 @@ const LiveDataPage: React.FC = () => {
 
     return () => {
       stopReading();
-      (window as any).onPIDValueChanged = null;
+      window.removeEventListener('obd:onPIDValueChanged', customEventHandler);
     };
   }, [safeCall, getCurrentPageIndices, startReading, stopReading]);
 
