@@ -1,0 +1,14 @@
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/bin/Debug/netstandard2.0/OBDCloud.WebSocket.deps.json
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/bin/Debug/netstandard2.0/OBDCloud.WebSocket.dll
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/bin/Debug/netstandard2.0/OBDCloud.WebSocket.pdb
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/bin/Debug/netstandard2.0/Microsoft.CSharp.dll
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/bin/Debug/netstandard2.0/Newtonsoft.Json.dll
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/bin/Debug/netstandard2.0/Microsoft.CSharp.pdb
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/obj/Debug/netstandard2.0/OBDCloud.WebSocket.csproj.AssemblyReference.cache
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/obj/Debug/netstandard2.0/OBDCloud.WebSocket.GeneratedMSBuildEditorConfig.editorconfig
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/obj/Debug/netstandard2.0/OBDCloud.WebSocket.AssemblyInfoInputs.cache
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/obj/Debug/netstandard2.0/OBDCloud.WebSocket.AssemblyInfo.cs
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/obj/Debug/netstandard2.0/OBDCloud.WebSocket.csproj.CoreCompileInputs.cache
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/obj/Debug/netstandard2.0/OBDCloud.56A3AB98.Up2Date
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/obj/Debug/netstandard2.0/OBDCloud.WebSocket.dll
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/obj/Debug/netstandard2.0/OBDCloud.WebSocket.pdb
