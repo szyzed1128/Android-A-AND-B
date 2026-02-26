@@ -763,7 +763,12 @@ class CloudBridgeService {
 
       case MessageAction.DTCResult: {
         const callbacks = this.callbacks.get('dtc');
-        const parsed = this.parseResult(message.data, message.data as any);
+        let parsed: any = this.parseResult(message.data, message.data as any);
+        // 若解析结果仍为字符串（A 端 JSON.stringify 双重编码），再解析一次
+        if (typeof parsed === 'string') {
+          console.log(`[CloudBridge] DTCResult raw string (first 120): ${parsed.substring(0, 120)}`);
+          try { parsed = JSON.parse(parsed); } catch {}
+        }
         console.log(`[CloudBridge] DTCResult received (${Array.isArray(parsed) ? 'array' : typeof parsed})`);
         const indices = this.pendingMeta.get('dtc')?.indices as number[] | undefined;
         if (callbacks?.onProgress && Array.isArray(parsed)) {
@@ -779,6 +784,14 @@ class CloudBridgeService {
               callbacks.onProgress(ecuIndex, idx === 0 ? normalized : []);
             });
           }
+          callbacks.onFinish?.();
+        } else if (callbacks?.onProgress) {
+          // 非数组情况（字符串等）：通过 normalizeDtcList 尝试解析，路由到 onProgress
+          const normalized = this.normalizeDtcList(parsed);
+          const targets = indices && indices.length > 0 ? indices : [0];
+          targets.forEach((ecuIndex: number, idx: number) => {
+            callbacks.onProgress(ecuIndex, idx === 0 ? normalized : []);
+          });
           callbacks.onFinish?.();
         } else {
           callbacks?.onSuccess?.(this.normalizeDtcList(parsed));

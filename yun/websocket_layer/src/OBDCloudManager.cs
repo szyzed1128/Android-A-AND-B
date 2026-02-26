@@ -555,6 +555,10 @@ namespace OBDCloud.WebSocket
                     break;
 
                 case "onReadDTCSuccess":
+                    var dtcRaw = args != null && args.Length > 0 ? args[0] : null;
+                    var dtcRawType = dtcRaw?.GetType()?.Name ?? "null";
+                    var dtcRawStr = dtcRaw?.ToString() ?? "";
+                    Log($"[OBDCloudManager] onReadDTCSuccess: type={dtcRawType} len={dtcRawStr.Length} preview={dtcRawStr.Substring(0, Math.Min(120, dtcRawStr.Length))}");
                     SendEvent(MessageAction.DTCResult, NormalizeArg(args, 0));
                     break;
                 case "onReadDTCError":

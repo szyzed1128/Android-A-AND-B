@@ -1033,6 +1033,127 @@ namespace DllInjector
         {
             var proxyMethod = EnsureUiBridgeProxy(module);
             PatchEvaluateJavaScriptAsync(module, proxyMethod);
+            PatchReadDTCAsyncIsSelected(module);
+        }
+
+        /// <summary>
+        /// 修复 ReadDTCAsync：在向 selectedECUs 添加 ECU 后设置 IsSelected=true。
+        ///
+        /// 根因：DTCv2Model.ReadDTC() 开头守卫检查 ECUListFull.Any(x => x.IsSelected)，
+        /// 若为 false 且当前页面不是 IDTCvXPage 则静默退出（云端模式无 UI 页面故触发此分支）。
+        /// ReadDTCAsync 创建新的 DTCv2Model 并从 ECUListFull 取 ECU，但从未设置 IsSelected。
+        ///
+        /// 修复：在 selectedECUs.Add(ecu) 之后注入 ecu.IsSelected = true。
+        /// </summary>
+        private static void PatchReadDTCAsyncIsSelected(ModuleDefMD module)
+        {
+            // 找到 MainWebView 类型
+            var mainWebViewType = module.GetTypes()
+                .FirstOrDefault(t => t.FullName == "CarDemo.Controls.MainWebView");
+            if (mainWebViewType == null)
+            {
+                Console.WriteLine("  WARNING: MainWebView not found, skip ReadDTCAsync patch");
+                return;
+            }
+
+            // 找到 <ReadDTCAsync>d__ 嵌套状态机类型
+            TypeDef stateMachine = null;
+            foreach (var nested in mainWebViewType.NestedTypes)
+            {
+                if (nested.Name.Contains("ReadDTCAsync") && nested.Name.Contains("d__"))
+                {
+                    stateMachine = nested;
+                    break;
+                }
+            }
+            if (stateMachine == null)
+            {
+                Console.WriteLine("  WARNING: <ReadDTCAsync>d__ state machine not found, skip patch");
+                return;
+            }
+
+            // 找到 MoveNext 方法
+            var moveNext = stateMachine.Methods
+                .FirstOrDefault(m => m.Name == "MoveNext" && m.HasBody);
+            if (moveNext == null)
+            {
+                Console.WriteLine("  WARNING: ReadDTCAsync MoveNext not found, skip patch");
+                return;
+            }
+
+            var instructions = moveNext.Body.Instructions;
+
+            // 找到 selectedECUs.Add(ecu) 调用模式：
+            //   ldarg.0 / ldfld <selectedECUs>5__3
+            //   ldarg.0 / ldfld <ecu>5__8
+            //   callvirt List<IECU>::Add(IECU)
+            IField ecuField = null;
+            int addCallIndex = -1;
+
+            for (int i = 3; i < instructions.Count; i++)
+            {
+                var instr = instructions[i];
+                if (instr.OpCode != OpCodes.Callvirt)
+                    continue;
+                if (!(instr.Operand is IMethod m) || m.Name != "Add")
+                    continue;
+
+                // 确认是 List<IECU>::Add 而非其他 Add
+                var dtName = m.DeclaringType?.FullName ?? "";
+                if (!dtName.Contains("IECU") && !dtName.Contains("List"))
+                    continue;
+
+                // 确认前一条是 ldfld 加载 IECU 类型字段
+                var prev = instructions[i - 1];
+                if (prev.OpCode != OpCodes.Ldfld)
+                    continue;
+                if (!(prev.Operand is IField f))
+                    continue;
+
+                var fieldTypeName = f.FieldSig?.Type?.FullName ?? "";
+                if (!fieldTypeName.Contains("IECU"))
+                    continue;
+
+                ecuField = f;
+                addCallIndex = i;
+                break;
+            }
+
+            if (addCallIndex < 0 || ecuField == null)
+            {
+                Console.WriteLine("  WARNING: selectedECUs.Add(ecu) pattern not found in ReadDTCAsync, skip patch");
+                return;
+            }
+
+            // 找到 IECU TypeRef（CarScannerXamarinForms.ECUModels.IECU）
+            ITypeDefOrRef iECURef = module.GetTypeRefs()
+                .FirstOrDefault(tr => tr.Name == "IECU");
+            if (iECURef == null)
+            {
+                Console.WriteLine("  WARNING: IECU TypeRef not found in CarDemo.dll, skip patch");
+                return;
+            }
+
+            // 构建 IECU::set_IsSelected(bool) 方法引用
+            var setIsSelectedRef = new MemberRefUser(
+                module,
+                "set_IsSelected",
+                MethodSig.CreateInstance(module.CorLibTypes.Void, module.CorLibTypes.Boolean),
+                iECURef);
+
+            // 在 callvirt Add 之后插入：ecu.IsSelected = true
+            //   ldarg.0
+            //   ldfld <ecu>5__8
+            //   ldc.i4.1
+            //   callvirt IECU::set_IsSelected(bool)
+            var insertAt = addCallIndex + 1;
+            instructions.Insert(insertAt + 0, Instruction.Create(OpCodes.Ldarg_0));
+            instructions.Insert(insertAt + 1, Instruction.Create(OpCodes.Ldfld, ecuField));
+            instructions.Insert(insertAt + 2, Instruction.Create(OpCodes.Ldc_I4_1));
+            instructions.Insert(insertAt + 3, Instruction.Create(OpCodes.Callvirt, setIsSelectedRef));
+
+            Console.WriteLine($"  [ReadDTCAsync] Patched: inserted ecu.IsSelected=true after selectedECUs.Add(ecu) " +
+                              $"at state machine {stateMachine.Name}");
         }
 
         private static MethodDef EnsureUiBridgeProxy(ModuleDefMD module)
