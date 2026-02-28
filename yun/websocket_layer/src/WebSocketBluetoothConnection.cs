@@ -94,6 +94,13 @@ namespace OBDCloud.WebSocket
         private int _emptyReadCount;
         private int _emptyReadTotal;
 
+        // 诊断：上条 AT 命令完成情况追踪（用于定位 ELMStuck 根因）
+        private string _diagCmdText = "";
+        private DateTime _diagWriteTime = DateTime.MinValue;
+        private bool _diagDataReceived;
+        private bool _diagPromptReceived;
+        private int _diagBytesReceived;
+
         #region IOBDConnection 接口属性
 
         /// <summary>
@@ -143,8 +150,19 @@ namespace OBDCloud.WebSocket
         {
             if (_isConnected && !string.IsNullOrWhiteSpace(_sessionId))
             {
-                Log("[WebSocketBT] 已绑定会话，跳过重新连接");
-                return true;
+                if (_bridge == null || !_bridge.IsConnected)
+                {
+                    // Bridge 已断开（B 端重连），必须重置后重新建立会话
+                    Log("[WebSocketBT] Bridge 已断开，重置状态后重新连接");
+                    _isConnected = false;
+                    _sessionId = null;
+                    // 继续执行连接逻辑
+                }
+                else
+                {
+                    Log("[WebSocketBT] 已绑定会话，跳过重新连接");
+                    return true;
+                }
             }
 
             if (string.IsNullOrWhiteSpace(deviceAddress))
@@ -198,17 +216,29 @@ namespace OBDCloud.WebSocket
             if (data == null || data.Length == 0)
                 return;
 
+            // 解码命令文本（提取到 try 外，供诊断和日志共用）
+            string cmdText;
+            try { cmdText = Encoding.ASCII.GetString(data).Replace("\r", "\\r").Replace("\n", "\\n"); }
+            catch { cmdText = $"[binary len={data.Length}]"; }
+
             // 调试：显示发送的命令（带序号和时间戳）
             var wSeq = System.Threading.Interlocked.Increment(ref _writeSeq);
-            try
+            Log($"[WebSocketBT] {T()} ▶▶ W#{wSeq} AT命令: [{cmdText}] (len={data.Length})");
+
+            // ---- 诊断：打印上条 AT 命令的完成情况，用于识别 ELMStuck 根因 ----
+            // 有数据=False → 纯超时（ReadDataTimeoutException）
+            // 有数据=True 有'>'=False → 数据不完整（GeneralReadingException）
+            if (_diagWriteTime != DateTime.MinValue)
             {
-                var cmdText = Encoding.ASCII.GetString(data).Replace("\r", "\\r").Replace("\n", "\\n");
-                Log($"[WebSocketBT] {T()} ▶▶ W#{wSeq} AT命令: [{cmdText}] (len={data.Length})");
+                var prevElapsed = (DateTime.UtcNow - _diagWriteTime).TotalMilliseconds;
+                Log($"[WebSocketBT-DIAG] ↑ 上条命令: cmd=[{_diagCmdText}] elapsed={prevElapsed:0}ms 有数据={_diagDataReceived} 有'>'={_diagPromptReceived} 总字节={_diagBytesReceived}");
             }
-            catch
-            {
-                Log($"[WebSocketBT] {T()} ▶▶ W#{wSeq} 二进制数据 (len={data.Length})");
-            }
+            _diagCmdText = cmdText;
+            _diagWriteTime = DateTime.UtcNow;
+            _diagDataReceived = false;
+            _diagPromptReceived = false;
+            _diagBytesReceived = 0;
+            // ---- 诊断结束 ----
 
             // 发送数据到手机B，记录往返延迟（A→WebSocket→B→蓝牙→ELM327→蓝牙→B→WebSocket→A 全链路）
             var wStart = DateTime.UtcNow;
@@ -404,6 +434,27 @@ namespace OBDCloud.WebSocket
 
                     if (data != null && data.Length > 0)
                     {
+                        // ---- 诊断：追踪数据到达情况和 '>' 终结符 ----
+                        _diagDataReceived = true;
+                        _diagBytesReceived += data.Length;
+                        if (!_diagPromptReceived)
+                        {
+                            try
+                            {
+                                var responseText = Encoding.ASCII.GetString(data);
+                                if (responseText.IndexOf('>') >= 0)
+                                {
+                                    _diagPromptReceived = true;
+                                    var sinceSend = _diagWriteTime != DateTime.MinValue
+                                        ? (DateTime.UtcNow - _diagWriteTime).TotalMilliseconds
+                                        : -1;
+                                    Log($"[WebSocketBT-DIAG] ✓ 收到'>'终结符 cmd=[{_diagCmdText}] 距发送={sinceSend:0}ms");
+                                }
+                            }
+                            catch { }
+                        }
+                        // ---- 诊断结束 ----
+
                         // 入队前先解码预览，方便日志直观显示 ELM327 响应内容
                         string preview = "(二进制)";
                         try { preview = Encoding.ASCII.GetString(data).Replace("\r", "\\r").Replace("\n", "\\n"); } catch { }

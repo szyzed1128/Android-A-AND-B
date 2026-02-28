@@ -96,6 +96,9 @@ class CloudBridgeService {
   // 当前蓝牙会话ID
   private currentSessionId: string | null = null;
 
+  // 当前 OBD 状态（用于过滤诊断操作触发的中间态）
+  private currentOBDStatus: string = '';
+
   // 诊断日志：时序与序号
   private btSeq = 0;
   private ts(): string {
@@ -379,7 +382,15 @@ class CloudBridgeService {
     };
 
     const preview = this.decodeB64(base64Data);
-    console.log(`[CloudBridge] ${this.ts()} ◀◀ ELM327→B→A session=${sessionId} (b64len=${base64Data?.length || 0}): [${preview}]`);
+    // 检查完整响应中是否包含 ELM327 '>' 终结符
+    let hasPrompt = false;
+    try {
+      const full = typeof Buffer !== 'undefined'
+        ? Buffer.from(base64Data, 'base64').toString('ascii')
+        : atob(base64Data);
+      hasPrompt = full.includes('>');
+    } catch {}
+    console.log(`[CloudBridge] ${this.ts()} ◀◀ ELM327→B→A session=${sessionId} has_prompt=${hasPrompt} (b64len=${base64Data?.length || 0}): [${preview}]`);
     this.sendMessage(message);
   }
 
@@ -747,10 +758,22 @@ class CloudBridgeService {
    */
   private handleEvent(message: WSMessage): void {
     switch (message.action) {
-      case MessageAction.OBDStatusChanged:
-        console.log('[CloudBridge] OBDStatusChanged:', message.data?.status ?? message.data?.Status ?? message.data);
-        this.emitOBDStatusChanged(message.data?.status ?? message.data?.Status);
+      case MessageAction.OBDStatusChanged: {
+        const newStatus = message.data?.status ?? message.data?.Status ?? message.data;
+        console.log('[CloudBridge] OBDStatusChanged:', newStatus);
+
+        // 若当前已完全连接到 ECU，过滤掉诊断操作触发的中间过渡状态
+        // 只允许真正的 "Disconnected" 才能打断稳定连接
+        if (this.currentOBDStatus === 'ConnectedToECU' &&
+            newStatus !== 'Disconnected') {
+          console.log(`[CloudBridge] 过滤中间状态: ${newStatus}（当前已 ConnectedToECU）`);
+          break;
+        }
+
+        this.currentOBDStatus = newStatus ?? '';
+        this.emitOBDStatusChanged(newStatus);
         break;
+      }
 
       case MessageAction.PIDValueChanged: {
         const normalized = this.normalizePidEvent(message.data);
@@ -1056,7 +1079,10 @@ class CloudBridgeService {
       }
     }
 
-    if (index === undefined || index === null) return null;
+    if (index === undefined || index === null) {
+      console.warn('[CloudBridge] PIDValueChanged: 无法解析 index，原始数据:', JSON.stringify(data).substring(0, 200));
+      return null;
+    }
 
     if (typeof index === 'string') {
       const parsed = parseInt(index, 10);
