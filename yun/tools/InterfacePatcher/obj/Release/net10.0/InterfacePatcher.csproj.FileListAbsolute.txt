@@ -1,0 +1,17 @@
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/InterfacePatcher.csproj.AssemblyReference.cache
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/InterfacePatcher.GeneratedMSBuildEditorConfig.editorconfig
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/InterfacePatcher.AssemblyInfoInputs.cache
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/InterfacePatcher.AssemblyInfo.cs
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/InterfacePatcher.csproj.CoreCompileInputs.cache
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/bin/Release/net10.0/InterfacePatcher
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/bin/Release/net10.0/InterfacePatcher.deps.json
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/bin/Release/net10.0/InterfacePatcher.runtimeconfig.json
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/bin/Release/net10.0/InterfacePatcher.dll
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/bin/Release/net10.0/InterfacePatcher.pdb
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/bin/Release/net10.0/dnlib.dll
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/Interfac.DB03DD99.Up2Date
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/InterfacePatcher.dll
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/refint/InterfacePatcher.dll
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/InterfacePatcher.pdb
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/InterfacePatcher.genruntimeconfig.cache
+/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/InterfacePatcher/obj/Release/net10.0/ref/InterfacePatcher.dll

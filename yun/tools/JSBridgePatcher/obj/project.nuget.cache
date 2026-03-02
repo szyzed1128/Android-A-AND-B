@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "2rjLw4r1xIM=",
+  "success": true,
+  "projectFilePath": "/Users/zed/Documents/Programe/CarUI/NewUI/yun/tools/JSBridgePatcher/JSBridgePatcher.csproj",
+  "expectedPackageFiles": [
+    "/Users/zed/.nuget/packages/dnlib/4.4.0/dnlib.4.4.0.nupkg.sha512"
+  ],
+  "logs": []
+}
