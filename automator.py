@@ -7,9 +7,9 @@ import glob
 # ================= 配置区域 =================
 
 # 1. 工具路径配置
-CMD_APKTOOL = ["java", "-jar", r"C:\apktool\apktool.jar"]
-CMD_ZIPALIGN = r"C:\Users\szyze\AppData\Local\Android\Sdk\build-tools\36.1.0\zipalign.exe"
-CMD_APKSIGNER = r"C:\Users\szyze\AppData\Local\Android\Sdk\build-tools\36.1.0\apksigner.bat"
+CMD_APKTOOL = ["apktool"]
+CMD_ZIPALIGN = "/Users/zed/Library/Android/sdk/build-tools/34.0.0/zipalign"
+CMD_APKSIGNER = "/Users/zed/Library/Android/sdk/build-tools/34.0.0/apksigner"
 CMD_KEYTOOL = "keytool"
 
 # 2. 签名配置
@@ -137,6 +137,36 @@ def main():
             os.makedirs(target_dir)
         shutil.copy2(modified_dll, target_dll)
         log("DLL 注入完成")
+
+    # 4.55 复制 yun/modified_dlls 中的云端桥接 DLL（关键步骤！）
+    yun_modified_dlls = os.path.join(BASE_DIR, "yun", "modified_dlls")
+    target_assemblies = os.path.join(TEMP_WORK_DIR, "unknown", "assemblies")
+    if os.path.exists(yun_modified_dlls):
+        dlls_to_copy = [
+            "CarDemo.Android.dll",       # 注入了 OBDCloudManager 调用
+            "CarDemo.dll",               # 注入了 UI 钩子
+            "OBDCloud.WebSocket.dll",    # 占位符 DLL（类型已合并到 CarDemo.Android.dll）
+            "WebSocketIOBDConnectionProxy.dll",  # IOBDConnection 代理
+        ]
+        for dll_name in dlls_to_copy:
+            src = os.path.join(yun_modified_dlls, dll_name)
+            dst = os.path.join(target_assemblies, dll_name)
+            if os.path.exists(src):
+                shutil.copy2(src, dst)
+                log(f"复制云端 DLL: {dll_name} ({os.path.getsize(src)} bytes)")
+            else:
+                log(f"警告: 云端 DLL 不存在: {src}")
+
+        # 4.56 复制 patched 的 CarScannerXamarinForms.dll（包含 UseWebSocketConnection 字段）
+        patched_carscanner = os.path.join(yun_modified_dlls, "CarScannerXamarinForms.patched.dll")
+        if os.path.exists(patched_carscanner):
+            dst = os.path.join(target_assemblies, "CarScannerXamarinForms.dll")
+            shutil.copy2(patched_carscanner, dst)
+            log(f"复制 patched CarScannerXamarinForms.dll ({os.path.getsize(patched_carscanner)} bytes)")
+        else:
+            log(f"警告: CarScannerXamarinForms.patched.dll 不存在，OBDCloudManager 将无法注入 WebSocket 连接!")
+    else:
+        log(f"警告: yun/modified_dlls 目录不存在: {yun_modified_dlls}")
 
     # 4.6 复制修改后的 styles.xml 文件（如果存在）
     modified_styles = os.path.join(BASE_DIR, "temp_inspect", "res", "values", "styles.xml")

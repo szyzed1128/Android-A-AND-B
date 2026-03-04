@@ -333,7 +333,9 @@ namespace OBDCloud.WebSocket
         {
             if (!IsConnected) throw new InvalidOperationException("WebSocket客户端未连接");
             var json = message.ToJson();
+            Log($"[WS-Server] SendAsync type={message.Type} action={message.Action} json.len={json.Length}");
             await SendTextAsync(json).ConfigureAwait(false);
+            Log($"[WS-Server] SendAsync 完成 type={message.Type} action={message.Action}");
         }
 
         public async Task SendRawAsync(string json)
@@ -395,9 +397,15 @@ namespace OBDCloud.WebSocket
                 lockTaken = true;
 
                 var header = BuildFrameHeader(opcode, payload.Length);
-                await _stream.WriteAsync(header, 0, header.Length, ct).ConfigureAwait(false);
+                // 合并 header 和 payload 为单次写入，避免 TCP 分片问题
+                var frame = new byte[header.Length + payload.Length];
+                Buffer.BlockCopy(header, 0, frame, 0, header.Length);
                 if (payload.Length > 0)
-                    await _stream.WriteAsync(payload, 0, payload.Length, ct).ConfigureAwait(false);
+                    Buffer.BlockCopy(payload, 0, frame, header.Length, payload.Length);
+
+                Console.WriteLine($"[WS-Server] SendFrame opcode={opcode} payload.len={payload.Length} frame.len={frame.Length}");
+                await _stream.WriteAsync(frame, 0, frame.Length, ct).ConfigureAwait(false);
+                await _stream.FlushAsync(ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -405,7 +413,7 @@ namespace OBDCloud.WebSocket
             }
             catch (Exception ex)
             {
-                Log($"[WS-Server] SendFrame error: {ex.Message}");
+                Console.WriteLine($"[WS-Server] SendFrame error: {ex.Message}");
                 CloseClient();
             }
             finally

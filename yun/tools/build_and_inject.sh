@@ -7,11 +7,13 @@ ROOT_DIR="$(cd "${YUN_DIR}/.." && pwd)"
 
 WS_PROJECT="${YUN_DIR}/websocket_layer/OBDCloud.WebSocket.csproj"
 INJECTOR_PROJECT="${YUN_DIR}/tools/DllInjector/DllInjector.csproj"
+PATCHER_PROJECT="${YUN_DIR}/tools/DllPatcher/DllPatcher.csproj"
 OUTPUT_DIR="${YUN_DIR}/modified_dlls"
 ASSEMBLIES_DIR="${ROOT_DIR}/temp_verify/unknown/assemblies"
 
 CARDEMO_ANDROID="${ASSEMBLIES_DIR}/CarDemo.Android.dll"
 CARDEMO="${ASSEMBLIES_DIR}/CarDemo.dll"
+CARSCANNER="${ASSEMBLIES_DIR}/CarScannerXamarinForms.dll"
 WS_DLL="${YUN_DIR}/websocket_layer/bin/Release/netstandard2.0/OBDCloud.WebSocket.dll"
 
 # 代理 DLL 的路径（使用 Mono 编译器编译）
@@ -37,7 +39,18 @@ dotnet run --project "${INJECTOR_PROJECT}" -c Release -- \
   "${CARDEMO_ANDROID}" \
   "${CARDEMO}" \
   "${WS_DLL}" \
-  "${OUTPUT_DIR}"
+  "${OUTPUT_DIR}" \
+  "${PROXY_DLL}"
+
+# 构建并运行 DllPatcher（修改 CarScannerXamarinForms.dll，添加 WebSocket 字段）
+printf "\nBuilding patcher...\n"
+dotnet build "${PATCHER_PROJECT}" -c Release
+
+printf "Running patcher on CarScannerXamarinForms.dll...\n"
+dotnet run --project "${PATCHER_PROJECT}" -c Release -- \
+  "${CARSCANNER}" \
+  "${OUTPUT_DIR}/CarScannerXamarinForms.patched.dll" \
+  "${WS_DLL}"
 
 # 复制代理 DLL 到输出目录
 printf "\nCopying WebSocketIOBDConnectionProxy.dll to output...\n"

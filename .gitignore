@@ -1,24 +1,99 @@
-# Node modules
-react_ui/node_modules/
+# ===== 原始 CarScanner APK（需手动提供，见 BUILD.md）=====
+original_apk/
 
-# Temp directories
+# ===== 从原始 APK 解包出的 DLL 参考库（可从原始 APK 重新提取）=====
+temp_verify/
 temp_decompiled/
-temp_rename/
+temp_inspect/
+temp_*/
 debug_decompiled/
 
-# Windows reserved names
-nul
+# ===== Android / APK 打包产物 =====
+build_output/
+decompiled_apk/
+decompiled_apk_*/
+CarDemo_patched*/
+CarDemo_signed.apk
+automator_workdir/
+*.unsigned.apk
+*.signed.apk
 
-# OS files
+# ===== node_modules（npm install 可重建）=====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== C# / .NET 编译产物（dotnet build 可重建）=====
+# 注意：yun/modified_dlls/ 中的 DLL 是修改后的关键产物，不排除
+**/bin/
+**/obj/
+
+# ===== React/Metro 构建产物 =====
+yun/client-app/build/
+react_ui/build/
+.metro-health-check*
+.bundle/
+
+# ===== CarScanner 原始资源文件 =====
+*.db
+*.db.ru
+*.db.de
+*.db.tr
+*.bin
+*.dat
+
+# ===== IPA / APK 二进制安装包 =====
+*.ipa
+*.apk
+*.aab
+
+# ===== 日志和临时文件 =====
+logs/
+*.log
+*.tmp
+*.bak
+
+# ===== macOS 系统文件 =====
 .DS_Store
-Thumbs.db
+.AppleDouble
+**/.DS_Store
 
-# IDE
+# ===== IDE =====
 .idea/
 .vscode/
-*.swp
-*.swo
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+.vs/
 
-# Logs
-*.log
-npm-debug.log*
+# ===== Gradle =====
+local.properties
+.gradle/
+
+# ===== 根目录旧版 modified_dlls（由 yun/modified_dlls 替代）=====
+/modified_dlls/
+
+# ===== CarScanner 反编译参考源码（280MB，仅供参考，不是你的代码）=====
+yun/CarScannerC#反编译后的源码/
+
+# ===== APK/IPA 分析产物 =====
+apk_analysis/
+ipa_analysis/
+
+# ===== 旧版工具目录 =====
+dll_modifier/
+/tools/
+
+# ===== Android Gradle 构建产物 =====
+yun/client-app/android/app/build/
+yun/client-app/android/.gradle/
+yun/client-app/android/build/
+
+# ===== iOS CocoaPods 依赖（pod install 可重建）=====
+yun/client-app/ios/Pods/
+
+# ===== iOS 构建产物 =====
+yun/client-app/ios/build/
+yun/client-app/ios/*.xcworkspace/xcuserdata/
+yun/client-app/ios/*.xcodeproj/xcuserdata/
+yun/client-app/ios/.xcode.env.local

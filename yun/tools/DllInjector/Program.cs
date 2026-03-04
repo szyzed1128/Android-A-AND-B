@@ -15,6 +15,7 @@ namespace DllInjector
         public string CarDemoPath { get; init; }
         public string WebSocketDllPath { get; init; }
         public string OutputDir { get; init; }
+        public string? ProxyDllPath { get; init; }  // 可选：WebSocketIOBDConnectionProxy.dll
     }
 
     /// <summary>
@@ -34,6 +35,8 @@ namespace DllInjector
         public IMethod ReadNextDataAsync { get; set; }     // WebSocketOBDConnection.ReadNextDataAsync
         public IMethod GetOBDConnectionIsConnected { get; set; }  // WebSocketOBDConnection.get_IsConnected
         public IMethod HandleUiInvoke { get; set; }        // OBDCloudManager.HandleUiInvoke
+        public IMethod GetBluetoothConnection { get; set; }  // OBDCloudManager.get_BluetoothConnection
+        public IMethod BluetoothReadBytesAsync { get; set; } // WebSocketBluetoothConnection.ReadBytesAsync
     }
 
     class Program
@@ -61,6 +64,15 @@ namespace DllInjector
             Console.WriteLine("\n[2/3] Copying WebSocket types into CarDemo.Android.dll...");
             CopyTypesFromModule(androidModule, wsModule);
 
+            // 步骤 2.1: 如果提供了 Proxy DLL，也复制其类型
+            if (!string.IsNullOrEmpty(paths.ProxyDllPath) && File.Exists(paths.ProxyDllPath))
+            {
+                Console.WriteLine($"\n  Also copying types from WebSocketIOBDConnectionProxy.dll...");
+                var proxyModule = ModuleDefMD.Load(paths.ProxyDllPath);
+                CopyTypesFromModule(androidModule, proxyModule);
+                Console.WriteLine($"    Proxy types copied.");
+            }
+
             // 步骤 2.5: 修复类型引用，将指向 OBDCloud.WebSocket 程序集的引用替换为本地 TypeDef
             Console.WriteLine("\n  Fixing type references...");
 
@@ -81,6 +93,12 @@ namespace DllInjector
             Console.WriteLine($"    Before fix: {preFixTypeRefs.Count} TypeRefs referencing OBDCloud.WebSocket");
 
             FixTypeReferences(androidModule, "OBDCloud.WebSocket");
+
+            // 如果复制了 Proxy 类型，也修复其引用
+            if (!string.IsNullOrEmpty(paths.ProxyDllPath) && File.Exists(paths.ProxyDllPath))
+            {
+                FixTypeReferences(androidModule, "WebSocketIOBDConnectionProxy");
+            }
 
             // DEBUG: 深度检查所有可能的引用
             Console.WriteLine("    Deep scanning for remaining references...");
@@ -942,6 +960,21 @@ namespace DllInjector
                     refs.GetOBDConnectionIsConnected = isConnectedProp.GetMethod;
             }
 
+            // 导入 BluetoothConnection 属性（用于底层蓝牙连接）
+            var btConnectionProp = obdCloudManagerType.Properties.FirstOrDefault(p => p.Name == "BluetoothConnection");
+            if (btConnectionProp?.GetMethod != null)
+                refs.GetBluetoothConnection = btConnectionProp.GetMethod;
+
+            // 找到 WebSocketBluetoothConnection 类型并导入 ReadBytesAsync
+            var btConnType = module.GetTypes()
+                .FirstOrDefault(t => t.FullName == "OBDCloud.WebSocket.WebSocketBluetoothConnection");
+            if (btConnType != null)
+            {
+                var readBytes = btConnType.Methods.FirstOrDefault(m => m.Name == "ReadBytesAsync" && !m.Name.Contains("<"));
+                if (readBytes != null)
+                    refs.BluetoothReadBytesAsync = readBytes;
+            }
+
             // 验证必需的引用
             PrintRefStatus("Instance", refs.GetInstance);
             PrintRefStatus("IsInitialized", refs.GetIsInitialized);
@@ -954,6 +987,8 @@ namespace DllInjector
             PrintRefStatus("OBDConnection", refs.GetOBDConnection);
             PrintRefStatus("OBDConnection.IsConnected", refs.GetOBDConnectionIsConnected);
             PrintRefStatus("HandleUiInvoke", refs.HandleUiInvoke);
+            PrintRefStatus("BluetoothConnection", refs.GetBluetoothConnection);
+            PrintRefStatus("BluetoothReadBytesAsync", refs.BluetoothReadBytesAsync);
 
             return refs;
         }
@@ -1352,13 +1387,17 @@ namespace DllInjector
             var outputDir = args.Length > 3
                 ? args[3]
                 : Path.Combine(root, "yun", "modified_dlls");
+            var proxyDllPath = args.Length > 4
+                ? args[4]
+                : null;
 
             return new InjectorPaths
             {
                 CarDemoAndroidPath = Path.GetFullPath(carDemoAndroidPath),
                 CarDemoPath = Path.GetFullPath(carDemoPath),
                 WebSocketDllPath = Path.GetFullPath(webSocketDllPath),
-                OutputDir = Path.GetFullPath(outputDir)
+                OutputDir = Path.GetFullPath(outputDir),
+                ProxyDllPath = proxyDllPath != null ? Path.GetFullPath(proxyDllPath) : null
             };
         }
 
@@ -1482,7 +1521,7 @@ namespace DllInjector
 
             EnsureFieldInit(instructions, wsServerUrlField, new List<Instruction>
             {
-                OpCodes.Ldstr.ToInstruction("ws://10.0.2.2:8080/ws"),  // 10.0.2.2 = 模拟器访问主机
+                OpCodes.Ldstr.ToInstruction("ws://0.0.0.0:8080/ws"),  // 0.0.0.0 = 监听所有接口
                 OpCodes.Stsfld.ToInstruction(wsServerUrlField)
             });
 
@@ -1820,7 +1859,7 @@ namespace DllInjector
             // 修改 ReadBytesAsync
             var readMethod = btConnType.Methods.FirstOrDefault(
                 m => m.Name == "ReadBytesAsync" && !m.Name.Contains("<"));
-            if (readMethod?.Body != null && refs.ReadNextDataAsync != null)
+            if (readMethod?.Body != null && refs.BluetoothReadBytesAsync != null)
             {
                 PatchReadBytesAsync(readMethod, useWebSocketField, refs);
             }
@@ -2064,12 +2103,12 @@ namespace DllInjector
                 OpCodes.Ldsfld.ToInstruction(useWebSocketField),
                 OpCodes.Brfalse.ToInstruction(originalFirst),
 
-                // var conn = OBDCloudManager.Instance.OBDConnection
+                // var conn = OBDCloudManager.Instance.BluetoothConnection
                 OpCodes.Call.ToInstruction(refs.GetInstance),
-                OpCodes.Callvirt.ToInstruction(refs.GetOBDConnection),
+                OpCodes.Callvirt.ToInstruction(refs.GetBluetoothConnection),
 
-                // var task = conn.ReadNextDataAsync()
-                OpCodes.Callvirt.ToInstruction(refs.ReadNextDataAsync)
+                // var task = conn.ReadBytesAsync()
+                OpCodes.Callvirt.ToInstruction(refs.BluetoothReadBytesAsync)
             };
 
             if (isValueTask && valueTaskCtor != null)

@@ -513,6 +513,10 @@ class CloudBridgeService {
    * 处理接收到的消息
    */
   private handleMessage(data: string): void {
+    // 诊断：记录原始数据（解析前）
+    const preview = data.length > 200 ? data.substring(0, 200) + '...' : data;
+    console.log(`[CloudBridge] RAW-RX len=${data.length} preview=${preview}`);
+
     try {
       const raw = JSON.parse(data);
       const message: WSMessage = {

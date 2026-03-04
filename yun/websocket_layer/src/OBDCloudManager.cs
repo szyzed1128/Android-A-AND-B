@@ -508,20 +508,23 @@ namespace OBDCloud.WebSocket
 
         private async void OnUiOutgoingMessage(string json)
         {
+            // 诊断：记录入口（含连接状态）
+            var preview2 = (json?.Length ?? 0) > 100 ? json.Substring(0, 100) : (json ?? "null");
+            Console.WriteLine($"[OnUiOutgoingMessage] json.len={json?.Length ?? 0} connected={_bridge?.IsConnected} preview={preview2}");
             if (string.IsNullOrWhiteSpace(json) || _bridge == null || !_bridge.IsConnected)
                 return;
 
             try
             {
                 var obj = JObject.Parse(json);
-                var type = obj.Value<string>("type");
+                var type = obj.GetValue("type", StringComparison.OrdinalIgnoreCase)?.Value<string>();
                 if (string.Equals(type, "ui_event", StringComparison.OrdinalIgnoreCase))
                 {
-                    var eventName = obj.Value<string>("event");
+                    var eventName = obj.GetValue("event", StringComparison.OrdinalIgnoreCase)?.Value<string>();
                     if (!string.IsNullOrWhiteSpace(eventName))
                     {
                         Log($"[OBDCloudManager] UI事件: {eventName}");
-                        var dataToken = obj["data"];
+                        var dataToken = obj.GetValue("data", StringComparison.OrdinalIgnoreCase);
                         HandleUiInvokeInternal(eventName, dataToken == null ? null : new object[] { dataToken });
                     }
                     return;
@@ -544,6 +547,8 @@ namespace OBDCloud.WebSocket
 
         private void HandleUiInvokeInternal(string methodName, object[] args)
         {
+            // 诊断：记录所有 UI 回调事件名
+            Log($"[OBDCloudManager] UI回调: {methodName} args={args?.Length ?? 0}");
             // 只处理关心的 UI 回调，避免噪音
             switch (methodName)
             {
@@ -556,10 +561,8 @@ namespace OBDCloud.WebSocket
 
                 case "onReadDTCSuccess":
                     var dtcRaw = args != null && args.Length > 0 ? args[0] : null;
-                    var dtcRawType = dtcRaw?.GetType()?.Name ?? "null";
                     var dtcRawStr = dtcRaw?.ToString() ?? "";
-                    Log($"[OBDCloudManager] onReadDTCSuccess: type={dtcRawType} len={dtcRawStr.Length} preview={dtcRawStr.Substring(0, Math.Min(120, dtcRawStr.Length))}");
-                    SendEvent(MessageAction.DTCResult, NormalizeArg(args, 0));
+                    SendEvent(MessageAction.DTCResult, ParseJsonArg(dtcRawStr));
                     break;
                 case "onReadDTCError":
                     SendError("DTC_ERROR", ToStringArg(args, 0));
@@ -595,6 +598,29 @@ namespace OBDCloud.WebSocket
             return args[index].ToString();
         }
 
+        /// <summary>
+        /// 将 CarScanner WebView 传出的字符串解析为 JToken。
+        /// CarScanner 对 DTC 等 JSON 结果做了双重转义：原本 {"Code":"X"} 变成
+        /// {\"Code\":\"X\"} 作为字符串字面量传出。直接 JToken.Parse 会失败，
+        /// 需要先把字面量反斜杠引号 \" 还原为 " 再解析。
+        /// </summary>
+        private static object ParseJsonArg(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return raw;
+            var trimmed = raw.Trim();
+            if (!trimmed.StartsWith("[") && !trimmed.StartsWith("{"))
+                return raw;
+
+            // 第一次尝试：直接解析（数据已是正常 JSON）
+            try { return JToken.Parse(trimmed); } catch { }
+
+            // 第二次尝试：去除 CarScanner 的字面量 \" 转义后再解析
+            var unescaped = trimmed.Replace("\\\"", "\"");
+            try { return JToken.Parse(unescaped); } catch { }
+
+            return raw;
+        }
+
         private static object NormalizeArg(object[] args, int index)
         {
             if (args == null || args.Length <= index)
@@ -602,22 +628,48 @@ namespace OBDCloud.WebSocket
             var arg = args[index];
             if (arg == null)
                 return null;
+
+            // 已经是结构化 JSON，直接返回
+            if (arg is JArray || arg is JObject)
+                return arg;
+
+            // 提取字符串表示：C# string、JValue（任意子类型）均支持
+            string strValue = null;
             if (arg is string s)
             {
-                var trimmed = s.Trim();
+                strValue = s;
+            }
+            else if (arg is JValue jv)
+            {
+                // JTokenType.String 用 Value<string>() 取原始内容，避免多余引号
+                // 其他类型（Raw、Integer 等）用 ToString(None) 取 JSON 文本表示
+                strValue = jv.Type == JTokenType.String
+                    ? jv.Value<string>()
+                    : jv.ToString(Formatting.None);
+            }
+            else
+            {
+                strValue = arg.ToString();
+            }
+
+            if (!string.IsNullOrEmpty(strValue))
+            {
+                var trimmed = strValue.Trim();
                 if ((trimmed.StartsWith("{") && trimmed.EndsWith("}")) ||
                     (trimmed.StartsWith("[") && trimmed.EndsWith("]")))
                 {
                     try { return JToken.Parse(trimmed); } catch { }
                 }
-                return s;
+                return strValue;
             }
             return arg;
         }
 
         private void SendEvent(string action, object data)
         {
-            if (_bridge == null || !_bridge.IsConnected)
+            var connected = _bridge?.IsConnected == true;
+            Log($"[OBDCloudManager] SendEvent action={action} connected={connected}");
+            if (_bridge == null || !connected)
                 return;
 
             var message = new WSMessage
@@ -629,9 +681,24 @@ namespace OBDCloud.WebSocket
 
             try
             {
-                _ = _bridge.SendAsync(message);
+                // 诊断：记录即将发送的 JSON
+                var json = message.ToJson();
+                var preview = json.Length > 150 ? json.Substring(0, 150) + "..." : json;
+                Log($"[OBDCloudManager] TX event action={action} json.len={json.Length} preview={preview}");
+
+                var task = _bridge.SendAsync(message);
+                task.ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        Log($"[OBDCloudManager] SendEvent {action} 发送失败: {t.Exception?.GetBaseException()?.Message}");
+                    else
+                        Log($"[OBDCloudManager] SendEvent {action} 发送完成");
+                });
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] SendEvent {action} 同步异常: {ex.Message}");
+            }
         }
 
         private void SendError(string code, string message)

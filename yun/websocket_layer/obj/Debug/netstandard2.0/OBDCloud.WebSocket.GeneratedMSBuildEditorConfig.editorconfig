@@ -1,8 +1,0 @@
-is_global = true
-build_property.RootNamespace = OBDCloud.WebSocket
-build_property.ProjectDir = /Users/zed/Documents/Programe/CarUI/NewUI/yun/websocket_layer/
-build_property.EnableComHosting = 
-build_property.EnableGeneratedComInterfaceComImportInterop = 
-build_property.CsWinRTUseWindowsUIXamlProjections = false
-build_property.EffectiveAnalysisLevelStyle = 
-build_property.EnableCodeStyleSeverity = 

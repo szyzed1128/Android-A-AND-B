@@ -93,12 +93,21 @@ namespace OBDCloud.WebSocket
             if (string.IsNullOrWhiteSpace(jsScript))
                 return;
 
+            // 诊断：记录所有 EvaluateJavascriptAsync hook 调用
+            var preview = jsScript.Length > 200 ? jsScript.Substring(0, 200) : jsScript;
+            Console.WriteLine($"[HandleOutgoingJS] jsScript={preview}");
+
             var rawHandler = OnEvaluateJavascript;
             rawHandler?.Invoke(jsScript);
 
             if (!TryBuildUiEvent(jsScript, out var json))
+            {
+                Console.WriteLine($"[HandleOutgoingJS] TryBuildUiEvent 失败: {preview.Substring(0, Math.Min(60, preview.Length))}");
                 return;
+            }
 
+            var hasSubscribers = OutgoingMessage != null;
+            Console.WriteLine($"[HandleOutgoingJS] TryBuildUiEvent 成功, hasSubscribers={hasSubscribers}");
             OutgoingQueue.Enqueue(json);
             var handler = OutgoingMessage;
             handler?.Invoke(json);
