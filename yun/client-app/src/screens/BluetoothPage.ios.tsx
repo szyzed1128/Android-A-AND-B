@@ -15,6 +15,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  NativeModules,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -23,6 +24,10 @@ import { useLocalBluetooth } from '../hooks/useLocalBluetooth';
 import { ScannedDevice } from '../context/AppContext';
 
 type ProtocolTab = 'ble' | 'classic' | 'mfi';
+
+type MFiNativePickerModule = {
+  showBluetoothAccessoryPicker?: () => Promise<{ status?: string } | string>;
+};
 
 export default function BluetoothPage() {
   const navigation = useNavigation<any>();
@@ -42,6 +47,8 @@ export default function BluetoothPage() {
   const [manualAddress, setManualAddress] = useState(selectedDevice?.address || '');
   // 正在选择的设备（防止多次点击）
   const [selectingAddress, setSelectingAddress] = useState<string | null>(null);
+  // MFi 系统选择器中
+  const [isPickingMFi, setIsPickingMFi] = useState(false);
 
   // 协议标签配置
   const protocolTabs = useMemo(() => {
@@ -53,7 +60,7 @@ export default function BluetoothPage() {
     return tabs;
   }, []);
 
-  // 过滤后的设备列表（直接过滤 scannedDevices，避免 getFilteredDevices 引用变化触发多余重算）
+  // 过滤后的设备列表（直接从 scannedDevices 过滤，避免 getFilteredDevices 引用变化触发多余重算）
   const filteredDevices = useMemo(() => {
     return scannedDevices.filter(d => d.protocol === activeProtocol);
   }, [scannedDevices, activeProtocol]);
@@ -78,6 +85,36 @@ export default function BluetoothPage() {
     stopScan();
     setTimeout(() => startScan([activeProtocol]), 300);
   }, [stopScan, startScan, activeProtocol]);
+
+  // iOS MFi 系统选择器
+  const handleMFiPicker = useCallback(async () => {
+    if (isPickingMFi) return;
+    const mfiModule = NativeModules.OBDMFiModuleIOS as MFiNativePickerModule | undefined;
+    if (!mfiModule?.showBluetoothAccessoryPicker) {
+      Alert.alert('提示', '当前版本未启用 MFi 系统选择器');
+      return;
+    }
+
+    setIsPickingMFi(true);
+    stopScan();
+    try {
+      const result = await mfiModule.showBluetoothAccessoryPicker();
+      const status = typeof result === 'string' ? result : (result?.status || 'selected');
+
+      if (status === 'not_found') {
+        Alert.alert('未找到设备', '未发现可用 MFi 设备，请确认适配器已上电并支持当前协议');
+      }
+
+      if (status !== 'cancelled') {
+        setActiveProtocol('mfi');
+        setTimeout(() => startScan(['mfi']), 350);
+      }
+    } catch (e: any) {
+      Alert.alert('MFi 搜索失败', e?.message || '系统配件选择器调用失败');
+    } finally {
+      setIsPickingMFi(false);
+    }
+  }, [isPickingMFi, stopScan, startScan]);
 
   // 选择设备（带加载状态）
   const handleSelect = useCallback(async (device: ScannedDevice) => {
@@ -118,8 +155,8 @@ export default function BluetoothPage() {
     ]);
   }, [manualAddress, stopScan, selectDevice, navigation, activeProtocol]);
 
-  // 渲染协议选择按钮
-  const renderProtocolTabs = () => (
+  // 渲染协议选择按钮（tabs 配置稳定，useMemo 避免重复创建 JSX）
+  const protocolTabsJSX = useMemo(() => (
     <View style={styles.protocolTabs}>
       {protocolTabs.map((tab) => (
         <TouchableOpacity
@@ -161,7 +198,7 @@ export default function BluetoothPage() {
         </TouchableOpacity>
       ))}
     </View>
-  );
+  ), [protocolTabs, activeProtocol, handleProtocolChange]);
 
   // 渲染设备项（useCallback 保持引用稳定，让 FlatList 能正确跳过未变化的 item）
   const renderDevice = useCallback(({ item }: { item: ScannedDevice }) => {
@@ -237,7 +274,31 @@ export default function BluetoothPage() {
       </View>
 
       {/* 协议选择按钮 */}
-      {renderProtocolTabs()}
+      {protocolTabsJSX}
+
+      {/* MFi 设备选择入口（iOS） */}
+      {activeProtocol === 'mfi' && (
+        <View style={styles.mfiPickerSection}>
+          <TouchableOpacity
+            style={[styles.mfiPickerButton, isPickingMFi && styles.mfiPickerButtonDisabled]}
+            onPress={handleMFiPicker}
+            disabled={isPickingMFi}
+            activeOpacity={0.8}
+          >
+            {isPickingMFi ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Icon name="apple-keyboard-command" size={18} color="#fff" />
+            )}
+            <Text style={styles.mfiPickerButtonText}>
+              {isPickingMFi ? '正在打开系统设备选择器...' : '搜索 MFi 设备（系统）'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.mfiPickerHint}>
+            如列表为空，请先使用系统选择器连接 MFi 设备，再返回本页刷新
+          </Text>
+        </View>
+      )}
 
       {/* 扫描状态 */}
       {isScanning && (
@@ -257,7 +318,7 @@ export default function BluetoothPage() {
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={styles.listContent}
         extraData={selectingAddress}
-        removeClippedSubviews={true}
+        removeClippedSubviews={false}
         maxToRenderPerBatch={20}
         windowSize={5}
         initialNumToRender={20}
@@ -389,6 +450,36 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     color: '#666',
+  },
+  mfiPickerSection: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#eee',
+    gap: 8,
+  },
+  mfiPickerButton: {
+    height: 42,
+    borderRadius: 8,
+    backgroundColor: '#1989fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  mfiPickerButtonDisabled: {
+    opacity: 0.7,
+  },
+  mfiPickerButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  mfiPickerHint: {
+    fontSize: 12,
+    color: '#969799',
   },
   // 设备列表
   listContent: {

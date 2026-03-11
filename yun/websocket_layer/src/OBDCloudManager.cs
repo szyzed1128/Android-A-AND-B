@@ -847,7 +847,7 @@ namespace OBDCloud.WebSocket
                     try
                     {
                         // 触发原 CarScanner 的 OBDDataReader.Initialize 流程（完全使用原逻辑）
-                        var initOk = await TryInitializeObdReaderAsync(initAddress).ConfigureAwait(false);
+                        var initOk = await TryInitializeObdReaderAsync(initAddress, protocol).ConfigureAwait(false);
                         Log($"[OBDCloudManager] OBDDataReader.Initialize 触发完成 (ok={initOk})");
 
                         if (!initOk)
@@ -1021,7 +1021,7 @@ namespace OBDCloud.WebSocket
             }
         }
 
-        private async Task<bool> TryInitializeObdReaderAsync(string deviceAddress)
+        private async Task<bool> TryInitializeObdReaderAsync(string deviceAddress, string protocol)
         {
             var initTs = DateTime.UtcNow;
             string InitElapsed() => $"[INIT +{(DateTime.UtcNow - initTs).TotalMilliseconds:0}ms]";
@@ -1031,7 +1031,7 @@ namespace OBDCloud.WebSocket
                 Log($"[OBDCloudManager] {InitElapsed()} ▶ TryInitializeObdReaderAsync 开始 device={deviceAddress}");
                 ConfigureOBDDataReaderForWebSocket();
                 Log($"[OBDCloudManager] {InitElapsed()} ① WebSocket连接配置完成");
-                TryConfigureSharedSettingsForWebSocket(deviceAddress);
+                TryConfigureSharedSettingsForWebSocket(deviceAddress, protocol);
                 Log($"[OBDCloudManager] {InitElapsed()} ② SharedSettings配置完成");
 
                 if (!TryResolveObdReader(out var obdReader, out var obdReaderType))
@@ -1096,7 +1096,7 @@ namespace OBDCloud.WebSocket
             }
         }
 
-        private void TryConfigureSharedSettingsForWebSocket(string deviceAddress)
+        private void TryConfigureSharedSettingsForWebSocket(string deviceAddress, string protocol)
         {
             try
             {
@@ -1122,18 +1122,50 @@ namespace OBDCloud.WebSocket
                 if (connectionTypeProp != null)
                 {
                     var connEnumType = connectionTypesType ?? connectionTypeProp.PropertyType;
-                    var bluetoothValue = Enum.Parse(connEnumType, "Bluetooth");
-                    connectionTypeProp.SetValue(current, bluetoothValue);
-                    Log("[OBDCloudManager] 已设置 SharedSettings.ConnectionType = Bluetooth");
+                    var normalizedProtocol = (protocol ?? string.Empty).Trim().ToLowerInvariant();
+                    string connectionTypeName;
+                    switch (normalizedProtocol)
+                    {
+                        case "mfi":
+                            connectionTypeName = "MFI_OBDLinkMXPlus";
+                            break;
+                        case "ble":
+                            connectionTypeName = "BluetoothLE";
+                            break;
+                        case "wifi":
+                            connectionTypeName = "WiFi";
+                            break;
+                        case "classic":
+                        case "bt":
+                        case "bluetooth":
+                        default:
+                            connectionTypeName = "Bluetooth";
+                            break;
+                    }
+
+                    var connectionTypeValue = Enum.Parse(connEnumType, connectionTypeName);
+                    connectionTypeProp.SetValue(current, connectionTypeValue);
+                    Log($"[OBDCloudManager] 已设置 SharedSettings.ConnectionType = {connectionTypeName} (protocol={protocol ?? "(空)"})");
                 }
 
                 if (!string.IsNullOrWhiteSpace(deviceAddress) &&
                     !string.Equals(deviceAddress, "WEBSOCKET", StringComparison.OrdinalIgnoreCase))
                 {
-                    var btIdProp = settingsType.GetProperty("BTDeviceID",
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                    btIdProp?.SetValue(current, deviceAddress);
-                    Log($"[OBDCloudManager] 已设置 SharedSettings.BTDeviceID = {deviceAddress}");
+                    var normalizedProtocol = (protocol ?? string.Empty).Trim().ToLowerInvariant();
+                    if (normalizedProtocol == "ble")
+                    {
+                        var btleIdProp = settingsType.GetProperty("BTLEDeviceID",
+                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        btleIdProp?.SetValue(current, deviceAddress);
+                        Log($"[OBDCloudManager] 已设置 SharedSettings.BTLEDeviceID = {deviceAddress}");
+                    }
+                    else
+                    {
+                        var btIdProp = settingsType.GetProperty("BTDeviceID",
+                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        btIdProp?.SetValue(current, deviceAddress);
+                        Log($"[OBDCloudManager] 已设置 SharedSettings.BTDeviceID = {deviceAddress}");
+                    }
                 }
             }
             catch (Exception ex)

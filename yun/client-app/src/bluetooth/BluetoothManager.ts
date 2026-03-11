@@ -136,8 +136,8 @@ class BLEAdapter {
     this.listeners.push(stopListener);
 
     try {
-      // 扫描所有设备，持续30秒
-      await BleManager.scan([], 30, true);
+      // 扫描所有设备，持续30秒；allowDuplicates=false，内置去重逻辑已覆盖更新场景
+      await BleManager.scan([], 30, false);
       console.log('[BLE] 扫描已启动');
     } catch (error: any) {
       console.log('[BLE] 扫描启动失败:', error.message);

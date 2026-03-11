@@ -11,6 +11,9 @@ import { BluetoothGateway, BluetoothProtocol, ExtendedBTDeviceInfo } from '../bl
 // 蓝牙网关单例 - 确保所有 useLocalBluetooth 调用共享同一个实例
 let bluetoothGateway: BluetoothGateway | null = null;
 let gatewayRefCount = 0; // 引用计数，最后一个卸载时销毁
+let isScanningShared = false; // 模块级扫描状态，所有实例共享，防止多实例 stale closure
+let pendingDevicesBuffer: ScannedDevice[] = []; // 待批量刷新的设备缓冲
+let flushIntervalId: ReturnType<typeof setInterval> | null = null; // 刷新定时器
 
 export function useLocalBluetooth() {
   const {
@@ -25,6 +28,34 @@ export function useLocalBluetooth() {
   } = useAppContext();
 
   const gatewayRef = useRef<BluetoothGateway | null>(null);
+  // 扫描结束回调 ref，供网关单例访问（绕过 closure 陷阱）
+  const onScanFinishedRef = useRef<() => void>(() => {});
+  // 每次渲染时更新回调，确保能访问到最新的 setIsScanning
+  onScanFinishedRef.current = () => {
+    setIsScanning(false);
+  };
+
+  // 批量刷新函数 ref，供定时器和 onScanFinished 访问（绕过 closure 陷阱）
+  const flushDevicesRef = useRef<() => void>(() => {});
+  // 每次渲染时更新，确保总是使用最新的 setScannedDevices
+  flushDevicesRef.current = () => {
+    const pending = pendingDevicesBuffer.splice(0);
+    if (!pending.length) return;
+    // 单次 setScannedDevices 调用合并所有待更新设备（与 addScannedDevice 去重逻辑一致）
+    setScannedDevices(prev => {
+      const next = [...prev];
+      for (const device of pending) {
+        const idx = next.findIndex(d => d.address === device.address);
+        if (idx >= 0) {
+          // 仅当名称更好时才覆盖（与原 addScannedDevice 逻辑一致）
+          if (device.name && !device.name.startsWith('BLE-')) next[idx] = device;
+        } else {
+          next.push(device);
+        }
+      }
+      return next;
+    });
+  };
 
   // 初始化蓝牙网关（单例模式）
   useEffect(() => {
@@ -32,18 +63,24 @@ export function useLocalBluetooth() {
       console.log('[LocalBluetooth] 创建蓝牙网关单例');
       bluetoothGateway = new BluetoothGateway({
         onDeviceDiscovered: (device: ExtendedBTDeviceInfo) => {
-          const scannedDevice: ScannedDevice = {
+          // 不再立即触发 state update，推入缓冲等待批量刷新
+          pendingDevicesBuffer.push({
             name: device.name,
             address: device.address,
             valid: device.valid,
             paired: device.paired,
             protocol: device.protocol,
             rssi: device.rssi,
-          };
-          addScannedDevice(scannedDevice);
+          });
         },
         onScanFinished: () => {
-          setIsScanning(false);
+          // guard：多个 adapter 都会触发 onScanFinished（BLE x2 + Classic + MFi = 4次），只处理第一次
+          if (!isScanningShared) return;
+          isScanningShared = false;
+          // 停止刷新定时器，做最终一次批量刷新，确保扫描结束前发现的设备全部写入
+          if (flushIntervalId) { clearInterval(flushIntervalId); flushIntervalId = null; }
+          flushDevicesRef.current();
+          onScanFinishedRef.current();
         },
         onError: (code, message) => {
           console.error('[LocalBluetooth] Error:', code, message);
@@ -76,7 +113,7 @@ export function useLocalBluetooth() {
       }
       gatewayRef.current = null;
     };
-  }, [addScannedDevice, setIsScanning]);
+  }, [setIsScanning]);
 
   // 开始扫描
   const startScan = useCallback(async (protocols?: BluetoothProtocol[]) => {
@@ -84,18 +121,29 @@ export function useLocalBluetooth() {
       console.warn('[LocalBluetooth] Gateway not initialized');
       return;
     }
-    if (isScanning) {
+    // 用模块级变量，所有实例共享，避免多实例 stale closure 导致守卫失效
+    if (isScanningShared) {
       console.log('[LocalBluetooth] 已在扫描中，忽略重复请求');
       return;
     }
 
+    isScanningShared = true;
+    pendingDevicesBuffer = []; // 清空旧缓冲，避免上次扫描残留
     clearScannedDevices();
     setIsScanning(true);
+
+    // 启动批量刷新定时器（每 300ms 将缓冲的设备批量写入 state）
+    if (flushIntervalId) clearInterval(flushIntervalId);
+    flushIntervalId = setInterval(() => {
+      flushDevicesRef.current();
+    }, 300);
 
     try {
       await gatewayRef.current.startScan(protocols);
     } catch (e) {
       console.error('[LocalBluetooth] Scan error:', e);
+      isScanningShared = false;
+      if (flushIntervalId) { clearInterval(flushIntervalId); flushIntervalId = null; }
       setIsScanning(false);
     }
   }, [clearScannedDevices, setIsScanning]);
@@ -104,6 +152,10 @@ export function useLocalBluetooth() {
   const stopScan = useCallback(async () => {
     if (!gatewayRef.current) return;
 
+    isScanningShared = false;
+    // 停止刷新定时器，做最终一次批量刷新
+    if (flushIntervalId) { clearInterval(flushIntervalId); flushIntervalId = null; }
+    flushDevicesRef.current();
     try {
       await gatewayRef.current.stopScan();
     } catch (e) {

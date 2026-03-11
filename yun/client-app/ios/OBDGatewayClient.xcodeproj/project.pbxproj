@@ -10,6 +10,9 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		13B07FC11A68108700A75B9A /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB11A68108700A75B9A /* LaunchScreen.storyboard */; };
+		A1B2C3D4E5F60718293A4B5C /* OBDMFiModuleIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5E /* OBDMFiModuleIOS.mm */; };
+		A1B2C3D4E5F60718293A4B5F /* ExternalAccessory.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B60 /* ExternalAccessory.framework */; };
+		A1B2C3D4E5F60718293A4B61 /* ios_MaterialCommunityIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B62 /* ios_MaterialCommunityIcons.ttf */; };
 		C449C754B5277B50D00C1D26 /* libPods-OBDGatewayClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 43B3EEF3F3C30FFD28D05A24 /* libPods-OBDGatewayClient.a */; };
 /* End PBXBuildFile section */
 
@@ -23,6 +26,10 @@
 		43B3EEF3F3C30FFD28D05A24 /* libPods-OBDGatewayClient.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OBDGatewayClient.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6717D150C05351CF6C2B3296 /* Pods-OBDGatewayClient.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OBDGatewayClient.release.xcconfig"; path = "Target Support Files/Pods-OBDGatewayClient/Pods-OBDGatewayClient.release.xcconfig"; sourceTree = "<group>"; };
 		9BB551A6E7DA0D89EBD91B40 /* Pods-OBDGatewayClient.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OBDGatewayClient.debug.xcconfig"; path = "Target Support Files/Pods-OBDGatewayClient/Pods-OBDGatewayClient.debug.xcconfig"; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5D /* OBDMFiModuleIOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OBDMFiModuleIOS.h; path = OBDGatewayClient/OBDMFiModuleIOS.h; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5E /* OBDMFiModuleIOS.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = OBDMFiModuleIOS.mm; path = OBDGatewayClient/OBDMFiModuleIOS.mm; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B60 /* ExternalAccessory.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ExternalAccessory.framework; path = System/Library/Frameworks/ExternalAccessory.framework; sourceTree = SDKROOT; };
+		A1B2C3D4E5F60718293A4B62 /* ios_MaterialCommunityIcons.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = ios_MaterialCommunityIcons.ttf; path = OBDGatewayClient/ios_MaterialCommunityIcons.ttf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -30,6 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D4E5F60718293A4B5F /* ExternalAccessory.framework in Frameworks */,
 				C449C754B5277B50D00C1D26 /* libPods-OBDGatewayClient.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -42,8 +50,11 @@
 			children = (
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
+				A1B2C3D4E5F60718293A4B5D /* OBDMFiModuleIOS.h */,
+				A1B2C3D4E5F60718293A4B5E /* OBDMFiModuleIOS.mm */,
 				13B07FB11A68108700A75B9A /* LaunchScreen.storyboard */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
+				A1B2C3D4E5F60718293A4B62 /* ios_MaterialCommunityIcons.ttf */,
 				13B07FB71A68108700A75B9A /* main.m */,
 			);
 			name = OBDGatewayClient;
@@ -73,6 +84,7 @@
 		A3CCE6BD1DAF4E97B4072A3A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F60718293A4B60 /* ExternalAccessory.framework */,
 				43B3EEF3F3C30FFD28D05A24 /* libPods-OBDGatewayClient.a */,
 			);
 			name = Frameworks;
@@ -147,6 +159,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				13B07FC11A68108700A75B9A /* LaunchScreen.storyboard in Resources */,
+				A1B2C3D4E5F60718293A4B61 /* ios_MaterialCommunityIcons.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -216,6 +229,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D4E5F60718293A4B5C /* OBDMFiModuleIOS.mm in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FBF1A68108700A75B9A /* main.m in Sources */,
 			);

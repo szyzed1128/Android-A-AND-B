@@ -20,7 +20,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext, ConnectionStatus } from '../context/AppContext';
 import { useCloudBridge } from '../hooks/useCloudBridge';
-import { useLocalBluetooth } from '../hooks/useLocalBluetooth';
+import { getBluetoothGateway } from '../hooks/useLocalBluetooth';
 import { CONNECTION_STATUS_COLORS, CONNECTION_STATUS_TEXT } from '../constants/units';
 
 type MenuItemType = {
@@ -44,7 +44,6 @@ export default function HomePage() {
   } = useAppContext();
 
   const { connectOBD, disconnectOBD, connectCloud, disconnectCloud } = useCloudBridge();
-  const { connectDevice, disconnectDevice } = useLocalBluetooth();
 
   // 启用蓝牙桥接（连接CloudBridge和本地蓝牙）
 
@@ -127,7 +126,7 @@ export default function HomePage() {
       connectInFlightRef.current = false;
       setObdConnecting(true);
       try {
-        await disconnectDevice();
+        await getBluetoothGateway()?.disconnect();
         await disconnectOBD();
       } catch (e) {
         console.error('Disconnect error:', e);
@@ -157,28 +156,27 @@ export default function HomePage() {
     try {
       // 新流程：B 端先本地连接蓝牙，获取 sessionId 后再通知 A 端
       console.log('[HomePage] 开始本地蓝牙连接:', selectedDevice.protocol, selectedDevice.address);
-      const localResult = await connectDevice(selectedDevice.protocol, selectedDevice.address);
-      if (!localResult.success || !localResult.sessionId) {
-        const errorText = localResult.error || '蓝牙连接失败';
-        console.error('[HomePage] 本地蓝牙连接失败:', errorText);
-        Alert.alert('连接失败', errorText);
-        connectInFlightRef.current = false;
-        setObdConnecting(false);
-        return;
+      const gateway = getBluetoothGateway();
+      if (!gateway) {
+        throw new Error('蓝牙未初始化，请重启应用');
       }
+      const sessionId = await gateway.connect(
+        selectedDevice.protocol as 'ble' | 'classic' | 'mfi',
+        selectedDevice.address
+      );
 
-      console.log('[HomePage] 本地蓝牙已连接, sessionId:', localResult.sessionId);
+      console.log('[HomePage] 本地蓝牙已连接, sessionId:', sessionId);
       console.log('[HomePage] 通知云端开始初始化:', selectedDevice.protocol, selectedDevice.address);
 
       // 步骤2: 通知云端开始初始化（A 端直接使用 sessionId，不再发起 Connect 请求）
-      await connectOBD(selectedDevice.protocol, selectedDevice.address, localResult.sessionId);
+      await connectOBD(selectedDevice.protocol, selectedDevice.address, sessionId);
 
       console.log('[HomePage] 云端已通知，等待初始化结果...');
     } catch (e: any) {
       console.error('[HomePage] 连接失败:', e);
       Alert.alert('连接失败', e.message || '连接过程出错');
       // 断开蓝牙
-      await disconnectDevice();
+      await getBluetoothGateway()?.disconnect();
       connectInFlightRef.current = false;
       setObdConnecting(false);
     }
