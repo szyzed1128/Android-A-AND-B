@@ -349,7 +349,13 @@ namespace OBDCloud.WebSocket
 
             _sessionId = sessionId;
             _isConnected = true;
-            Log($"[WebSocketBT] 绑定会话: {sessionId}");
+
+            // 清空接收缓冲区，避免旧会话残留数据干扰新会话的 Initialize() 握手
+            while (_receiveBuffer.TryDequeue(out _)) { }
+            _emptyReadCount = 0;
+            _emptyReadTotal = 0;
+
+            Log($"[WebSocketBT] 绑定会话: {sessionId}（已清空接收缓冲区）");
         }
 
         /// <summary>

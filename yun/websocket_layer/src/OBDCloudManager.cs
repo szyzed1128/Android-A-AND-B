@@ -1041,6 +1041,17 @@ namespace OBDCloud.WebSocket
                 }
 
                 Log($"[OBDCloudManager] {InitElapsed()} ③ OBDDataReader实例已获取: {obdReader?.GetType().FullName ?? "null"}");
+
+                // 原版 SimpleMainPage.StartConnection()（第883行）的行为：
+                // 连接前重置 DisconnectRequested = false，否则 Connect()/Initialize() 会立即返回 false
+                var disconnectReqField = obdReaderType.GetField("DisconnectRequested",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (disconnectReqField != null)
+                {
+                    disconnectReqField.SetValue(obdReader, false);
+                    Log($"[OBDCloudManager] {InitElapsed()} ③+ DisconnectRequested = false 已重置");
+                }
+
                 EnsureObdReaderStatusSubscription(obdReader, obdReaderType);
                 Log($"[OBDCloudManager] {InitElapsed()} ④ StatusChanged事件订阅完成");
 
