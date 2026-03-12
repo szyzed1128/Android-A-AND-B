@@ -167,12 +167,8 @@ export function useCloudBridge() {
     clearCallbacks,
 
     // PID 值变化回调订阅
-    onPIDValueChanged: (callback: (pidIndex: number, value: string) => void) => {
-      const wrappedCallback = (data: PIDItem) => {
-        if (data?.index === undefined || data?.index === null) return;
-        callback(data.index, String(data.value ?? ''));
-      };
-      CloudBridge.onPIDValueChanged = wrappedCallback;
+    onPIDValueChanged: (callback: (data: PIDItem) => void) => {
+      CloudBridge.onPIDValueChanged = callback;
       // 返回取消订阅函数
       return () => {
         CloudBridge.onPIDValueChanged = undefined;

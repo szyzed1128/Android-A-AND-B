@@ -789,7 +789,9 @@ class CloudBridgeService {
       case MessageAction.PIDValueChanged: {
         const normalized = this.normalizePidEvent(message.data);
         if (normalized) {
-          console.log(`[CloudBridge] PIDValueChanged idx=${normalized.index} val=${normalized.value ?? ''}`);
+          const idx = normalized.originalIndex ?? normalized.index;
+          const val = normalized.Value;
+          console.log(`[CloudBridge] PIDValueChanged idx=${idx} NM=${normalized.NM} val=${typeof val === 'object' ? '[object]' : val}`);
           this.onPIDValueChanged?.(normalized);
         }
         break;
@@ -1079,33 +1081,19 @@ class CloudBridgeService {
     return [];
   }
 
-  private normalizePidEvent(data: any): { index: number; value: string } | null {
+  private normalizePidEvent(data: any): PIDItem | null {
     if (!data || typeof data !== 'object') return null;
 
-    let index = data.index ?? data.Index ?? data.id ?? data.Id ?? data.PIDIndex ?? data.PidIndex ?? data.originalIndex ?? data.OriginalIndex;
-    if (index === undefined || index === null) {
-      const key = data.pid ?? data.PID ?? data.Id ?? data.ID ?? data.Cmd ?? data.CMD ?? data.NM ?? data.Name;
-      if (key !== undefined && key !== null) {
-        index = this.pidIndexMap.get(String(key));
-      }
-    }
-
-    if (index === undefined || index === null) {
-      console.warn('[CloudBridge] PIDValueChanged: 无法解析 index，原始数据:', JSON.stringify(data).substring(0, 200));
-      return null;
-    }
-
-    if (typeof index === 'string') {
-      const parsed = parseInt(index, 10);
-      index = Number.isFinite(parsed) ? parsed : index;
-    }
-
-    if (typeof index !== 'number') return null;
-
-    const valueRaw = data.value ?? data.Value ?? data.val ?? data.Val ?? data.V ?? data.valueStr ?? data.ValueStr ?? data.StrValue;
-    const value = valueRaw !== undefined && valueRaw !== null ? String(valueRaw) : '';
-
-    return { index, value };
+    // A 端发来的是完整的 PIDItem 对象（含 NM, Value, Units 等）
+    // 返回完整对象而不是只提取 index 和 value
+    return {
+      ...data,
+      NM: data.NM ?? data.name ?? data.Name,
+      SNM: data.SNM ?? data.shortName ?? data.ShortName,
+      Value: data.Value ?? data.value ?? data.val,
+      Units: data.Units ?? data.unit ?? data.Unit,
+      originalIndex: data.originalIndex ?? data.OriginalIndex ?? data.index ?? data.Index,
+    } as PIDItem;
   }
 
   private normalizePidList(raw: any): PIDItem[] {
@@ -1133,6 +1121,7 @@ class CloudBridgeService {
         pid: String(pid),
         name: String(name),
         unit: typeof unit === 'number' ? unit : 0,
+        originalIndex: index,  // 保留 A 端原始 array index
       } as PIDItem;
     });
   }

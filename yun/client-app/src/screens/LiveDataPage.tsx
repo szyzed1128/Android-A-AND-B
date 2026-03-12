@@ -26,6 +26,7 @@ interface PIDItem {
   name: string;
   value: string;
   unit: number;
+  rawData?: any;  // 保存 A 端原始数据（含 Value 对象、Units 等）
 }
 
 const PAGE_SIZE = 10;
@@ -41,7 +42,12 @@ export default function LiveDataPage() {
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const pidValuesRef = useRef<Map<number, string>>(new Map());
+  const readingRef = useRef(false);  // 用于 useFocusEffect 避免闭包陷阱
+
+  // 同步 readingRef
+  useEffect(() => {
+    readingRef.current = reading;
+  }, [reading]);
 
   // 加载 PID 列表
   useEffect(() => {
@@ -50,27 +56,64 @@ export default function LiveDataPage() {
     }
   }, [cloudConnected]);
 
-  // 页面失焦时停止读取
+  // 页面失焦时停止读取（用 ref 避免闭包陷阱）
   useFocusEffect(
     useCallback(() => {
       return () => {
-        if (reading) {
+        if (readingRef.current) {
           stopReadPIDs();
           setReading(false);
+          readingRef.current = false;
         }
       };
-    }, [reading])
+    }, [stopReadPIDs])  // 依赖 stopReadPIDs，确保 cleanup 中可用
   );
 
   // 监听 PID 值变化
   useEffect(() => {
-    const unsubscribe = onPIDValueChanged((pidIndex: number, value: string) => {
-      pidValuesRef.current.set(pidIndex, value);
+    const unsubscribe = onPIDValueChanged((data: any) => {
+      // A 端发来的是完整 PIDItem 对象（含 NM, Value, Units 等）
+      const pidName = data.NM ?? data.name;
+      if (!pidName) return;
 
-      // 更新显示的 PID 值
+      // 格式化 Value 字段
+      let formattedValue = '-';
+      const rawValue = data.Value ?? data.value;
+
+      if (rawValue !== null && rawValue !== undefined) {
+        if (typeof rawValue === 'object') {
+          // 对象类型（如 MonitorStatus）：转为多行文本
+          if (rawValue.MIL_ON !== undefined) {
+            // MonitorStatus 类型
+            const lines = [`MIL:${rawValue.MIL_ON ? 'ON' : 'OFF'}`, `DTC:${rawValue.DTCs}`];
+            if (rawValue.ECUTests && Array.isArray(rawValue.ECUTests)) {
+              rawValue.ECUTests.forEach((test: any) => {
+                lines.push(`${test.Name}: ${test.Available ? 'Avail' : 'N/A'}/${test.Complete ? 'Done' : 'Pending'}`);
+              });
+            }
+            formattedValue = lines.join('\n');
+          } else {
+            formattedValue = JSON.stringify(rawValue);
+          }
+        } else if (typeof rawValue === 'number') {
+          // 数字：保留最多 4 位小数
+          const decimalPlaces = (rawValue.toString().split('.')[1] || '').length;
+          formattedValue = decimalPlaces > 4
+            ? (Math.round(rawValue * 10000) / 10000).toString()
+            : rawValue.toString();
+        } else {
+          formattedValue = String(rawValue);
+        }
+      }
+
+      // 更新显示的 PID 值（用 name 匹配）
       setPIDList(prev => prev.map(p => {
-        if (p.index === pidIndex) {
-          return { ...p, value };
+        if (p.name === pidName) {
+          return {
+            ...p,
+            value: formattedValue,
+            rawData: data,  // 保存原始数据
+          };
         }
         return p;
       }));
@@ -88,13 +131,17 @@ export default function LiveDataPage() {
     try {
       const data = await getPIDList();
       if (data && data.length > 0) {
-        setPIDList(data.map((item: any, index: number) => ({
-          index,
-          pid: item.pid || `PID_${index}`,
-          name: item.name || `参数 ${index}`,
-          value: '-',
-          unit: item.unit || 0,
-        })));
+        // 过滤掉 "Not selected" 占位符，用 NM 作为 name，保留原始索引
+        const filtered = data
+          .filter((item: any) => item.NM !== 'Not selected' && item.SNM !== 'Not selected' && item.name !== 'Not selected')
+          .map((item: any) => ({
+            index: item.originalIndex ?? 0,
+            pid: item.CMD ?? item.pid ?? `PID_${item.originalIndex}`,
+            name: item.NM ?? item.name ?? `参数 ${item.originalIndex}`,
+            value: '-',
+            unit: item.Units ?? item.unit ?? 0,
+          }));
+        setPIDList(filtered);
       } else {
         setPIDList([]);
       }
@@ -150,23 +197,40 @@ export default function LiveDataPage() {
   };
 
   // 渲染数据项
-  const renderItem = ({ item }: { item: PIDItem }) => (
-    <View style={styles.dataItem}>
-      <View style={styles.dataInfo}>
-        <Text style={styles.dataName} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.dataPID}>{item.pid}</Text>
+  const renderItem = ({ item }: { item: PIDItem }) => {
+    const isMultiline = item.value.includes('\n');
+    const unitText = getUnitText(item.unit);
+
+    return (
+      <View style={styles.dataItem}>
+        <View style={styles.dataInfo}>
+          <Text style={styles.dataName} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.dataPID}>{item.pid}</Text>
+        </View>
+        <View style={styles.dataValueContainer}>
+          {isMultiline ? (
+            <View style={styles.multilineValue}>
+              {item.value.split('\n').map((line, idx) => (
+                <Text key={idx} style={[styles.dataValue, styles.multilineText]}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          ) : (
+            <>
+              <Text style={[
+                styles.dataValue,
+                item.value === '-' && styles.dataValuePending
+              ]}>
+                {item.value}
+              </Text>
+              {unitText && <Text style={styles.dataUnit}>{unitText}</Text>}
+            </>
+          )}
+        </View>
       </View>
-      <View style={styles.dataValueContainer}>
-        <Text style={[
-          styles.dataValue,
-          item.value === '-' && styles.dataValuePending
-        ]}>
-          {item.value}
-        </Text>
-        <Text style={styles.dataUnit}>{getUnitText(item.unit)}</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -405,7 +469,7 @@ const styles = StyleSheet.create({
   },
   dataItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',  // 改为 flex-start 支持多行内容
     justifyContent: 'space-between',
     padding: 12,
     backgroundColor: '#fff',
@@ -436,6 +500,13 @@ const styles = StyleSheet.create({
   },
   dataValuePending: {
     color: '#c8c9cc',
+  },
+  multilineValue: {
+    alignItems: 'flex-end',
+  },
+  multilineText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   dataUnit: {
     marginLeft: 4,
