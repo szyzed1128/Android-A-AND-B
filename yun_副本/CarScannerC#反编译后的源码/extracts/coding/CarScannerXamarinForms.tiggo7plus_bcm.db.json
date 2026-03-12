@@ -1,0 +1,592 @@
+﻿[
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "BCM 188 bit vehicle software configuration",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10000,
+    "Group": 17,
+    "HasCurrentState": true,
+    "NM": "BCM 188 bit vehicle software configuration",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "It's actually 94 bytes length",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [],
+    "RP": false,
+    "VT": 2,
+    "RMA": "22602E",
+    "WMA": "2E602E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "BCM 48 bit vehicle software configuration",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10001,
+    "Group": 17,
+    "HasCurrentState": true,
+    "NM": "BCM 48 bit vehicle software configuration",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "It's actually 24 bytes length",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [],
+    "RP": false,
+    "VT": 2,
+    "RMA": "226029",
+    "WMA": "2E6029",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Автоматическое складывание зеркал (48 bit)",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10003,
+    "Group": 10,
+    "HasCurrentState": true,
+    "NM": "Rearview mirror automatic folding (48 bit)",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:12:2=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:12:2=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "226029",
+    "WMA": "2E6029",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Автоматическое складывание зеркал (188 bit)",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10004,
+    "Group": 10,
+    "HasCurrentState": true,
+    "NM": "Rearview mirror automatic folding (188 bit)",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:12:2=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:12:2=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22602E",
+    "WMA": "2E602E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Tiggo 8 Pro: Включение или отключение контроля давления в шинах через блок BCM",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10005,
+    "Group": 19,
+    "HasCurrentState": true,
+    "NM": "Tiggo 8 Pro: TPMS enable/disable via BCM",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22602E",
+    "WMA": "2E602E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Tiggo 8 Pro: Режим вождения Normal",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10007,
+    "Group": 6,
+    "HasCurrentState": true,
+    "NM": "Tiggo 8 Pro: Drive mode: Normal",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:47:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:47:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22602E",
+    "WMA": "2E602E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Tiggo 7 Pro: Автоматическое запирание дверей",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10008,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Tiggo 7 Pro: Auto lock doors",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:12:2=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:12:2=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22602E",
+    "WMA": "2E602E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Tiggo 8 Pro: Автоматическое запирание дверей",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10009,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Tiggo 8 Pro: Auto lock doors",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:8:7=0;8:6=0;8:5=0;8:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:8:7=0;8:6=1;8:5=0;8:4=1",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22602E",
+    "WMA": "2E602E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "QDLink / Android Auto",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10006,
+    "Group": 9,
+    "HasCurrentState": true,
+    "NM": "QDLink / Android Auto",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "QDLink",
+        "VL": "BIT:38:5=0;38:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Android Auto",
+        "VL": "BIT:38:5=1;38:4=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22602E",
+    "WMA": "2E602E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Удаленное закрывание стекол",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10002,
+    "Group": 28,
+    "HasCurrentState": true,
+    "NM": "Remote window lift",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22602C",
+    "WMA": "2E602C",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Tiggo 4 Pro: Автоматическое запирание дверей (188 bit)",
+        "SN": "ВНИМАНИЕ! ЭКСПЕРИМЕНТАЛЬНАЯ ФУНКЦИЯ! НЕ ПРОВЕРЯЛАСЬ! ИСПОЛЬЗУЙТЕ ТОЛЬКО НА СВОЙ СТРАХ И РИСК! ВЫ НЕСЕТЕ ВСЮ ОТВЕТСТВЕННОСТЬ ЗА ЛЮБЫЕ ВОЗМОЖНЫЕ ПОСЛЕДСТВИЯ: НЕИСПРАВНОСТИ, АННУЛИРОВАНИЕ ГАРАНТИИ И ПРОЧЕЕ.",
+        "ADT": ""
+      }
+    ],
+    "UID": 10010,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Tiggo 4 Pro: Autolock doors",
+    "Description": "EXPERIMENTAL! NOT TESTED! USE AT YOUR OWN RISK!",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:12:1=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:12:1=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22602E",
+    "WMA": "2E602E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "740",
+    "RSH": "750",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "1101",
+    "Comment": "",
+    "Protocol": ""
+  }
+]

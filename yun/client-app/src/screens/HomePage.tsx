@@ -52,6 +52,7 @@ export default function HomePage() {
   // OBD 连接中状态
   const [obdConnecting, setObdConnecting] = useState(false);
   const connectInFlightRef = useRef(false);
+  const userCancelledRef = useRef(false);
 
   // 显示文本
   const profileDisplay = selectedProfile
@@ -69,15 +70,18 @@ export default function HomePage() {
 
   // ELM/ECU 状态
   const getElmStatus = () => {
+    if (connectionStatus === 'ConnectingToECU') return '连接中';  // A端初始连接状态，ELM尚未连接
     if (connectionStatus === 'ConnectingToELM') return '连接中';
-    if (['ConnectedToELM', 'ConnectingToECU', 'ConnectedToECU'].includes(connectionStatus)) {
+    if (connectionStatus === 'Disconnecting') return '断开中';
+    if (['ConnectedToELM', 'ConnectedToECU'].includes(connectionStatus)) {
       return '已连接';
     }
     return '未连接';
   };
 
   const getEcuStatus = () => {
-    if (connectionStatus === 'ConnectingToECU') return '连接中';
+    if (connectionStatus === 'ConnectedToELM') return '连接中';  // ELM已连接，ECU连接中
+    if (connectionStatus === 'Disconnecting') return '断开中';
     if (connectionStatus === 'ConnectedToECU') return '已连接';
     return '未连接';
   };
@@ -88,6 +92,7 @@ export default function HomePage() {
   const getStatusColor = (status: string) => {
     if (status === '已连接') return '#07c160';
     if (status === '连接中') return '#1989fa';
+    if (status === '断开中') return '#ff976a';  // 橙色表示断开中
     return '#969799';
   };
 
@@ -116,13 +121,9 @@ export default function HomePage() {
 
   // 连接/断开
   const handleConnect = async () => {
-    if (obdConnecting || connectInFlightRef.current) {
-      console.log('[HomePage] 连接流程进行中，忽略重复请求');
-      return;
-    }
-
-    // 断开连接
-    if (isConnected) {
+    // 断开连接（连接中或已连接时点击都执行断开）
+    if (isConnected || connectInFlightRef.current) {
+      userCancelledRef.current = true;  // 标记用户主动取消
       connectInFlightRef.current = false;
       setObdConnecting(true);
       try {
@@ -132,6 +133,12 @@ export default function HomePage() {
         console.error('Disconnect error:', e);
       }
       setObdConnecting(false);
+      userCancelledRef.current = false;
+      return;
+    }
+
+    // 防止重复点击"开始连接"
+    if (obdConnecting) {
       return;
     }
 
@@ -150,6 +157,7 @@ export default function HomePage() {
     }
 
     // 开始连接
+    userCancelledRef.current = false;
     connectInFlightRef.current = true;
     setObdConnecting(true);
 
@@ -173,8 +181,12 @@ export default function HomePage() {
 
       console.log('[HomePage] 云端已通知，等待初始化结果...');
     } catch (e: any) {
-      console.error('[HomePage] 连接失败:', e);
-      Alert.alert('连接失败', e.message || '连接过程出错');
+      // 用户主动取消时不显示错误提示
+      if (!userCancelledRef.current) {
+        console.error('[HomePage] 连接失败:', e);
+        Alert.alert('连接失败', e.message || '连接过程出错');
+      }
+      userCancelledRef.current = false;
       // 断开蓝牙
       await getBluetoothGateway()?.disconnect();
       connectInFlightRef.current = false;
@@ -189,6 +201,16 @@ export default function HomePage() {
       setObdConnecting(false);
     }
   }, [connectionStatus]);
+
+  // 监控 UI 状态变化（用于诊断）
+  useEffect(() => {
+    console.log(`[HomePage UI] ========== 状态变化 ==========`);
+    console.log(`[HomePage UI] connectionStatus: ${connectionStatus}`);
+    console.log(`[HomePage UI] → ELM状态: ${elmStatus}, ECU状态: ${ecuStatus}`);
+    console.log(`[HomePage UI] → isConnected: ${isConnected}, isFullyConnected: ${isFullyConnected}`);
+    console.log(`[HomePage UI] → 按钮状态: obdConnecting=${obdConnecting}, connectInFlight=${connectInFlightRef.current}`);
+    console.log(`[HomePage UI] =====================================`);
+  }, [connectionStatus, elmStatus, ecuStatus, isConnected, isFullyConnected, obdConnecting]);
 
   // 开发模式：连接/断开云端
   const handleCloudConnect = async () => {
@@ -331,24 +353,13 @@ export default function HomePage() {
           style={[
             styles.connectButton,
             isConnected && styles.disconnectButton,
-            obdConnecting && styles.connectingButton,
           ]}
           onPress={handleConnect}
           activeOpacity={0.8}
-          disabled={obdConnecting}
         >
-          {obdConnecting ? (
-            <View style={styles.connectingRow}>
-              <ActivityIndicator size="small" color="#fff" />
-              <Text style={styles.connectButtonText}>
-                {isConnected ? ' 断开中...' : ' 连接中...'}
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.connectButtonText}>
-              {isConnected ? '断开连接' : '开始连接'}
-            </Text>
-          )}
+          <Text style={styles.connectButtonText}>
+            {isConnected ? '断开连接' : '开始连接'}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

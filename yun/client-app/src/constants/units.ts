@@ -141,6 +141,7 @@ export const CONNECTION_STATUS_COLORS = {
   ConnectedToELM: '#1989fa',
   ConnectingToECU: '#1989fa',
   ConnectedToECU: '#07c160',
+  Disconnecting: '#ff976a',  // 橙色表示断开中
 } as const;
 
 /**
@@ -152,4 +153,5 @@ export const CONNECTION_STATUS_TEXT = {
   ConnectedToELM: 'ELM已连接',
   ConnectingToECU: '连接ECU中...',
   ConnectedToECU: '已连接',
+  Disconnecting: '断开中...',
 } as const;

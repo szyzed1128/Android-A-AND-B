@@ -18,7 +18,8 @@ export type ConnectionStatus =
   | 'ConnectingToELM'
   | 'ConnectedToELM'
   | 'ConnectingToECU'
-  | 'ConnectedToECU';
+  | 'ConnectedToECU'
+  | 'Disconnecting';
 
 // Context 值类型
 type AppContextValue = {

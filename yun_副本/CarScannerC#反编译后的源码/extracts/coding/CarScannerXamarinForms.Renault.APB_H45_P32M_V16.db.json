@@ -1,0 +1,72 @@
+﻿[
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Электрический стояночный тормоз: активация зимнего режима",
+        "SN": "В зимнем режиме стояночный тормоз не активируется автоматически",
+        "ADT": ""
+      }
+    ],
+    "UID": 10000,
+    "Group": 2,
+    "HasCurrentState": true,
+    "NM": "Electric parking brake - Winter mode",
+    "Description": "In winter mode parking brake is NOT applied automatically",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "Normal mode",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Нормальный режим",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "Winter",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Зимний режим",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "2101",
+    "WMA": "3B01",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "10C0",
+    "CloseSessionCommand": "",
+    "RQH": "755",
+    "RSH": "775",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "3B03FFFFFF00",
+    "PostWrite": "3B03FFFFFFFF",
+    "Comment": "",
+    "Protocol": "6"
+  }
+]

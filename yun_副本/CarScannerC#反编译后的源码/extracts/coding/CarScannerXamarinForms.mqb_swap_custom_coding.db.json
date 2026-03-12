@@ -1,0 +1,45 @@
+﻿[
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "SWaP code: запись кода",
+        "SN": "",
+        "ADT": "Внимание! Экспериментальная функция! Не проверено! Используйте на свой страх и риск!\r\nВам потребуется действительный SWaP код, либо взломанная мультимедийная система, принимающая недействительные коды."
+      }
+    ],
+    "UID": 10000,
+    "Group": 9,
+    "HasCurrentState": false,
+    "NM": "SWaP code: transfer code",
+    "Description": "",
+    "InnerDescription": "WARNING! Experimental feature! Not tested! Use at your own risk!\r\nYou shoould have VALID SWaP code or unlocked MIB.",
+    "PWDVIS": true,
+    "PWD": "20103",
+    "PWH": "20103",
+    "OPTS": [],
+    "RP": false,
+    "VT": 2,
+    "RMA": "",
+    "WMA": "2E3C01",
+    "MCTID": false,
+    "ATST": "96",
+    "OpenSessionCommand": "1040",
+    "CloseSessionCommand": "",
+    "RQH": "773",
+    "RSH": "7DD",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "22F198;22F199;22F1A0;22F1A1;2703;2704;2EF198;2EF199;2EF1A0;2EF1A1",
+    "PostWrite": "3101C001",
+    "Comment": "",
+    "Protocol": ""
+  }
+]

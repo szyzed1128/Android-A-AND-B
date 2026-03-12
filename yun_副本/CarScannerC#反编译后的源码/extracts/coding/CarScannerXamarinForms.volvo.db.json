@@ -1,0 +1,94 @@
+﻿[
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Сброс уведомления о сервисе (Platform-3: до 2013)",
+        "SN": "Внимание! Для этой процедуры требуется адаптер ELM327 с возможностью доступа к шине MS-CAN и поддержкой ST команд (например OBDLink MX+)",
+        "ADT": ""
+      }
+    ],
+    "UID": 10000,
+    "Group": 16,
+    "HasCurrentState": false,
+    "NM": "Service reminder reset (Platform-3: before 2013)",
+    "Description": "WARNING! This procedure requires ELM327 device with ability to access MS-CAN bus and ST commands support (e.g. OBDLink MX+)",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "Reset",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "",
+    "WMA": "3101F0",
+    "MCTID": false,
+    "ATST": "96",
+    "OpenSessionCommand": "",
+    "CloseSessionCommand": "",
+    "RQH": "720",
+    "RSH": "728",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreWrite": "STP53;1003",
+    "PostWrite": "1001;ATSP6",
+    "Comment": ""
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Сброс уведомления о сервисе (Platform-3, VEA 2013-2016)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10001,
+    "Group": 16,
+    "HasCurrentState": false,
+    "NM": "Service reminder reset (Platform-3 2013-2016)",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "Reset",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "",
+    "WMA": "3101F0",
+    "MCTID": false,
+    "ATST": "96",
+    "OpenSessionCommand": "",
+    "CloseSessionCommand": "",
+    "RQH": "720",
+    "RSH": "728",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreWrite": "STP53;1003",
+    "PostWrite": "1001;ATSP6",
+    "Comment": ""
+  }
+]

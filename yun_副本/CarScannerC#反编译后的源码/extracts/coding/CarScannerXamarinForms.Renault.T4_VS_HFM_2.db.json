@@ -1,0 +1,45 @@
+﻿[
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Количество предупреждений о забытой ключ-карте в автомобиле при заведенном двигателе",
+        "SN": "Введите 0, чтобы отключить",
+        "ADT": ""
+      }
+    ],
+    "UID": 10000,
+    "Group": 13,
+    "HasCurrentState": true,
+    "NM": "Key-card forgotten inside the working car warnings",
+    "Description": "Set to 0 to disable",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [],
+    "RP": false,
+    "VT": 1,
+    "RMA": "220057",
+    "WMA": "2E0057",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "10C0",
+    "CloseSessionCommand": "",
+    "RQH": "799",
+    "RSH": "7B9",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "",
+    "Comment": "CIDMOWER_NB_FEEDBACK_CF",
+    "Protocol": "6"
+  }
+]

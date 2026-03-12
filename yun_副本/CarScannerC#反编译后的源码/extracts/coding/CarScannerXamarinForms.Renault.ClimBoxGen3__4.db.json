@@ -1,0 +1,76 @@
+﻿[
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Климатическая зона",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10000,
+    "Group": 4,
+    "HasCurrentState": true,
+    "NM": "Climate zone",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": false,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Zone 1",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Zone 2",
+        "VL": "02",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Zone 3",
+        "VL": "03",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Zone 4",
+        "VL": "04",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22421D",
+    "WMA": "2E421D",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "744",
+    "RSH": "764",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "",
+    "PreWrite": "",
+    "PostWrite": "",
+    "Comment": "CH_CountryType",
+    "Protocol": "6"
+  }
+]

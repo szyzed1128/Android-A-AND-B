@@ -1,0 +1,2752 @@
+﻿[
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Запирание/отпирание крышки багажника с помощью бесключевого доступа при работающем двигателе",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10007,
+    "Group": 3,
+    "HasCurrentState": true,
+    "NM": "Locking/Unlocking rear lid with Keyless entry while engine running",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:0:3=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:0:3=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220502",
+    "WMA": "2E0502",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Отпирание двери багажника дистанционным ключом при работающем двигателе",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10014,
+    "Group": 3,
+    "HasCurrentState": true,
+    "NM": "Unlocking tailgate with remote key while engine running",
+    "Description": "",
+    "InnerDescription": "Byte 10 Bit 2 [LO]_unlocking_hatchback_via_kessy_at_s_contact_active",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:10:2=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:10:2=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Время обогрева заднего стекла, секунды",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10013,
+    "Group": 4,
+    "HasCurrentState": true,
+    "NM": "Rear glass heater time, seconds",
+    "Description": "",
+    "InnerDescription": "0-10200 seconds",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:20:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:20:4=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "223ACE",
+    "WMA": "2E3ACE",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 1,
+    "DL": 1,
+    "MUL": 40.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Количество миганий поворотника в одно касание (вежливый поворотник)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10005,
+    "Group": 7,
+    "HasCurrentState": true,
+    "NM": "Polite turn signals",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "2x",
+        "VL": "BIT:0:2=0;0:1=1;0:0=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "3x",
+        "VL": "BIT:0:2=0;0:1=1;0:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "4x",
+        "VL": "BIT:0:2=1;0:1=0;0:0=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "5x",
+        "VL": "BIT:0:2=1;0:1=0;0:0=1",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "223AAF",
+    "WMA": "2E3AAF",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Анимация задних фонарей",
+        "SN": "Требуются фонари с поддержкой анимации",
+        "ADT": ""
+      }
+    ],
+    "UID": 10016,
+    "Group": 7,
+    "HasCurrentState": true,
+    "NM": "Rear lights animation",
+    "Description": "Requires hardware, that supports animation.",
+    "InnerDescription": "SBBR_Variant",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "Variant 0",
+        "VL": "BIT:37:7=0;37:6=0;37:5=0;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 1",
+        "VL": "BIT:37:7=0;37:6=0;37:5=0;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 2",
+        "VL": "BIT:37:7=0;37:6=0;37:5=1;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 3",
+        "VL": "BIT:37:7=0;37:6=0;37:5=1;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 4",
+        "VL": "BIT:37:7=0;37:6=1;37:5=0;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 5",
+        "VL": "BIT:37:7=0;37:6=1;37:5=0;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 6",
+        "VL": "BIT:37:7=0;37:6=1;37:5=1;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 7",
+        "VL": "BIT:37:7=0;37:6=1;37:5=1;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 8",
+        "VL": "BIT:37:7=1;37:6=0;37:5=0;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 9",
+        "VL": "BIT:37:7=1;37:6=0;37:5=0;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 10",
+        "VL": "BIT:37:7=1;37:6=0;37:5=1;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 11",
+        "VL": "BIT:37:7=1;37:6=0;37:5=1;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 12",
+        "VL": "BIT:37:7=1;37:6=1;37:5=0;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 13",
+        "VL": "BIT:37:7=1;37:6=1;37:5=0;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 14",
+        "VL": "BIT:37:7=1;37:6=1;37:5=1;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 15",
+        "VL": "BIT:37:7=1;37:6=1;37:5=1;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10017,
+    "Group": 7,
+    "HasCurrentState": true,
+    "NM": "Tail light animation",
+    "Description": "Requires hardware, that supports animation.",
+    "InnerDescription": "SBBR_Tail_Light_Signature",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "Variant 0",
+        "VL": "BIT:36:7=0;37:6=0;37:5=0;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 1",
+        "VL": "BIT:36:7=0;37:6=0;37:5=0;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 2",
+        "VL": "BIT:36:7=0;37:6=0;37:5=1;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 3",
+        "VL": "BIT:36:7=0;37:6=0;37:5=1;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 4",
+        "VL": "BIT:36:7=0;37:6=1;37:5=0;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 5",
+        "VL": "BIT:36:7=0;37:6=1;37:5=0;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 6",
+        "VL": "BIT:36:7=0;37:6=1;37:5=1;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 7",
+        "VL": "BIT:36:7=0;37:6=1;37:5=1;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 8",
+        "VL": "BIT:36:7=1;37:6=0;37:5=0;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 9",
+        "VL": "BIT:36:7=1;37:6=0;37:5=0;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 10",
+        "VL": "BIT:36:7=1;37:6=0;37:5=1;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 11",
+        "VL": "BIT:36:7=1;37:6=0;37:5=1;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 12",
+        "VL": "BIT:36:7=1;37:6=1;37:5=0;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 13",
+        "VL": "BIT:36:7=1;37:6=1;37:5=0;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 14",
+        "VL": "BIT:36:7=1;37:6=1;37:5=1;37:4=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Variant 15",
+        "VL": "BIT:36:7=1;37:6=1;37:5=1;37:4=1",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Меню разработчика",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10015,
+    "Group": 9,
+    "HasCurrentState": true,
+    "NM": "Developer menu",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22243F",
+    "WMA": "2E243F",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "104F",
+    "CloseSessionCommand": "",
+    "RQH": "773",
+    "RSH": "7DD",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "104F",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "6"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Комфортное складывание зеркал",
+        "SN": "",
+        "ADT": "После включения необходимо снять галочку «складывание при запирании» в мультимедийной системе"
+      }
+    ],
+    "UID": 10008,
+    "Group": 10,
+    "HasCurrentState": true,
+    "NM": "Comfort mirrors folding",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:20:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:20:4=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Звуковой сигнал при блокировке/разблокировке: время звукового сигнала",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10004,
+    "Group": 13,
+    "HasCurrentState": true,
+    "NM": "Sound beep when locking/unlocking: Beeptime",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "5 ms",
+        "VL": "BIT:0:1=0;0:0=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "10 ms",
+        "VL": "BIT:0:1=0;0:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "15 ms",
+        "VL": "BIT:0:1=1;0:0=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "60 ms",
+        "VL": "BIT:0:1=1;0:0=1",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220505",
+    "WMA": "2E0505",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Звуковой сигнал при запирании/разблокировке: Звуковой сигнал при закрытии",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10009,
+    "Group": 13,
+    "HasCurrentState": true,
+    "NM": "Sound beep when locking/unlocking: Beeptime at closing",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "No beep",
+        "VL": "BIT:0:4=0;0:3=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Single beep",
+        "VL": "BIT:0:4=0;0:3=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Double beep",
+        "VL": "BIT:0:4=1;0:3=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220505",
+    "WMA": "2E0505",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Звуковой сигнал при запирании/разблокировке: Звуковой сигнал при открытии",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10011,
+    "Group": 13,
+    "HasCurrentState": true,
+    "NM": "Sound beep when locking/unlocking: Beeptime at opening",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "No beep",
+        "VL": "BIT:0:7=0;0:6=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Single beep",
+        "VL": "BIT:0:7=0;0:6=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "Double beep",
+        "VL": "BIT:0:7=1;0:6=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220505",
+    "WMA": "2E0505",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Звуковой сигнал при блокировке/разблокировке: звуковой сигнал при повторной разблокировке",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10012,
+    "Group": 13,
+    "HasCurrentState": true,
+    "NM": "Sound beep when locking/unlocking: Beeptime at reunlock",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "5 ms",
+        "VL": "BIT:1:1=0;1:0=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "10 ms",
+        "VL": "BIT:1:1=0;1:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "15 ms",
+        "VL": "BIT:1:1=1;1:0=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "60 ms",
+        "VL": "BIT:1:1=1;1:0=1",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220505",
+    "WMA": "2E0505",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Звуковой сигнал при блокировке/разблокировке: Тип звука",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10010,
+    "Group": 13,
+    "HasCurrentState": true,
+    "NM": "Sound beep when locking/unlocking: Sound type",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "Discontinuous",
+        "VL": "BIT:0:5=1",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Прерывистый",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "Frequency modulated",
+        "VL": "BIT:0:5=0",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Частотно-модулированный",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220505",
+    "WMA": "2E0505",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Звуковое подтверждение при постановке на охрану/снятии с охраны: Шаг 1",
+        "SN": "Работает при условии наличия штатной сигнализации",
+        "ADT": ""
+      }
+    ],
+    "UID": 10003,
+    "Group": 13,
+    "HasCurrentState": true,
+    "NM": "Sound beep when locking/unlocking: Step 1",
+    "Description": "Requires manufacturer installed alarm system",
+    "InnerDescription": "Unit 46 -> Long Coding",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:4:6=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:4:6=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Звуковое подтверждение при постановке на охрану/снятии с охраны: Шаг 2",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10001,
+    "Group": 13,
+    "HasCurrentState": true,
+    "NM": "Sound beep when locking/unlocking: Step 2",
+    "Description": "",
+    "InnerDescription": "Unit 46 -> Central locking system -> Beep at opening",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:0:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:0:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220502",
+    "WMA": "2E0502",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "46. Блок комфорта",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10000,
+    "Group": 17,
+    "HasCurrentState": true,
+    "NM": "46. Comfort module",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:20:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:20:4=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 2,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Глобальная разблокировка с помощью двойного импульса Kessy",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10006,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Global unlocking via kessy double puls",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:0:2=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:0:2=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220502",
+    "WMA": "2E0502",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "global unlocking via kessy double puls",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Автоматическая блокировка только при работающем двигателе",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10002,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Automatic lock only at engine running",
+    "Description": "",
+    "InnerDescription": "Byte 9 Bit 5",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:20:5=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:20:5=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Автоматическое открытие при приближении водителя к автомобилю",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10018,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Automatic opening when driver with approaching to the car",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:28:6=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:28:6=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Автоматическое закрытие при приближении водителя к автомобилю",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10019,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Automatic closing when driver with approaching to the car",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:28:7=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:28:7=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Бесключевое освещение",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10020,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Keyless light illumination",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:29:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:29:4=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Автоматическое открытие без ключа (персонализация)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10021,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Keyless automatic opening (personalization)",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "223AA2",
+    "WMA": "2E3AA2",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Время срабатывания для открытия крышки багажника с помощью пульта дистанционного управления",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10022,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Actuation time to oper rear lid with remote control",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "223ACA",
+    "WMA": "2E3ACA",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 20.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10023,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Height offset for prelim. stage, calibrat. produc.: Front axle (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "22454F",
+    "WMA": "2E454F",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10024,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Height offset for prelim. stage, calibrat. produc.: Rear axle (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "22454F",
+    "WMA": "2E454F",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 1,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Жесткий контроль уровня допуска: Положение управления осью, порог активации (мм)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10025,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Tight level control tolerance: Axle control position, activation threshold (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "224550",
+    "WMA": "2E4550",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Жесткий контроль уровня допуска: Положение управления осью, предел заданного уровня (мм)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10026,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Tight level control tolerance: Axle control position, setpoint level limit (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "224550",
+    "WMA": "2E4550",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 1,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Жесткий контроль уровня допуска: Перекос оси, порог активации (мм)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10027,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Tight level control tolerance: Axle askew position, activation threshold (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "224550",
+    "WMA": "2E4550",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 2,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Жесткий контроль уровня допуска: Наклонное положение оси, порог активации (мм)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10028,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Tight level control tolerance: Axle slanted position, activation threshold (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "224550",
+    "WMA": "2E4550",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10029,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Constant power supply to all dampers",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "22451E",
+    "WMA": "2E451E",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10030,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Constant damper current Front left (mA)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "220501",
+    "WMA": "2E0501",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.1,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10031,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Constant damper current Front right (mA)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "220502",
+    "WMA": "2E0502",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.1,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10032,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Constant damper current Rear left (mA)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "220503",
+    "WMA": "2E0503",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.1,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10033,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Constant damper current Rear right (mA)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "220504",
+    "WMA": "2E0504",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.1,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Высота кузова, край левой передней колёсной арки (мм)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10034,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Body height left front wheel house edge (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "22258F",
+    "WMA": "2E258F",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.1,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Высота кузова, край правой передней колёсной арки (мм)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10035,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Body height right front wheel house edge (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "222590",
+    "WMA": "2E2590",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.1,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Высота кузова, край левой задней колёсной арки (мм)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10036,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Body height left rear wheel house edge (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "222591",
+    "WMA": "2E2591",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.1,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Высота кузова, край правой задней колёсной арки (мм)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10037,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Body height right rear wheel house edge (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "80",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "222592",
+    "WMA": "2E2592",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.1,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10038,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Calibrated raw values of height sensor system: left front (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "224551",
+    "WMA": "2E4551",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10039,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Calibrated raw values of height sensor system: right front (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "224551",
+    "WMA": "2E4551",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 1,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10040,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Calibrated raw values of height sensor system: rear left (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "224551",
+    "WMA": "2E4551",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 2,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10041,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Calibrated raw values of height sensor system: rear right (mm)",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "224551",
+    "WMA": "2E4551",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": -127.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10042,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Raw values, height sensor when deflected: Left front adaptation value",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "22452D",
+    "WMA": "2E452D",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 0.01,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10043,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Raw values, height sensor when deflected: Right front adaptation value",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "22452D",
+    "WMA": "2E452D",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 2,
+    "DL": 2,
+    "MUL": 0.01,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10044,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Raw values, height sensor when deflected: Left rear adaptation value",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "22452D",
+    "WMA": "2E452D",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 4,
+    "DL": 2,
+    "MUL": 0.01,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [],
+    "UID": 10045,
+    "Group": 31,
+    "HasCurrentState": true,
+    "NM": "Raw values, height sensor when deflected: Right rear adaptation value",
+    "Description": "",
+    "InnerDescription": "Experimental",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:2:0=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:2:0=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 1,
+    "RMA": "22452D",
+    "WMA": "2E452D",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC0080",
+    "RSH": "17FE0080",
+    "EA": "",
+    "TA": "",
+    "SBI": 6,
+    "DL": 2,
+    "MUL": 0.01,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  },
+  {
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Закрытие автомобиля с брелка при работающем двигателе",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "UID": 10046,
+    "Group": 18,
+    "HasCurrentState": true,
+    "NM": "Locking/Unlocking with remote key while engine running",
+    "Description": "",
+    "InnerDescription": "",
+    "PWDVIS": true,
+    "PWD": "",
+    "PWH": "",
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:9:7=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:9:7=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "RP": false,
+    "VT": 0,
+    "RMA": "220600",
+    "WMA": "2E0600",
+    "MCTID": true,
+    "ATST": "96",
+    "OpenSessionCommand": "1003",
+    "CloseSessionCommand": "",
+    "RQH": "17FC008B",
+    "RSH": "17FE008B",
+    "EA": "",
+    "TA": "",
+    "SBI": 3,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "PreRead": "1003",
+    "PreWrite": "2704;22F198;22F199;2EF198;2EF199;22F1A0;22F1A2;22F1A4",
+    "PostWrite": "2EF1A0;2EF1A2;2EF1A4;1102",
+    "Comment": "",
+    "Protocol": "7"
+  }
+]

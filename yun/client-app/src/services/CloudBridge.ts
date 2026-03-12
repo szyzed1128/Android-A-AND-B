@@ -764,12 +764,19 @@ class CloudBridgeService {
     switch (message.action) {
       case MessageAction.OBDStatusChanged: {
         const newStatus = message.data?.status ?? message.data?.Status ?? message.data;
-        console.log('[CloudBridge] OBDStatusChanged:', newStatus);
+        console.log('[CloudBridge] OBDStatusChanged:', newStatus, '(当前:', this.currentOBDStatus, ')');
+
+        // 过滤延迟到达的 Disconnecting（已经 Disconnected 后不再接受 Disconnecting）
+        if (this.currentOBDStatus === 'Disconnected' && newStatus === 'Disconnecting') {
+          console.log(`[CloudBridge] 过滤延迟的 Disconnecting（当前已 Disconnected）`);
+          break;
+        }
 
         // 若当前已完全连接到 ECU，过滤掉诊断操作触发的中间过渡状态
-        // 只允许真正的 "Disconnected" 才能打断稳定连接
+        // 允许：Disconnected（断开）、Disconnecting（断开中）、ConnectingToECU（重连）
+        const allowedFromConnectedToECU = ['Disconnected', 'Disconnecting', 'ConnectingToECU'];
         if (this.currentOBDStatus === 'ConnectedToECU' &&
-            newStatus !== 'Disconnected') {
+            !allowedFromConnectedToECU.includes(newStatus)) {
           console.log(`[CloudBridge] 过滤中间状态: ${newStatus}（当前已 ConnectedToECU）`);
           break;
         }

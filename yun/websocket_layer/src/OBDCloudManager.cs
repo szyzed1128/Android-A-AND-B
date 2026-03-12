@@ -552,9 +552,6 @@ namespace OBDCloud.WebSocket
             // 只处理关心的 UI 回调，避免噪音
             switch (methodName)
             {
-                case "onOBDStatusChanged":
-                    SendEvent(MessageAction.OBDStatusChanged, new { status = ToStringArg(args, 0) });
-                    break;
                 case "onPIDValueChanged":
                     SendEvent(MessageAction.PIDValueChanged, NormalizeArg(args, 0));
                     break;

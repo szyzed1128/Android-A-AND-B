@@ -1,0 +1,898 @@
+﻿[
+  {
+    "OPTS": [
+      {
+        "TTL": "Setting in MMI",
+        "VL": "01",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Настройка через мультимедиа",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "00",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "02",
+        "Translations": []
+      }
+    ],
+    "UID": 10000,
+    "NM": "Air recirculation with wipe/wash",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Включение рециркуляции воздуха после омывания лоб. стекла",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "272D",
+    "RQH": "746",
+    "RSH": "7B0",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 4,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "According to country version",
+        "VL": "00",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Согласно региональным настройкам",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "01",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "02",
+        "Translations": []
+      }
+    ],
+    "UID": 10001,
+    "NM": "Store air recirculation setting when ignition turned off",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Сохранение состояния рециркуляции воздуха после выключения автомобиля",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "2717",
+    "RQH": "746",
+    "RSH": "7B0",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 4,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "Setting in MMI",
+        "VL": "00",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Настройка через мультимедиа",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "01",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "02",
+        "Translations": []
+      }
+    ],
+    "UID": 10002,
+    "NM": "Air recirculation when driving in reverse",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Включение рециркуляции воздуха при движении задним ходом",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "2724",
+    "RQH": "746",
+    "RSH": "7B0",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 4,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "Maximum",
+        "VL": "00",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Максимум",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "Medium",
+        "VL": "02",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Средняя",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "Low",
+        "VL": "04",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Низкая",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10003,
+    "NM": "Air quality sensor sensivity",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Чувствительность датчика наружного воздуха",
+        "SN": "От чувствительности данного датчика, зависит скорость срабатывания клапана рециркуляции воздуха",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "2728",
+    "RQH": "746",
+    "RSH": "7B0",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 4,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "On",
+        "VL": "00",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Включено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "Off",
+        "VL": "01",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Отключено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10005,
+    "NM": "Seat belts alerts",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Оповещение о непристегнутом ремне безопасности",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "22B9",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 13,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10004,
+    "NM": "Time since last time-dependent inspection (days)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Время после инспекционного сервиса (дней)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "22A7",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10006,
+    "NM": "Distance since last mileage-dependent inspection (km)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Пробег после инспекционного сервиса (км)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "22A6",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10007,
+    "NM": "Distance since last service (km)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Пробег с момента последнего ТО (км)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "2243",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 3,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10008,
+    "NM": "Max. distance until next mileage-related inspection (km)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Максимальный пробег до инспекционного сервиса (км)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "22A4",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10009,
+    "NM": "Max. time until next time-dependent inspection (days)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Максимальное время до инспекционного сервиса (дней)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "22A5",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10010,
+    "NM": "Maximum distance between service (km)",
+    "DSC": "Step = 100 km",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Максимальный пробег между ТО (km)",
+        "SN": "Шаг 100 км",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "2246",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10011,
+    "NM": "Maximum time between service (days)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Максимальное время между ТО (дней)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "2247",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10012,
+    "NM": "Minimum distance between service (km)",
+    "DSC": "Step = 100 km",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Минимальный пробег между ТО (km)",
+        "SN": "Шаг 100 км",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "2245",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10013,
+    "NM": "Minimum time between service (days)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Минимальное время между ТО (дней)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "2293",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "Reset",
+        "VL": "00",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Сброс",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "Warning off",
+        "VL": "01",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Уведомление выключено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "Warning on",
+        "VL": "02",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Уведомление включено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10014,
+    "NM": "Reset service interval reminder",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Сброс уведомления о сервисе",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "2232",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10015,
+    "NM": "Reset value for next mileage-dependent inspection (km)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Пробег между инспекционным сервисом (км)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "22D5",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10016,
+    "NM": "Reset value for next time-dependent inspection (days)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Время между инспекционным сервисом (дней)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "22D6",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10017,
+    "NM": "Time since last service (days)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Количество дней с последнего ТО",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "2244",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10018,
+    "NM": "Temperature threshold for activation of auxiliary heater",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Температура, при которой включается дополнительный обогреватель",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "2729",
+    "RQH": "746",
+    "RSH": "7B0",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": true,
+    "RP": false,
+    "Group": 4,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "Start",
+        "VL": "01",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Запуск",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10019,
+    "NM": "Service regeneration of particulate filter (DPF) while driving",
+    "DSC": "Procedure description: start this procedure (you can do it while standing) and start driving on a highway, where you can do at least 60 km/h (40 mph) for 10-15 minutes. You should keep engine at 2000-2500 rpm. Your fuel tank should be full at least at 1/4. Please think before doing this.",
+    "InnerDescription": "",
+    "PWD": "27971",
+    "PWH": "27971, 12233",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Регенерация сажевого фильтра (DPF) в движении",
+        "SN": "Описание процедуры: запустите регенерацию (вы можете сделать это на месте) и выезжайте на дорогу, на которой вы сможете ехать со скоростью не меньше, чем 60 км/ч в течение 10-15 минут. Следует поддерживать повышеные обороты двигателя (2000-2500 об/мин). Убедитесь, что топливный бак заполнен не менее чем на 1/4. Пожалуйста, убедитесь, что вы знаете, что вы делаете.",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "0316",
+    "RQH": "7E0",
+    "RSH": "7E8",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "01",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "Translations": []
+      }
+    ],
+    "UID": 10020,
+    "NM": "Block DPF regenerations (diesel only)",
+    "DSC": "This prevents the automatic and manual regeneration of DPF. If you turn it on, make sure you regularly perform manual DPF regeneration. You will need to disable this option before manually regenerating DPF.",
+    "InnerDescription": "",
+    "PWD": "27971",
+    "PWH": "27971, 12233",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Заблокировать регенерацию сажевого фильтра",
+        "SN": "Это предотвращает автоматическую и ручную регенерацию DPF. Если вы включите его, убедитесь, что вы регулярно проводите ручную регенерацию DPF. Вам нужно будет отключить эту опцию перед ручной регенерацией DPF.",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "0317",
+    "RQH": "7E0",
+    "RSH": "7E8",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 6,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10021,
+    "NM": "Maximum distance to service",
+    "DSC": "Step = 100 km",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Максимальный пробег между ТО (km)",
+        "SN": "Шаг 100 км",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "22A0",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  }
+]

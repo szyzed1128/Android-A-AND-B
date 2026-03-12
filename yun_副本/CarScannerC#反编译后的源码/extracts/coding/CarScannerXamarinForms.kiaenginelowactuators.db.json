@@ -1,0 +1,368 @@
+﻿[
+    {
+        "VL": "01",
+        "TTL": "MIL",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "02",
+        "TTL": "Immo lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "03",
+        "TTL": "Cruise control lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "04",
+        "TTL": "ISG lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "05",
+        "TTL": "Gasoline lamp (bi-fuel)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "06",
+        "TTL": "Cruise set lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "07",
+        "TTL": "Overspeed warning",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "08",
+        "TTL": "Oil change warning lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "0A",
+        "TTL": "Pressure control FPCM",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "11",
+        "TTL": "A/C compressor relay",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "12",
+        "TTL": "Fuel pump relay (1 stage)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "13",
+        "TTL": "Fuel pump control (1 stage)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "14",
+        "TTL": "Fuel pump relay (2 stage)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "15",
+        "TTL": "Fuel pump control (2 stage)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "16",
+        "TTL": "High pressure fuel pump control",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "17",
+        "TTL": "High pressure fuel pump control 2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "18",
+        "TTL": "Fuel pump relay",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "19",
+        "TTL": "Fuel pump control",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1A",
+        "TTL": "Fan control - low speed",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1B",
+        "TTL": "Fan control - high speed",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1C",
+        "TTL": "Fan control PWM",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1D",
+        "TTL": "LPG fuel pump PWM control",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1E",
+        "TTL": "LPG cut-off valve for fuel rail",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1F",
+        "TTL": "LPG cut-off valve for fuel tank",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "21",
+        "TTL": "Additional gasoline for cold start FFV",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "22",
+        "TTL": "Fuel system open loop",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "23",
+        "TTL": "Canister cut-off valve switch",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "24",
+        "TTL": "Canister cut-off valve leak test",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "25",
+        "TTL": "Canister purge valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "26",
+        "TTL": "Idle speed control actuator",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "27",
+        "TTL": "EGR valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "2F",
+        "TTL": "Carbon dioxide potentiometer balancing",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "32",
+        "TTL": "ETC motor",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "35",
+        "TTL": "AC collector 2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "41",
+        "TTL": "Ignition coil 1 Active/Disabled",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "42",
+        "TTL": "Ignition coil 2 Active/Disabled",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "43",
+        "TTL": "Ignition coil 3 Active/Disabled",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "44",
+        "TTL": "Ignition coil 4 Active/Disabled",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "45",
+        "TTL": "Ignition coil 5 Active/Disabled",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "46",
+        "TTL": "Ignition coil 6 Active/Disabled",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "47",
+        "TTL": "Ignition coil 7 Active/Disabled",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "48",
+        "TTL": "Ignition coil 8 Active/Disabled",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "49",
+        "TTL": "Injector 1 disable",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "4A",
+        "TTL": "Injector 2 disable",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "4B",
+        "TTL": "Injector 3 disable",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "4C",
+        "TTL": "Injector 4 disable",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "4D",
+        "TTL": "Injector 5 disable",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "4E",
+        "TTL": "Injector 6 disable",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "4F",
+        "TTL": "Injector 7 disable",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "50",
+        "TTL": "Injector 8 disable",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "51",
+        "TTL": "Intake CVVT",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "52",
+        "TTL": "Exhaust CVVT",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "55",
+        "TTL": "Oil regulator valve - Intake bank 1",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "56",
+        "TTL": "Oil regulator valve - Exhaust bank 1",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "57",
+        "TTL": "Oil regulator valve - Intake bank 2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "58",
+        "TTL": "Oil regulator valve - Exhaust bank 2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "61",
+        "TTL": "Additive O2 sensor heater correction B1S1",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "62",
+        "TTL": "Additive O2 sensor heater correction B2S1",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "63",
+        "TTL": "Additive O2 sensor heater correction B1S2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "64",
+        "TTL": "Additive O2 sensor heater correction B2S2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "7B",
+        "TTL": "Additive correction of all O2 sensor heaters",
+        "Translations": [],
+        "DSC": ""
+    }
+]

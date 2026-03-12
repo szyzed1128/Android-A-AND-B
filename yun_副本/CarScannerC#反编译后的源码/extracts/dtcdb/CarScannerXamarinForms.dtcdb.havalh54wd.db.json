@@ -1,0 +1,19 @@
+﻿{
+  "P178377": "Mode switch motor: Timed out for position change",
+  "P172813": "Electromagnetic clutch (EMC): open circuit",
+  "P173011": "Electromagnetic clutch (EMC): short to ground",
+  "P172912": "Electromagnetic clutch (EMC): short to power supply",
+  "P05601C": "System voltage out of normal range",
+  "P173467": "Front axle electrocoupling (shaitanki) trailer: controversial signal",
+  "U000188": "CAN bus short or open",
+  "U010087": "Lost communication with ECM (engine speed and status, clutch pedal position)",
+  "U040181": "Invalid data from ECM (engine speed and status, clutch pedal position)",
+  "U012187": "Lost communication with ABS/ESP (with all wheel speed sensors)",
+  "U041581": "Invalid data from ABS/ESP (from any of the wheel speed sensors)",
+  "P178711": "Mode switch motor position encoder: short to ground",
+  "P178801": "Mode switch motor position encoder: invalid position",
+  "P178013": "Mode switch motor: open circuit",
+  "P178112": "Mode switching motor: short to power supply",
+  "P178211": "Mode switching motor: short to ground",
+  "P173801": "Mode switch: invalid position"
+}

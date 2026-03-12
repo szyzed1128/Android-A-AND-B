@@ -1,0 +1,960 @@
+﻿[
+  {
+    "OPTS": [],
+    "UID": 10000,
+    "NM": "RES:codingDB_TimeSinceLastServiceDays_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "2244",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10001,
+    "NM": "RES:codingDB_MaximumDistanceBetweenServiceKm_Name",
+    "DSC": "RES:codingDB_MaximumDistanceBetweenServiceKm_Description",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "2246",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10002,
+    "NM": "RES:codingDB_MaximumTimeBetweenServiceDays_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "2247",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10003,
+    "NM": "RES:codingDB_MileageSinceLastServiceKm_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "2243",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 3,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10004,
+    "NM": "RES:codingDB_MinimumDistanceBetweenServiceKm_Name",
+    "DSC": "RES:codingDB_MinimumDistanceBetweenServiceKm_Description",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "2245",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10005,
+    "NM": "RES:codingDB_MinimumTimeBetweenServiceDays_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "2293",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES:codingDB_opt_Reset",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Сброс",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES:codingDB_opt_WarningOn",
+        "VL": "02",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Уведомление включено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10006,
+    "NM": "RES:codingDB_ResetServiceIntervalReminder_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "2232",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10007,
+    "NM": "RES:codingDB_ResetValueForNextTimeDependentInspectionDays_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "22D6",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10008,
+    "NM": "RES:codingDB_ResetValueForNextMileageDependentInspectionKm_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "22D5",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10009,
+    "NM": "RES:codingDB_TimeSinceLastTimeDependentInspectionDays_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "22A7",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10010,
+    "NM": "RES:codingDB_DistanceSinceLastMileageDependentInspectionKm_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "22A6",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10011,
+    "NM": "RES:codingDB_MaxTimeUntilNextTimeDependentInspectionDays_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "22A5",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10012,
+    "NM": "RES:codingDB_MaxDistanceUntilNextMileageRelatedInspectionKm_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "22A4",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES:codingDB_opt_NotActive",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Выключено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES:codingDB_opt_Active",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Включено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES:codingDB_opt_ActiveFor10Minutes",
+        "VL": "02",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Включено на 10 минут",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10013,
+    "NM": "RES:codingDB_RetentionOfDriverSSeatHeaterLevel_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "264D",
+    "RQH": "746",
+    "RSH": "7B0",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 12,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES:codingDB_opt_NotActive",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Выключено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES:codingDB_opt_Active",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Включено",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES:codingDB_opt_ActiveFor10Minutes",
+        "VL": "02",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Включено 10 минут",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10014,
+    "NM": "RES:codingDB_RetentionOfPassengerSSeatHeaterLevel_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "27D9",
+    "RQH": "746",
+    "RSH": "7B0",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 12,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "UID": 10015,
+    "NM": "RES:codingDB_SeatHeaterPerformanceReduction_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "27DA",
+    "RQH": "746",
+    "RSH": "7B0",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 12,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "UID": 10016,
+    "NM": "RES:codingDB_TestPointersAtEngineStart_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "102F",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 5,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "UID": 10017,
+    "NM": "RES:codingDB_ShowFreeSpaceInFuelTankInTheDashboard_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "22C6",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 5,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:1:1=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:1:1=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "UID": 10018,
+    "NM": "RES:codingDB_SeatBeltsAlerts_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "0600",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 13,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10019,
+    "NM": "RES:codingDB_FuelLevelCorrectionL_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "223D",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.5,
+    "RBS": false,
+    "OFS": -10.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 5,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10021,
+    "NM": "RES:codingDB_FuelConsumptionCorrection_Name",
+    "DSC": "RES:codingDB_FuelConsumptionCorrection_Description",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "2234",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 5,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:8:3=0;8:2=0;8:1=0;8:0=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES:codingDB_opt_FoldWhenLockedUnfoldWhenIgnitionTurnedOn",
+        "VL": "BIT:8:3=0;8:2=1;8:1=0;8:0=1",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Складывать при запирании, раскладывать при включении зажигания",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES:codingDB_opt_FoldWhenLockedUnfoldWhenUnlocked",
+        "VL": "BIT:8:3=1;8:2=0;8:1=0;8:0=1",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Складывать при запирании, раскладывать при отпирании",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10020,
+    "NM": "RES:codingDB_FoldMirrorsWhenCarLocked_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "04354",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "0520",
+    "RQH": "74A",
+    "RSH": "7B4",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 10,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES:codingDB_opt_Normal",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Стандартно",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES:codingDB_opt_HighPower",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Повышенная тяга",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "RES:codingDB_opt_LowNoise",
+        "VL": "02",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Сниженный шум",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10022,
+    "NM": "RES:codingDB_4WdOperationMode_Name",
+    "DSC": "RES:codingDB_4WdOperationMode_Description",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "0C0A",
+    "RQH": "70F",
+    "RSH": "779",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 6,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:14:1=0",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:14:1=1",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "UID": 10023,
+    "NM": "RES:codingDB_AmRadio_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "0600",
+    "RQH": "773",
+    "RSH": "7DD",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 9,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_ENABLE",
+        "VL": "BIT:8:4=1",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:8:4=0",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "UID": 10024,
+    "NM": "RES:codingDB_AuxInActivation_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "0600",
+    "RQH": "773",
+    "RSH": "7DD",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 9,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [
+      {
+        "TTL": "RES_DISABLE",
+        "VL": "BIT:19:7=0;19:6=0;",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES:codingDB_opt_UsbCharge",
+        "VL": "BIT:19:7=0;19:6=1;",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES:codingDB_opt_UsbFull",
+        "VL": "BIT:19:7=1;19:6=0;",
+        "ROVL": "",
+        "Translations": []
+      },
+      {
+        "TTL": "RES:codingDB_opt_UsbFullIpod",
+        "VL": "BIT:19:7=1;19:6=1;",
+        "ROVL": "",
+        "Translations": []
+      }
+    ],
+    "UID": 10025,
+    "NM": "RES:codingDB_UsbMode_Name",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [],
+    "VT": 0,
+    "AD": "0600",
+    "RQH": "773",
+    "RSH": "7DD",
+    "SBI": 0,
+    "DL": 0,
+    "MUL": 0.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 9,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10026,
+    "NM": "RES:codingDB_MaximumDistanceToService_Name",
+    "DSC": "RES:codingDB_MaximumDistanceToService_Description",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "MQB: 20103, PQ26: 25327, 20103",
+    "TRNS": [],
+    "VT": 1,
+    "AD": "22A0",
+    "RQH": "714",
+    "RSH": "77E",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 100.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  }
+]

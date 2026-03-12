@@ -25,6 +25,7 @@ export function useCloudBridge() {
       setCloudConnected(connected);
     });
     const unsubscribeObd = CloudBridge.addOBDStatusListener((status) => {
+      console.log(`[useCloudBridge] OBD 状态回调触发: "${status}"`);
       setConnectionStatus(status as any);
     });
 

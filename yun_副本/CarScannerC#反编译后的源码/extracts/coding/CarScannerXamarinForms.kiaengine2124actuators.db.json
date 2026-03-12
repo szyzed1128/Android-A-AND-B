@@ -1,0 +1,296 @@
+﻿[
+    {
+        "VL": "10",
+        "TTL": "MIL",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "12",
+        "TTL": "Fuel pump relay",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1A",
+        "TTL": "Coolant fan High speed",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1B",
+        "TTL": "Coolant fan Low speed",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "1C",
+        "TTL": "Main relay",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "24",
+        "TTL": "Oil regulator valve input volume",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "20",
+        "TTL": "EVAP purge valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "25",
+        "TTL": "Oil regulator valve output volume",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "31",
+        "TTL": "Ignition coil #1",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "32",
+        "TTL": "Ignition coil #2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "33",
+        "TTL": "Ignition coil #3",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "34",
+        "TTL": "Ignition coil #4",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "39",
+        "TTL": "Disable injector #1",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "3A",
+        "TTL": "Disable injector #2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "3B",
+        "TTL": "Disable injector #3",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "3C",
+        "TTL": "Disable injector #4",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "52",
+        "TTL": "ETC Motor",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "53",
+        "TTL": "Front O2 sensor heater Bank 1",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "54",
+        "TTL": "Rear O2 sensor heater Bank 1",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "55",
+        "TTL": "VIS intake geometry valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "58",
+        "TTL": "Cruise control main lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "59",
+        "TTL": "Cruise control setup lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "13",
+        "TTL": "A/C compressor relay",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "14",
+        "TTL": "Fuel pump control relay",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "15",
+        "TTL": "Immobilizer lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "16",
+        "TTL": "Canister shut-off valve with timer",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "17",
+        "TTL": "Fuel cut-off valve (LPI)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "18",
+        "TTL": "Fuel cut-off valve: fuel tank (LPI)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "19",
+        "TTL": "Fuel pressure lamp (LPI)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "50",
+        "TTL": "Coolant fan PWM control",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "56",
+        "TTL": "Wastegate valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "57",
+        "TTL": "TCI bypass valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "5C",
+        "TTL": "Fuel pressure regulator (GDI)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "5E",
+        "TTL": "Oil change lamp",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "5F",
+        "TTL": "Additional fuel pump",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "60",
+        "TTL": "Additional fuel injector",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "8C",
+        "TTL": "ISG test",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "61",
+        "TTL": "Exhaust gas recirculation valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "62",
+        "TTL": "Electrically controlled water pump",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "63",
+        "TTL": "Fuel tank isolation valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "64",
+        "TTL": "Switch valve",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "65",
+        "TTL": "Vacuum pump (ELCM)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "66",
+        "TTL": "Front O2 sensor heater Bank 2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "67",
+        "TTL": "Rear O2 sensor heater Bank 2",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "69",
+        "TTL": "HICM Activate diagnostics",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "6A",
+        "TTL": "HICM Learn reset",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "6B",
+        "TTL": "HICM Relay",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "6C",
+        "TTL": "Electrically controlled water pump (CWP)",
+        "Translations": [],
+        "DSC": ""
+    },
+    {
+        "VL": "6D",
+        "TTL": "Exhaust flap (EF)",
+        "Translations": [],
+        "DSC": ""
+    }
+]

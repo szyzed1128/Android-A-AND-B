@@ -1,0 +1,125 @@
+﻿[
+  {
+    "OPTS": [
+      {
+        "TTL": "Service",
+        "VL": "01",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Сервис",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      },
+      {
+        "TTL": "User",
+        "VL": "00",
+        "ROVL": "",
+        "Translations": [
+          {
+            "LNG": "ru",
+            "NM": "Пользователь",
+            "SN": "",
+            "ADT": ""
+          }
+        ]
+      }
+    ],
+    "UID": 10000,
+    "NM": "Maintance type",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Вид обслуживания",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 0,
+    "AD": "0070",
+    "RQH": "7C6",
+    "RSH": "7CE",
+    "SBI": 0,
+    "DL": 1,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10001,
+    "NM": "Interval between service (km)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Пробег между ТО (km)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "0072",
+    "RQH": "7C6",
+    "RSH": "7CE",
+    "SBI": 0,
+    "DL": 3,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  },
+  {
+    "OPTS": [],
+    "UID": 10002,
+    "NM": "Time between service (months)",
+    "DSC": "",
+    "InnerDescription": "",
+    "PWD": "",
+    "PWH": "",
+    "TRNS": [
+      {
+        "LNG": "ru",
+        "NM": "Время между ТО (месяцев)",
+        "SN": "",
+        "ADT": ""
+      }
+    ],
+    "VT": 1,
+    "AD": "0073",
+    "RQH": "7C6",
+    "RSH": "7CE",
+    "SBI": 0,
+    "DL": 2,
+    "MUL": 1.0,
+    "RBS": false,
+    "OFS": 0.0,
+    "SIG": false,
+    "RP": false,
+    "Group": 16,
+    "HasCurrentState": true,
+    "PreWrite": "",
+    "PostWrite": ""
+  }
+]
