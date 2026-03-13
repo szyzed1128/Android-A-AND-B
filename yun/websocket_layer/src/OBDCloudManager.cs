@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Net.WebSockets;
 using System.Threading;
@@ -750,7 +751,7 @@ namespace OBDCloud.WebSocket
                     await HandleStartReadPidsAsync(message).ConfigureAwait(false);
                     break;
                 case MessageAction.StopReadPIDs:
-                    await HandleInvokeVoidResultAsync(message, "stopReadPIDs").ConfigureAwait(false);
+                    await HandleStopReadPidsAsync(message).ConfigureAwait(false);
                     break;
             }
         }
@@ -1520,11 +1521,73 @@ namespace OBDCloud.WebSocket
                 var obj = message.GetData<JObject>();
                 var indices = obj?["indices"];
                 var json = indices != null ? indices.ToString(Formatting.None) : "[]";
-                InvokeJsBridge("startReadPIDs", json);
+
+                try
+                {
+                    InvokeJsBridge("startReadPIDs", json);
+                    Log($"[OBDCloudManager] ✓ StartReadPIDs: InvokeJsBridge 成功 indices={json}");
+                }
+                catch (Exception jex)
+                {
+                    Log($"[OBDCloudManager] ⚠ StartReadPIDs: JSBridge 调用失败 {jex.GetType().Name}: {jex.Message}");
+                }
+
                 await SendResponseAsync(message, true).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
+                await SendResponseAsync(message, false, null, ex.Message).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// 停止 PID 读取：与原版 LiveDataListPage.btnBack_Clicked 保持一致，
+        /// 只调用 ClearRequestQueue()（drain 方式），不清空 Delegate，不替换队列引用。
+        /// 原因：
+        ///   - Delegate 应由原版页面生命周期管理（ConnectPage_Appearing 时清空），我们不干预
+        ///   - ClearRequestQueue() 是原版的安全停止方式，AlwaysPingECU 心跳在队列空后自动维持
+        ///   - ReplaceQueue(empty) 虽可原子清空，但与直接清 Delegate 组合后 OBD 状态难以恢复
+        /// </summary>
+        private async Task HandleStopReadPidsAsync(WSMessage message)
+        {
+            try
+            {
+                Log("[OBDCloudManager] ▶ HandleStopReadPidsAsync 开始");
+
+                // 使用与原版 LiveDataListPage.btnBack_Clicked 完全相同的 drain 策略：
+                // ClearRequestQueue() = 两次 TryDequeue 循环 + 50ms 等待，等待 Repeat=true 在途请求完成 re-enqueue
+                // 不清空任何 Delegate（由 ConnectPage_Appearing 管理）
+                // 不替换队列引用（保持 OBD 状态完整，心跳继续由 AlwaysPingECU 维持）
+                if (TryResolveObdReader(out var obdReader, out var obdReaderType))
+                {
+                    Log($"[OBDCloudManager] StopReadPIDs: obdReader hashCode={obdReader.GetHashCode()}");
+
+                    var clearMethod = obdReaderType.GetMethod("ClearRequestQueue",
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance,
+                        null, Type.EmptyTypes, null);
+
+                    if (clearMethod != null)
+                    {
+                        var taskObj = clearMethod.Invoke(obdReader, null);
+                        if (taskObj is Task t) await t.ConfigureAwait(false);
+                        Log("[OBDCloudManager] ✓ StopReadPIDs: ClearRequestQueue 完成，OBD 状态保持完整");
+                    }
+                    else
+                    {
+                        Log("[OBDCloudManager] ⚠ StopReadPIDs: ClearRequestQueue 方法未找到");
+                    }
+                }
+                else
+                {
+                    Log("[OBDCloudManager] ⚠ StopReadPIDs: OBDDataReader 实例未找到");
+                }
+
+                await SendResponseAsync(message, true).ConfigureAwait(false);
+                Log("[OBDCloudManager] ◀ HandleStopReadPidsAsync 完成");
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] ✗ HandleStopReadPidsAsync 异常: {ex.GetType().Name}: {ex.Message}");
                 await SendResponseAsync(message, false, null, ex.Message).ConfigureAwait(false);
             }
         }

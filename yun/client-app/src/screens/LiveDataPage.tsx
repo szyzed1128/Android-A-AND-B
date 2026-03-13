@@ -169,8 +169,8 @@ export default function LiveDataPage() {
   // 开始/停止读取
   const handleToggleReading = async () => {
     if (reading) {
-      await stopReadPIDs();
-      setReading(false);
+      setReading(false);  // 立即更新 UI，不等待 A 端确认（避免按钮卡死 30s）
+      stopReadPIDs();     // 后台发送停止命令（不阻塞）
     } else {
       setReading(true);
       // useEffect([currentPage, reading]) 会监听 reading 变化并调用 startReadPIDs，无需此处重复调用

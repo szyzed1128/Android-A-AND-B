@@ -333,15 +333,15 @@ class CloudBridgeService {
   }
 
   /**
-   * 停止读取 PID
+   * 停止读取 PID（等待 A 端确认，3000ms 超时后静默失败）
    */
-  stopReadPIDs(): void {
-    this.sendMessage({
-      type: MessageType.Request,
-      action: MessageAction.StopReadPIDs,
-      requestId: this.generateId(),
-      timestamp: Date.now(),
-    });
+  async stopReadPIDs(): Promise<void> {
+    try {
+      await this.sendRequest(MessageAction.StopReadPIDs, undefined, 3000);
+    } catch (e) {
+      // 超时或失败时静默处理（不阻塞 UI 状态更新）
+      console.warn('[CloudBridge] stopReadPIDs 未收到确认:', e);
+    }
   }
 
   // ===== ELM327 连接命令 =====

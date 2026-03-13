@@ -109,8 +109,8 @@ export function useCloudBridge() {
     CloudBridge.startReadPIDs(indices);
   }, []);
 
-  const stopReadPIDs = useCallback(() => {
-    CloudBridge.stopReadPIDs();
+  const stopReadPIDs = useCallback(async () => {
+    await CloudBridge.stopReadPIDs();
   }, []);
 
   // OBD 连接

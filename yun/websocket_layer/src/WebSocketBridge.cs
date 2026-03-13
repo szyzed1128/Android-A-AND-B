@@ -23,6 +23,8 @@ namespace OBDCloud.WebSocket
         private int _reconnectAttempts;
         private const int MAX_RECONNECT_ATTEMPTS = 10;
         private const int RECEIVE_BUFFER_SIZE = 8192;
+        // ClientWebSocket.SendAsync 不支持并发写，必须用 SemaphoreSlim 序列化
+        private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// 收到消息时触发
@@ -105,11 +107,19 @@ namespace OBDCloud.WebSocket
 
             var json = message.ToJson();
             var bytes = Encoding.UTF8.GetBytes(json);
-            await _wsClient.SendAsync(
-                new ArraySegment<byte>(bytes),
-                WebSocketMessageType.Text,
-                true,
-                _cts.Token);
+            await _sendLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                await _wsClient.SendAsync(
+                    new ArraySegment<byte>(bytes),
+                    WebSocketMessageType.Text,
+                    true,
+                    _cts.Token);
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
 
         /// <summary>
@@ -123,11 +133,19 @@ namespace OBDCloud.WebSocket
                 return;
 
             var bytes = Encoding.UTF8.GetBytes(json);
-            await _wsClient.SendAsync(
-                new ArraySegment<byte>(bytes),
-                WebSocketMessageType.Text,
-                true,
-                _cts.Token);
+            await _sendLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                await _wsClient.SendAsync(
+                    new ArraySegment<byte>(bytes),
+                    WebSocketMessageType.Text,
+                    true,
+                    _cts.Token);
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
 
         /// <summary>

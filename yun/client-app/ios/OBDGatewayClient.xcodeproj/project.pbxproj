@@ -275,7 +275,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 878N45KFG4;
 				INFOPLIST_FILE = OBDGatewayClient/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "OBD 蓝牙";
+				INFOPLIST_KEY_CFBundleDisplayName = "iOS版网关release";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -286,7 +286,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.obdgatewayclient;
+				PRODUCT_BUNDLE_IDENTIFIER = com.obdgatewayclient.release;
 				PRODUCT_NAME = OBDGatewayClient;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

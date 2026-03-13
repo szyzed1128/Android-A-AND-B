@@ -18,7 +18,6 @@ namespace OBDCloud.WebSocket
         private readonly ConcurrentDictionary<string, MethodInfo[]> _methodCache =
             new ConcurrentDictionary<string, MethodInfo[]>(StringComparer.OrdinalIgnoreCase);
 
-        private static readonly ConcurrentQueue<string> OutgoingQueue = new ConcurrentQueue<string>();
         private static readonly JsonSerializerSettings JsonSettings = new JsonSerializerSettings
         {
             NullValueHandling = NullValueHandling.Ignore
@@ -108,14 +107,8 @@ namespace OBDCloud.WebSocket
 
             var hasSubscribers = OutgoingMessage != null;
             Console.WriteLine($"[HandleOutgoingJS] TryBuildUiEvent 成功, hasSubscribers={hasSubscribers}");
-            OutgoingQueue.Enqueue(json);
             var handler = OutgoingMessage;
             handler?.Invoke(json);
-        }
-
-        public static bool TryDequeueOutgoing(out string json)
-        {
-            return OutgoingQueue.TryDequeue(out json);
         }
 
         private static bool TryBuildUiEvent(string jsScript, out string json)

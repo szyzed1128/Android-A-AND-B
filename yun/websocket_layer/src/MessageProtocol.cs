@@ -360,15 +360,5 @@ namespace OBDCloud.WebSocket
                 Data = new { status = status }
             };
         }
-
-        public static WSMessage CreateSimpleEvent(string action, object data)
-        {
-            return new WSMessage
-            {
-                Type = MessageType.Event,
-                Action = action,
-                Data = data
-            };
-        }
     }
 }
