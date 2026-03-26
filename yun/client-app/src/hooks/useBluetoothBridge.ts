@@ -73,6 +73,14 @@ function applyElmTimeoutOverride(base64Data: string, minTimeoutMs: number): stri
   return base64Data;
 }
 
+let bridgeWireTxCounter = 0;
+let bridgeWireRxCounter = 0;
+
+function formatBridgeWireText(text: string, maxLen = 600): string {
+  const normalized = (text || '').replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+  return normalized.length > maxLen ? normalized.slice(0, maxLen) + '…' : normalized;
+}
+
 export function useBluetoothBridge() {
   const { connectDevice, disconnectDevice, sendData, startScan, stopScan } = useLocalBluetooth();
   const { elmTimeoutMs } = useAppContext();
@@ -95,13 +103,20 @@ export function useBluetoothBridge() {
       // 应用 ATST 超时覆盖（在日志和发送之前）
       const overridden = applyElmTimeoutOverride(base64Data, elmTimeoutMsRef.current);
 
+      const txSeq = ++bridgeWireTxCounter;
+
       // 调试：解码并显示发送的 AT 命令
       try {
         const decoded = Buffer.from(overridden, 'base64').toString('utf-8');
-        const displayText = decoded.replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+        const displayText = formatBridgeWireText(decoded);
         console.log(`[BluetoothBridge] A→B→ELM327: ${displayText} (len=${overridden.length})`);
+        console.log(
+          `[BridgeWire][TX#${txSeq}] burst=${CloudBridge.burstModeActive} ` +
+          `timeoutOverrideMs=${elmTimeoutMsRef.current} raw=${displayText}`
+        );
       } catch {
         console.log(`[BluetoothBridge] A→B→ELM327: [二进制数据] (len=${overridden.length})`);
+        console.log(`[BridgeWire][TX#${txSeq}] burst=${CloudBridge.burstModeActive} raw=[二进制数据]`);
       }
 
       await sendData(overridden);
@@ -141,17 +156,29 @@ export function useBluetoothBridge() {
     if (bluetoothGateway) {
       const dataUnsub = bluetoothGateway.addDataReceivedListener(
         (sessionId: string, base64Data: string) => {
+          const rxSeq = ++bridgeWireRxCounter;
+
           // 调试：解码并显示收到的 ELM327 响应
           try {
             const decoded = Buffer.from(base64Data, 'base64').toString('utf-8');
-            const displayText = decoded.replace(/\r/g, '\\r').replace(/\n/g, '\\n');
-            console.log(`[BluetoothBridge] ELM327→B→A: ${displayText.substring(0, 100)} (len=${base64Data.length})`);
+            const displayText = formatBridgeWireText(decoded);
+            console.log(`[BluetoothBridge] ELM327→B→A: ${displayText} (len=${base64Data.length})`);
+            console.log(
+              `[BridgeWire][RX#${rxSeq}] session=${sessionId} burst=${CloudBridge.burstModeActive} ` +
+              `forwarded=${!CloudBridge.burstModeActive} raw=${displayText}`
+            );
           } catch {
             console.log(`[BluetoothBridge] ELM327→B→A: [二进制数据] (len=${base64Data.length})`);
+            console.log(
+              `[BridgeWire][RX#${rxSeq}] session=${sessionId} burst=${CloudBridge.burstModeActive} ` +
+              `forwarded=${!CloudBridge.burstModeActive} raw=[二进制数据]`
+            );
           }
 
-          // 发送数据给云端A
-          CloudBridge.sendOBDData(sessionId, base64Data);
+          // 发送数据给云端A（Burst 期间抑制：B 端独占蓝牙通道，不向 A 转发）
+          if (!CloudBridge.burstModeActive) {
+            CloudBridge.sendOBDData(sessionId, base64Data);
+          }
         }
       );
       const lostUnsub = bluetoothGateway.addConnectionLostListener(

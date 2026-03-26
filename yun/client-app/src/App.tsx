@@ -20,6 +20,7 @@ import ECUInfoSelectionPage from './screens/ECUInfoSelectionPage';
 import ECUInfoResultPage from './screens/ECUInfoResultPage';
 import FreezeFramePage from './screens/FreezeFramePage';
 import LiveDataPage from './screens/LiveDataPage';
+import BurstSnapshotPage from './screens/BurstSnapshotPage';
 
 // 导航参数类型
 export type RootStackParamList = {
@@ -32,6 +33,7 @@ export type RootStackParamList = {
   ECUInfoResult: { indices: number[]; ecuList: any[] };
   FreezeFrame: undefined;
   LiveData: undefined;
+  BurstSnapshot: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -64,6 +66,7 @@ const App: React.FC = () => {
             <Stack.Screen name="ECUInfoResult" component={ECUInfoResultPage} />
             <Stack.Screen name="FreezeFrame" component={FreezeFramePage} />
             <Stack.Screen name="LiveData" component={LiveDataPage} />
+            <Stack.Screen name="BurstSnapshot" component={BurstSnapshotPage} />
           </Stack.Navigator>
         </NavigationContainer>
       </AppProvider>

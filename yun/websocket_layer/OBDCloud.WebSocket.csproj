@@ -12,14 +12,27 @@
   <ItemGroup>
     <!-- WebSocketIOBDConnectionProxy.cs 需要用 Mono 编译器单独编译（因为它需要 Mono 的 ValueTask） -->
     <Compile Remove="src/WebSocketIOBDConnectionProxy.cs" />
+    <Compile Remove="src/ReplayConnection.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="CarScannerXamarinForms">
+      <HintPath>../../temp_verify/unknown/assemblies/CarScannerXamarinForms.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>../../temp_verify/unknown/assemblies/Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp">
       <HintPath>../../temp_verify/unknown/assemblies/Microsoft.CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>../../temp_verify/unknown/assemblies/System.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Tasks">
+      <HintPath>../../temp_verify/unknown/assemblies/System.Threading.Tasks.dll</HintPath>
+    </Reference>
+    <Reference Include="mscorlib">
+      <HintPath>../../temp_verify/unknown/assemblies/mscorlib.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>

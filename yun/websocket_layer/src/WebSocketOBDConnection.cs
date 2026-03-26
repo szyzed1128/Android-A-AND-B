@@ -254,6 +254,34 @@ namespace OBDCloud.WebSocket
             }
         }
 
+        // ── Burst 模式支持 ──
+
+        private volatile bool _burstModeActive;
+
+        /// <summary>
+        /// 设置 Burst 模式（暂停/恢复正常数据转发）
+        /// </summary>
+        public void SetBurstMode(bool active)
+        {
+            _burstModeActive = active;
+            System.Diagnostics.Debug.WriteLine($"[WebSocketOBD] SetBurstMode({active})");
+        }
+
+        public bool IsBurstMode => _burstModeActive;
+
+        /// <summary>
+        /// 清空接收缓冲区（Burst 采样开始前调用）
+        /// </summary>
+        public void ClearReceiveBuffer()
+        {
+            lock (_readLock)
+            {
+                _readTcs?.TrySetCanceled();
+                _readTcs = null;
+            }
+            System.Diagnostics.Debug.WriteLine("[WebSocketOBD] ClearReceiveBuffer 完成");
+        }
+
         public void Dispose()
         {
             if (_disposed) return;

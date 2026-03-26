@@ -14,6 +14,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -51,8 +52,13 @@ export default function HomePage() {
   const [cloudConnecting, setCloudConnecting] = useState(false);
   // OBD 连接中状态
   const [obdConnecting, setObdConnecting] = useState(false);
+  // 断开中遮罩（等待 A 端 onDisconnectFinish 后才消失）
+  const [disconnecting, setDisconnecting] = useState(false);
   const connectInFlightRef = useRef(false);
   const userCancelledRef = useRef(false);
+  const disconnectingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 断开缓冲计时器（用 ref 存储，避免 React effect cleanup 因 connectionStatus 变化取消它）
+  const disconnectBufferRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 显示文本
   const profileDisplay = selectedProfile
@@ -99,6 +105,7 @@ export default function HomePage() {
   // 菜单项
   const menuItems: MenuItemType[] = [
     { text: '实时数据', icon: 'play-circle', disabled: !isFullyConnected, screen: 'LiveData' },
+    { text: 'Burst采样', icon: 'lightning-bolt', disabled: !isFullyConnected, screen: 'BurstSnapshot' },
     { text: '故障码', icon: 'alert-circle', disabled: !isFullyConnected, screen: 'DTCSelection' },
     { text: '冻结帧', icon: 'snowflake', disabled: !isFullyConnected, screen: 'FreezeFrame' },
     { text: 'ECU信息', icon: 'information', disabled: !isFullyConnected, screen: 'ECUInfoSelection' },
@@ -125,14 +132,28 @@ export default function HomePage() {
     if (isConnected || connectInFlightRef.current) {
       userCancelledRef.current = true;  // 标记用户主动取消
       connectInFlightRef.current = false;
-      setObdConnecting(true);
+      setObdConnecting(false);  // 连接中断开时必须清除，否则 obdConnecting 永久残留，下次无法重连
+      setDisconnecting(true);  // 显示"正在断开..."遮罩，等 connectionStatus=Disconnected 后才消失
+      // 10 秒保险：无论如何都消除遮罩，防止 A 端回调永不到达
+      disconnectingTimerRef.current = setTimeout(() => {
+        disconnectingTimerRef.current = null;
+        if (disconnectBufferRef.current) {
+          clearTimeout(disconnectBufferRef.current);
+          disconnectBufferRef.current = null;
+        }
+        setDisconnecting(false);
+      }, 10000);
       try {
         await getBluetoothGateway()?.disconnect();
         await disconnectOBD();
       } catch (e) {
         console.error('Disconnect error:', e);
+        if (disconnectingTimerRef.current) {
+          clearTimeout(disconnectingTimerRef.current);
+          disconnectingTimerRef.current = null;
+        }
+        setDisconnecting(false);  // 出错时立即收起遮罩
       }
-      setObdConnecting(false);
       userCancelledRef.current = false;
       return;
     }
@@ -201,6 +222,28 @@ export default function HomePage() {
       setObdConnecting(false);
     }
   }, [connectionStatus]);
+
+  // 断开完成时消除遮罩（监听 A 端 Disconnected 回调）
+  // 用 disconnectBufferRef 存储缓冲计时器而非局部变量：
+  // 若用局部变量并 return cleanup，则 connectionStatus 后续变化（A 端后台任务发来的 ConnectingToELM 等）
+  // 会触发 React cleanup 取消计时器，而 10 秒保险已被清掉，导致遮罩永远不消失。
+  useEffect(() => {
+    if (!disconnecting) return;
+    if (connectionStatus === 'Disconnected') {
+      // 清除 10 秒保险（已有缓冲计时器接手）
+      if (disconnectingTimerRef.current) {
+        clearTimeout(disconnectingTimerRef.current);
+        disconnectingTimerRef.current = null;
+      }
+      // 只启动一次缓冲计时器，防止重复触发
+      if (!disconnectBufferRef.current) {
+        disconnectBufferRef.current = setTimeout(() => {
+          disconnectBufferRef.current = null;
+          setDisconnecting(false);
+        }, 3000);
+      }
+    }
+  }, [connectionStatus, disconnecting]);
 
   // 监控 UI 状态变化（用于诊断）
   useEffect(() => {
@@ -362,6 +405,16 @@ export default function HomePage() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* 正在断开遮罩：阻止一切操作，等 A 端确认断开后消失 */}
+      <Modal visible={disconnecting} transparent animationType="fade">
+        <View style={styles.disconnectingOverlay}>
+          <View style={styles.disconnectingCard}>
+            <ActivityIndicator size="large" color="#1989fa" />
+            <Text style={styles.disconnectingText}>正在断开...</Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -567,5 +620,24 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 11,
     color: '#c8c9cc',
+  },
+  disconnectingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  disconnectingCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 32,
+    paddingHorizontal: 44,
+    alignItems: 'center',
+  },
+  disconnectingText: {
+    marginTop: 14,
+    fontSize: 16,
+    color: '#323233',
+    fontWeight: '500',
   },
 });

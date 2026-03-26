@@ -267,8 +267,26 @@ namespace DllPatcher
                 wsConnField = obdDataReader.Fields.First(f => f.Name == "WebSocketConnection");
             }
 
-            // 添加初始化方法
+            // ReplayRecoveryGuard 字段（Burst Replay 期间阻断 OBDDataReader 自身恢复链）
+            FieldDef replayRecoveryGuardField;
+            if (!obdDataReader.Fields.Any(f => f.Name == "ReplayRecoveryGuard"))
+            {
+                replayRecoveryGuardField = new FieldDefUser(
+                    "ReplayRecoveryGuard",
+                    new FieldSig(boolType),
+                    FieldAttributes.Public | FieldAttributes.Static);
+                obdDataReader.Fields.Add(replayRecoveryGuardField);
+                Console.WriteLine("  添加字段: ReplayRecoveryGuard");
+            }
+            else
+            {
+                replayRecoveryGuardField = obdDataReader.Fields.First(f => f.Name == "ReplayRecoveryGuard");
+            }
+
+            // 添加初始化方法 / replay guard 方法
             AddInitializeWebSocketMethod(module, obdDataReader, useWsField, wsConnField);
+            AddReplayRecoveryMethods(module, obdDataReader, replayRecoveryGuardField);
+            PatchOnDisconnectDetected(module, obdDataReader, replayRecoveryGuardField);
 
             // 修改 Connect 方法的 IL 代码
             Console.WriteLine("\n  修改 Connection 赋值逻辑...");
@@ -634,6 +652,89 @@ namespace DllPatcher
 
             targetType.Methods.Add(checkMethod);
             Console.WriteLine("  添加方法: IsWebSocketEnabled()");
+        }
+
+        static void AddReplayRecoveryMethods(ModuleDefMD module, TypeDef targetType,
+            FieldDef replayRecoveryGuardField)
+        {
+            var voidType = module.CorLibTypes.Void;
+            var boolType = module.CorLibTypes.Boolean;
+
+            if (!targetType.Methods.Any(m => m.Name == "SetReplayRecoveryGuard" && m.IsStatic && m.Parameters.Count == 1))
+            {
+                var setMethod = new MethodDefUser(
+                    "SetReplayRecoveryGuard",
+                    MethodSig.CreateStatic(voidType, boolType),
+                    MethodAttributes.Public | MethodAttributes.Static);
+
+                setMethod.Body = new CilBody();
+                setMethod.Body.Instructions.Add(OpCodes.Ldarg_0.ToInstruction());
+                setMethod.Body.Instructions.Add(OpCodes.Stsfld.ToInstruction(replayRecoveryGuardField));
+                setMethod.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
+
+                targetType.Methods.Add(setMethod);
+                Console.WriteLine("  添加方法: SetReplayRecoveryGuard(bool)");
+            }
+            else
+            {
+                Console.WriteLine("  SetReplayRecoveryGuard 方法已存在，跳过");
+            }
+
+            if (!targetType.Methods.Any(m => m.Name == "IsReplayRecoveryGuardEnabled" && m.IsStatic && m.Parameters.Count == 0))
+            {
+                var checkMethod = new MethodDefUser(
+                    "IsReplayRecoveryGuardEnabled",
+                    MethodSig.CreateStatic(boolType),
+                    MethodAttributes.Public | MethodAttributes.Static);
+
+                checkMethod.Body = new CilBody();
+                checkMethod.Body.Instructions.Add(OpCodes.Ldsfld.ToInstruction(replayRecoveryGuardField));
+                checkMethod.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
+
+                targetType.Methods.Add(checkMethod);
+                Console.WriteLine("  添加方法: IsReplayRecoveryGuardEnabled()");
+            }
+            else
+            {
+                Console.WriteLine("  IsReplayRecoveryGuardEnabled 方法已存在，跳过");
+            }
+        }
+
+        static void PatchOnDisconnectDetected(ModuleDefMD module, TypeDef targetType,
+            FieldDef replayRecoveryGuardField)
+        {
+            var onDisconnectMethod = targetType.Methods.FirstOrDefault(m => m.Name == "OnDisconnectDetected" && m.HasBody);
+            if (onDisconnectMethod == null)
+            {
+                Console.WriteLine("  警告: 未找到 OnDisconnectDetected 方法，跳过 ReplayRecoveryGuard 注入");
+                return;
+            }
+
+            if (onDisconnectMethod.Body.Instructions.Any(i => i.OpCode == OpCodes.Ldsfld && i.Operand == replayRecoveryGuardField))
+            {
+                Console.WriteLine("  OnDisconnectDetected 已注入 ReplayRecoveryGuard，跳过");
+                return;
+            }
+
+            var mscorlibRef = FindMscorlibReference(module);
+            if (mscorlibRef == null)
+            {
+                Console.WriteLine("  警告: 未找到 mscorlib/netstandard 引用，无法注入 ReplayRecoveryGuard");
+                return;
+            }
+
+            var taskTypeRef = new TypeRefUser(module, "System.Threading.Tasks", "Task", mscorlibRef);
+            var getCompletedTaskMethod = new MemberRefUser(module, "get_CompletedTask",
+                MethodSig.CreateStatic(taskTypeRef.ToTypeSig()), taskTypeRef);
+
+            var body = onDisconnectMethod.Body;
+            var originalFirst = body.Instructions[0];
+            body.Instructions.Insert(0, OpCodes.Ret.ToInstruction());
+            body.Instructions.Insert(0, OpCodes.Call.ToInstruction(getCompletedTaskMethod));
+            body.Instructions.Insert(0, OpCodes.Brfalse_S.ToInstruction(originalFirst));
+            body.Instructions.Insert(0, OpCodes.Ldsfld.ToInstruction(replayRecoveryGuardField));
+
+            Console.WriteLine("  已在 OnDisconnectDetected 入口注入 ReplayRecoveryGuard 短路");
         }
 
         /// <summary>

@@ -68,6 +68,17 @@ export const MessageAction = {
   ProfilesResult: 'profilesResult',
   ECUListResult: 'ecuListResult',
   PIDListResult: 'pidListResult',
+
+  // ===== Burst Snapshot Mode（发送到云端A，request-response）=====
+  PrepareBurstSession: 'prepareBurstSession',
+  CommitBurstSamples: 'commitBurstSamples',
+  AbortBurstSession: 'abortBurstSession',
+
+  // ===== Burst Replay Mode（从云端A接收，异步事件）=====
+  // A 端 replay 正常结束后推送 BurstReplayCompleted（含批量 PID 解析结果）
+  BurstReplayCompleted: 'burstReplayCompleted',
+  // A 端 replay 因 mismatch / 异常失败后推送 BurstReplayFailed（含失败原因）
+  BurstReplayFailed: 'burstReplayFailed',
 } as const;
 
 // 错误码
@@ -80,6 +91,20 @@ export const ErrorCode = {
   SEND_FAILED: 'SEND_FAILED',
   INVALID_SESSION: 'INVALID_SESSION',
   PERMISSION_DENIED: 'PERMISSION_DENIED',
+} as const;
+
+// Burst 阶段的结构化错误码（与 A 端 BurstErrorCode 对应）
+export const BurstErrorCode = {
+  /** 所选 PID 含 lowPriorityRequiredPIDs 动态插队，MVP 不支持 */
+  LowPriorityConflict: 'BURST_LOW_PRIORITY_CONFLICT',
+  /** descriptor.command 与 bypassSet（ping/before/after）重叠 */
+  BypassConflict: 'BURST_BYPASS_CONFLICT',
+  /** SharedSettings.Current 的 UseDefaultInit/Mode01Prefix/TesterPresentCommand 不可读，Prepare fail-closed */
+  PingGenerationFailed: 'BURST_PING_GENERATION_FAILED',
+  /** descriptor 含 skipATSH=true（VwTp20/Header=000），MVP 阶段 ReplayConnection 不支持此类协议，Prepare 前置拒绝 */
+  SkipATSHUnsupported: 'BURST_SKIP_ATSH_UNSUPPORTED',
+  /** descriptor 含 isMultiRequest=true，MVP 阶段 BuildReplayQueue 不支持 OBDMultiRequest 重建，Prepare 前置拒绝 */
+  MultiRequestUnsupported: 'BURST_MULTI_REQUEST_UNSUPPORTED',
 } as const;
 
 // 消息结构

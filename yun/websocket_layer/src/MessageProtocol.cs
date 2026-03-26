@@ -58,6 +58,45 @@ namespace OBDCloud.WebSocket
         public const string ProfilesResult = "profilesResult";
         public const string ECUListResult = "ecuListResult";
         public const string PIDListResult = "pidListResult";
+
+        // Burst Snapshot Mode（B -> A request-response）
+        public const string PrepareBurstSession = "prepareBurstSession";
+        public const string CommitBurstSamples = "commitBurstSamples";
+        public const string AbortBurstSession = "abortBurstSession";
+
+        // Burst Replay Mode（A -> B 异步事件，replay 完成后推送）
+        public const string BurstReplayCompleted = "burstReplayCompleted";
+        public const string BurstReplayFailed = "burstReplayFailed";
+    }
+
+    /// <summary>
+    /// Burst 阶段的结构化错误码
+    /// </summary>
+    public static class BurstErrorCode
+    {
+        /// <summary>所选 PID 包含会在 replay 期间动态插队的 lowPriorityRequiredPIDs，MVP 不支持</summary>
+        public const string LowPriorityConflict = "BURST_LOW_PRIORITY_CONFLICT";
+
+        /// <summary>某个 descriptor.command 与 bypassSet（ping / beforeCommands / afterCommands）冲突</summary>
+        public const string BypassConflict = "BURST_BYPASS_CONFLICT";
+
+        /// <summary>
+        /// SharedSettings.Current 的 UseDefaultInit / Mode01Prefix / TesterPresentCommand
+        /// 其中某个属性不可读，无法安全生成 pingCommandText，Prepare fail-closed
+        /// </summary>
+        public const string PingGenerationFailed = "BURST_PING_GENERATION_FAILED";
+
+        /// <summary>
+        /// descriptor 中存在 skipATSH=true（VwTp20 + Header=="000"）的请求。
+        /// MVP 阶段 ReplayConnection 不支持此类协议的 header 状态同步，Prepare 前置拒绝。
+        /// </summary>
+        public const string SkipATSHUnsupported = "BURST_SKIP_ATSH_UNSUPPORTED";
+
+        /// <summary>
+        /// descriptor 中存在 isMultiRequest=true 的请求。
+        /// MVP 阶段 BuildReplayQueue 不支持 OBDMultiRequest 重建，Prepare 前置拒绝。
+        /// </summary>
+        public const string MultiRequestUnsupported = "BURST_MULTI_REQUEST_UNSUPPORTED";
     }
 
     /// <summary>

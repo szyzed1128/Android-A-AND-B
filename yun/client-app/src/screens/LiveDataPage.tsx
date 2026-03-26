@@ -159,11 +159,13 @@ export default function LiveDataPage() {
   const currentPageData = pidList.slice(startIndex, endIndex);
   const currentPageIndices = currentPageData.map(p => p.index);
 
-  // 切换页面时更新读取的 PID
+  // 切换页面时更新读取的 PID（200ms 防抖，合并快速翻页，避免短时多次发送）
   useEffect(() => {
-    if (reading && currentPageIndices.length > 0) {
+    if (!reading || currentPageIndices.length === 0) return;
+    const timer = setTimeout(() => {
       startReadPIDs(currentPageIndices);
-    }
+    }, 200);
+    return () => clearTimeout(timer);
   }, [currentPage, reading]);
 
   // 开始/停止读取
@@ -180,6 +182,7 @@ export default function LiveDataPage() {
   // 上一页
   const handlePrevPage = () => {
     if (currentPage > 0) {
+      if (reading) stopReadPIDs();  // 先停止当前页，useEffect 200ms 后再 start 新页
       setCurrentPage(prev => prev - 1);
     }
   };
@@ -187,6 +190,7 @@ export default function LiveDataPage() {
   // 下一页
   const handleNextPage = () => {
     if (currentPage < totalPages - 1) {
+      if (reading) stopReadPIDs();  // 先停止当前页，useEffect 200ms 后再 start 新页
       setCurrentPage(prev => prev + 1);
     }
   };

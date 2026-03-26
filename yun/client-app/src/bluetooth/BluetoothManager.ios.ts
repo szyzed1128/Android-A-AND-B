@@ -66,6 +66,15 @@ if (NativeModules.BleManager) {
 // 连接协议类型
 export type BluetoothProtocol = 'classic' | 'ble' | 'mfi';
 
+// [FLOW] 全链路追踪日志工具函数
+function flowLog(direction: string, description: string, detail?: string): void {
+  const d = new Date();
+  const ts = `[${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}]`;
+  const dir = direction.padEnd(10);
+  const detailStr = detail ? ` | ${String(detail).substring(0, 120)}` : '';
+  console.log(`[FLOW] ${ts} ${dir} | ${description}${detailStr}`);
+}
+
 // 设备信息（扩展）
 export interface ExtendedBTDeviceInfo extends BTDeviceInfo {
   protocol: BluetoothProtocol;
@@ -296,6 +305,7 @@ class BLEAdapter {
             const decoded = this.base64ToString(base64);
             const recvTs = new Date().toISOString().slice(11, 23);
             console.log(`[BLE] ${recvTs} ◀ ELM327响应: [${decoded.substring(0, 160).replace(/\r/g, '\\r').replace(/\n/g, '\\n')}] (len=${decoded.length})`);
+            flowLog('ELM>B', '(BLE)收到数据', decoded.substring(0, 60).replace(/\r/g, '\\r').replace(/\n/g, '\\n'));
 
             this.eventHandler.onDataReceived?.(this.sessionId, base64);
           }
@@ -333,6 +343,7 @@ class BLEAdapter {
     const decoded = this.base64ToString(base64Data);
     const tsStr = new Date().toISOString().slice(11, 23);
     console.log(`[BLE] ${tsStr} ▶ AT命令: [${decoded.replace(/\r/g, '\\r').replace(/\n/g, '\\n')}] (len=${decoded.length})`);
+    flowLog('B>ELM', '(BLE)发送命令', decoded.replace(/\r/g, '\\r').replace(/\n/g, '\\n'));
 
     // BLE MTU 限制，通常为 20 字节，分块发送
     const MTU = 20;
@@ -1180,6 +1191,7 @@ class MFiAdapter {
         throw new Error('MFi会话已关闭或已切换');
       }
       await this.nativeModule.send(sessionSnapshot, base64Data);
+      flowLog('B>ELM', '(MFi)发送命令', preview);
       this.lastActivityAt = Date.now();
       this.txPackets += 1;
       this.log('send', 'sent', {
@@ -1404,6 +1416,7 @@ class MFiAdapter {
       preview: this.previewBuffer(response),
       fullText: this.formatBufferForLog(response),
     });
+    flowLog('ELM>B', '(MFi)收到数据', this.previewBuffer(response));
     this.eventHandler.onDataReceived?.(this.sessionId, response.toString('base64'));
   }
 

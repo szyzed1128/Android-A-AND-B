@@ -26,10 +26,14 @@ dotnet build "${WS_PROJECT}" -c Release
 printf "\nBuilding WebSocketIOBDConnectionProxy with Mono mcs...\n"
 mcs -target:library -nostdlib \
     -r:"${ASSEMBLIES_DIR}/mscorlib.dll" \
+    -r:"${ASSEMBLIES_DIR}/netstandard.dll" \
     -r:"${ASSEMBLIES_DIR}/CarScannerXamarinForms.dll" \
     -r:"${ASSEMBLIES_DIR}/System.dll" \
+    -r:"${ASSEMBLIES_DIR}/System.Core.dll" \
+    -r:"${ASSEMBLIES_DIR}/Newtonsoft.Json.dll" \
     -out:"${PROXY_DLL}" \
-    "${YUN_DIR}/websocket_layer/src/WebSocketIOBDConnectionProxy.cs"
+    "${YUN_DIR}/websocket_layer/src/WebSocketIOBDConnectionProxy.cs" \
+    "${YUN_DIR}/websocket_layer/src/ReplayConnection.cs"
 
 printf "Building injector...\n"
 dotnet build "${INJECTOR_PROJECT}" -c Release

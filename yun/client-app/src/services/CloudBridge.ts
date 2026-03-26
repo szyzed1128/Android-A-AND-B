@@ -5,7 +5,7 @@
  * 替代原 JSBridge，通过 WebSocket 发送诊断命令并接收结果
  */
 
-import { MessageType, MessageAction, WSMessage } from '../protocol/MessageProtocol';
+import { MessageType, MessageAction, WSMessage, BurstErrorCode } from '../protocol/MessageProtocol';
 
 // 回调类型定义
 export interface DTCCallbacks {
@@ -74,6 +74,18 @@ interface PendingRequest {
   startTime: number;
 }
 
+interface BurstReplayWaiter {
+  resolve: (value: { results: any[]; totalCycles: number }) => void;
+  reject: (error: any) => void;
+  timeout: ReturnType<typeof setTimeout>;
+  abortPoll?: ReturnType<typeof setInterval>;
+}
+
+interface BurstReplayTerminalEvent {
+  kind: 'completed' | 'failed';
+  data: any;
+}
+
 // 事件监听器类型
 type EventListener = (data: any) => void;
 
@@ -84,14 +96,30 @@ class CloudBridgeService {
   private ws: WebSocket | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private eventListeners: Map<string, EventListener[]> = new Map();
+  private burstReplayWaiters: Map<string, BurstReplayWaiter> = new Map();
+  private burstReplayTerminalEvents: Map<string, BurstReplayTerminalEvent> = new Map();
+  private ignoredReplayTerminalSessions: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private isConnected: boolean = false;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
   private requestTimeout: number = 30000; // 30 seconds
   private connectionListeners: Set<(connected: boolean) => void> = new Set();
   private obdStatusListeners: Set<(status: string) => void> = new Set();
-  // 仅允许在“用户主动断开”窗口内响应 A 端的断开请求，避免状态抖动导致误断开
+  // 仅允许在”用户主动断开”窗口内响应 A 端的断开请求，避免状态抖动导致误断开
   private allowRemoteDisconnectUntil: number = 0;
+  // 新连接启动后，在此时间窗口内忽略滞后的 OBDStatusChanged: Disconnected。
+  // 旧 disconnectAsync 在 fire-and-forget 后约 6 秒才完成，会触发 A 端状态轮询发出 Disconnected。
+  private ignoreDisconnectedUntil: number = 0;
+
+  // Burst Snapshot Mode：B 端转发抑制标志
+  // true 时 useBluetoothBridge 不调用 sendOBDData
+  public burstModeActive: boolean = false;
+
+  // Burst Replay Mode：A 端 replay 完成/失败事件回调
+  // useBurstSession.ts 通过 waitForReplayResult(sessionId) 按会话等待终态事件，
+  // 其余消费方仍可直接订阅这两个公共回调。
+  public onBurstReplayCompleted?: (data: any) => void;
+  public onBurstReplayFailed?: (data: any) => void;
 
   // 当前蓝牙会话ID
   private currentSessionId: string | null = null;
@@ -104,6 +132,11 @@ class CloudBridgeService {
   private ts(): string {
     const d = new Date();
     return `[${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}]`;
+  }
+  private flowLog(direction: string, description: string, detail?: string): void {
+    const dir = direction.padEnd(10);
+    const detailStr = detail ? ` | ${String(detail).substring(0, 120)}` : '';
+    console.log(`[FLOW] ${this.ts()} ${dir} | ${description}${detailStr}`);
   }
   private decodeB64(b64: string, maxLen = 120): string {
     try {
@@ -158,6 +191,8 @@ class CloudBridgeService {
           this.isConnected = false;
           this.emitConnectionChanged(false);
           this.rejectAllPending('Connection closed');
+          this.rejectAllReplayWaiters('Connection closed');
+          this.burstReplayTerminalEvents.clear();
         };
 
         this.ws.onerror = (error) => {
@@ -186,6 +221,8 @@ class CloudBridgeService {
     }
     this.isConnected = false;
     this.rejectAllPending('Disconnected');
+    this.rejectAllReplayWaiters('Disconnected');
+    this.burstReplayTerminalEvents.clear();
   }
 
   addConnectionListener(listener: (connected: boolean) => void): () => void {
@@ -344,12 +381,119 @@ class CloudBridgeService {
     }
   }
 
+  // ===== Burst Snapshot Mode 命令 =====
+
+  /**
+   * 请求 A 端准备 Burst Session
+   * 返回 { sessionId, descriptors, pingCommandText } 成功
+   * 失败时 error.errorCode 为 BurstErrorCode.LowPriorityConflict 或 BurstErrorCode.BypassConflict，
+   * error.responseData 含 conflictingPids[] 或 conflictDetails[] 结构化信息
+   */
+  async prepareBurstSession(pidIndices: number[]): Promise<any> {
+    return await this.sendRequest(MessageAction.PrepareBurstSession, { pidIndices }, 30000);
+  }
+
+  /**
+   * 提交 Burst 采样数据给 A 端，并在 final chunk 时触发 replay
+   * 非 final 返回累计 ACK；final 返回 { sessionId, replayStarted }
+   */
+  async commitBurstSamples(data: {
+    sessionId: string;
+    samples: any[];
+    chunkIndex: number;
+    totalChunks: number;
+    isFinal: boolean;
+    totalCycles?: number;
+  }): Promise<any> {
+    return await this.sendRequest(MessageAction.CommitBurstSamples, data, 60000);
+  }
+
+  /**
+   * 中止 Burst Session
+   */
+  async abortBurstSession(data: { sessionId: string; reason?: string }): Promise<any> {
+    return await this.sendRequest(MessageAction.AbortBurstSession, data, 10000);
+  }
+
+  async waitForReplayResult(
+    sessionId: string,
+    abortSignal?: { aborted?: boolean } | null,
+  ): Promise<{ results: any[]; totalCycles: number }> {
+    if (!sessionId) {
+      throw new Error('sessionId 为空');
+    }
+
+    if (abortSignal?.aborted) {
+      this.markReplayResultIgnored(sessionId, 'aborted-before-wait');
+      throw new Error('用户取消');
+    }
+
+    const terminalEvent = this.burstReplayTerminalEvents.get(sessionId);
+    if (terminalEvent) {
+      this.burstReplayTerminalEvents.delete(sessionId);
+      if (terminalEvent.kind === 'completed') {
+        console.log(`[CloudBridge] waitForReplayResult 命中缓存完成 sessionId=${sessionId}`);
+        return this.normalizeReplayCompletedData(terminalEvent.data);
+      }
+
+      console.warn(`[CloudBridge] waitForReplayResult 命中缓存失败 sessionId=${sessionId}`);
+      const err = new Error(terminalEvent.data?.reason || 'Burst Replay 失败') as any;
+      err.errorCode = 'BURST_REPLAY_FAILED';
+      err.responseData = terminalEvent.data;
+      throw err;
+    }
+
+    this.clearIgnoredReplaySession(sessionId);
+
+    return await new Promise((resolve, reject) => {
+      const existing = this.burstReplayWaiters.get(sessionId);
+      if (existing) {
+        console.warn(`[CloudBridge] waitForReplayResult 覆盖旧等待器 sessionId=${sessionId}`);
+        this.clearReplayWaiter(sessionId, 'replaced');
+        try { existing.reject(new Error('已有同 sessionId 的 replay 等待器')); } catch { }
+      }
+
+      const timeout = setTimeout(() => {
+        console.warn(`[CloudBridge] waitForReplayResult 超时 sessionId=${sessionId}`);
+        this.clearReplayWaiter(sessionId, 'timeout');
+        this.markReplayResultIgnored(sessionId, 'timeout');
+        reject(new Error('等待 Burst Replay 结果超时'));
+      }, 5 * 60 * 1000);
+
+      const waiter: BurstReplayWaiter = {
+        resolve,
+        reject,
+        timeout,
+      };
+
+      if (abortSignal) {
+        waiter.abortPoll = setInterval(() => {
+          if (abortSignal.aborted) {
+            console.warn(`[CloudBridge] waitForReplayResult 用户取消 sessionId=${sessionId}`);
+            this.clearReplayWaiter(sessionId, 'abort');
+            this.markReplayResultIgnored(sessionId, 'abort');
+            reject(new Error('用户取消'));
+          }
+        }, 100);
+      }
+
+      this.burstReplayWaiters.set(sessionId, waiter);
+      console.log(`[CloudBridge] waitForReplayResult 注册 sessionId=${sessionId}`);
+    });
+  }
+
   // ===== ELM327 连接命令 =====
 
   /**
    * 连接 ELM327 设备（通过云端）
    */
   async connectOBD(protocol: string, address: string, sessionId?: string): Promise<void> {
+    // 关闭旧断开窗口：防止前一次 disconnectAsync 的滞后 Disconnect 动作断掉新会话
+    this.allowRemoteDisconnectUntil = 0;
+    // 开启"忽略滞后 Disconnected"窗口（10s）：
+    // A 端 fire-and-forget 的 disconnectAsync 约 6s 后完成，完成时 A 端状态轮询会发出
+    // OBDStatusChanged: Disconnected，若不过滤会打断正在进行的新连接流程。
+    this.ignoreDisconnectedUntil = Date.now() + 10000;
     await this.sendRequest(MessageAction.OBDConnect, { protocol, address, sessionId });
   }
 
@@ -357,7 +501,9 @@ class CloudBridgeService {
    * 断开 ELM327 设备
    */
   async disconnectOBD(): Promise<void> {
-    // 标记“允许远端断开”的短窗口（用户主动断开）
+    // 用户主动断开：关闭”忽略滞后 Disconnected”窗口，允许真实的 Disconnected 状态通过
+    this.ignoreDisconnectedUntil = 0;
+    // 标记”允许远端断开”的短窗口（用户主动断开）
     this.allowRemoteDisconnectUntil = Date.now() + 15000;
     await this.sendRequest(MessageAction.OBDDisconnect);
   }
@@ -391,6 +537,7 @@ class CloudBridgeService {
       hasPrompt = full.includes('>');
     } catch {}
     console.log(`[CloudBridge] ${this.ts()} ◀◀ ELM327→B→A session=${sessionId} has_prompt=${hasPrompt} (b64len=${base64Data?.length || 0}): [${preview}]`);
+    this.flowLog('B>A', 'ELM数据转发', `session=${sessionId} len=${base64Data.length} has_prompt=${hasPrompt}`);
     this.sendMessage(message);
   }
 
@@ -462,7 +609,7 @@ class CloudBridgeService {
   /**
    * 发送请求并等待响应
    */
-  private sendRequest(action: string, data?: any): Promise<any> {
+  private sendRequest(action: string, data?: any, timeoutMs?: number): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this.isConnected || !this.ws) {
         reject(new Error('Not connected to cloud'));
@@ -470,11 +617,12 @@ class CloudBridgeService {
       }
 
       const requestId = this.generateId();
+      const actualTimeout = timeoutMs ?? this.requestTimeout;
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(requestId);
-        console.warn(`[CloudBridge] TIMEOUT action=${action} req=${requestId} after ${this.requestTimeout}ms`);
+        console.warn(`[CloudBridge] TIMEOUT action=${action} req=${requestId} after ${actualTimeout}ms`);
         reject(new Error('Request timeout'));
-      }, this.requestTimeout);
+      }, actualTimeout);
 
       this.pendingRequests.set(requestId, {
         resolve,
@@ -492,6 +640,7 @@ class CloudBridgeService {
         timestamp: Date.now(),
       };
 
+      this.flowLog('B>A', `发出请求: ${action}`);
       this.sendMessage(message);
     });
   }
@@ -556,7 +705,11 @@ class CloudBridgeService {
           if (message.success) {
             pending.resolve(message.data);
           } else {
-            pending.reject(new Error(message.error || 'Request failed'));
+            // 附加 errorCode 和 responseData，供调用方区分结构化错误（如 Burst 冲突）
+            const err = new Error(message.error || 'Request failed') as any;
+            err.errorCode = message.error;
+            err.responseData = message.data;
+            pending.reject(err);
           }
         }
         return;
@@ -765,11 +918,24 @@ class CloudBridgeService {
       case MessageAction.OBDStatusChanged: {
         const newStatus = message.data?.status ?? message.data?.Status ?? message.data;
         console.log('[CloudBridge] OBDStatusChanged:', newStatus, '(当前:', this.currentOBDStatus, ')');
+        this.flowLog('B<A', `OBD状态: ${newStatus}`);
 
         // 过滤延迟到达的 Disconnecting（已经 Disconnected 后不再接受 Disconnecting）
         if (this.currentOBDStatus === 'Disconnected' && newStatus === 'Disconnecting') {
           console.log(`[CloudBridge] 过滤延迟的 Disconnecting（当前已 Disconnected）`);
           break;
+        }
+
+        // 过滤新连接启动后滞后到达的 Disconnected：
+        // A 端 disconnectAsync 为 fire-and-forget，约 6s 后完成，完成时状态轮询会发出
+        // OBDStatusChanged: Disconnected，会打断正在进行的新连接流程。
+        if (newStatus === 'Disconnected' && Date.now() < this.ignoreDisconnectedUntil) {
+          console.log(`[CloudBridge] 过滤滞后的 Disconnected（新连接窗口内，忽略旧 disconnectAsync 尾声）`);
+          break;
+        }
+        // 一旦收到真正的 Disconnected（窗口外）或连接成功，清除忽略窗口
+        if (newStatus === 'Disconnected' || newStatus === 'ConnectedToECU') {
+          this.ignoreDisconnectedUntil = 0;
         }
 
         // 若当前已完全连接到 ECU，过滤掉诊断操作触发的中间过渡状态
@@ -792,6 +958,7 @@ class CloudBridgeService {
           const idx = normalized.originalIndex ?? normalized.index;
           const val = normalized.Value;
           console.log(`[CloudBridge] PIDValueChanged idx=${idx} NM=${normalized.NM} val=${typeof val === 'object' ? '[object]' : val}`);
+          this.flowLog('B<A', `PID值变化: ${normalized.NM}=${typeof val === 'object' ? '[obj]' : val}`);
           this.onPIDValueChanged?.(normalized);
         }
         break;
@@ -806,6 +973,7 @@ class CloudBridgeService {
           try { parsed = JSON.parse(parsed); } catch {}
         }
         console.log(`[CloudBridge] DTCResult received (${Array.isArray(parsed) ? 'array' : typeof parsed})`);
+        this.flowLog('B<A', `DTC结果收到`, `count=${Array.isArray(parsed) ? parsed.length : typeof parsed}`);
         const indices = this.pendingMeta.get('dtc')?.indices as number[] | undefined;
         if (callbacks?.onProgress && Array.isArray(parsed)) {
           if (Array.isArray(parsed[0])) {
@@ -847,6 +1015,7 @@ class CloudBridgeService {
         const callbacks = this.callbacks.get('ecuInfo');
         const parsed = this.parseResult(message.data, message.data as any);
         console.log(`[CloudBridge] ECUInfoResult received (${Array.isArray(parsed) ? 'array' : typeof parsed})`);
+        this.flowLog('B<A', 'ECU信息结果收到');
         const indices = this.pendingMeta.get('ecuInfo')?.indices as number[] | undefined;
         if (callbacks?.onProgress) {
           if (Array.isArray(parsed) && Array.isArray(parsed[0])) {
@@ -873,6 +1042,7 @@ class CloudBridgeService {
       case MessageAction.FreezeFrameResult: {
         const parsed = this.parseResult(message.data, message.data);
         console.log(`[CloudBridge] FreezeFrameResult received (${Array.isArray(parsed) ? 'array' : typeof parsed})`);
+        this.flowLog('B<A', '冻结帧结果收到');
         this.triggerCallbacks('freezeFrame', 'onSuccess', this.normalizeFreezeFrame(parsed));
         this.triggerCallbacks('freezeFrame', 'onFinish');
         this.pendingMeta.delete('freezeFrame');
@@ -908,7 +1078,132 @@ class CloudBridgeService {
       }
 
       default:
+        if (message.action === MessageAction.BurstReplayCompleted) {
+          console.log('[CloudBridge] BurstReplayCompleted event received');
+          this.flowLog('B<A', 'Burst回放完成');
+          this.handleReplayCompletedEvent(message.data);
+          this.onBurstReplayCompleted?.(message.data);
+          break;
+        }
+        if (message.action === MessageAction.BurstReplayFailed) {
+          console.warn('[CloudBridge] BurstReplayFailed event received', message.data);
+          this.handleReplayFailedEvent(message.data);
+          this.onBurstReplayFailed?.(message.data);
+          break;
+        }
         console.log('[CloudBridge] Unhandled event:', message.action);
+    }
+  }
+
+  private handleReplayCompletedEvent(data: any): void {
+    const sessionId = data?.sessionId;
+    if (!sessionId) return;
+
+    const waiter = this.burstReplayWaiters.get(sessionId);
+    if (waiter) {
+      this.clearReplayWaiter(sessionId, 'completed');
+      waiter.resolve(this.normalizeReplayCompletedData(data));
+      console.log(`[CloudBridge] BurstReplayCompleted resolve waiter sessionId=${sessionId}`);
+      return;
+    }
+
+    if (this.consumeIgnoredReplaySession(sessionId)) {
+      console.log(`[CloudBridge] BurstReplayCompleted drop ignored sessionId=${sessionId}`);
+      this.burstReplayTerminalEvents.delete(sessionId);
+      return;
+    }
+
+    this.burstReplayTerminalEvents.set(sessionId, { kind: 'completed', data });
+    console.log(`[CloudBridge] BurstReplayCompleted cached sessionId=${sessionId}`);
+  }
+
+  private handleReplayFailedEvent(data: any): void {
+    const sessionId = data?.sessionId;
+    if (!sessionId) return;
+
+    const waiter = this.burstReplayWaiters.get(sessionId);
+    if (waiter) {
+      this.clearReplayWaiter(sessionId, 'failed');
+      const err = new Error(data?.reason || 'Burst Replay 失败') as any;
+      err.errorCode = 'BURST_REPLAY_FAILED';
+      err.responseData = data;
+      waiter.reject(err);
+      console.warn(`[CloudBridge] BurstReplayFailed reject waiter sessionId=${sessionId}`);
+      return;
+    }
+
+    if (this.consumeIgnoredReplaySession(sessionId)) {
+      console.warn(`[CloudBridge] BurstReplayFailed drop ignored sessionId=${sessionId}`);
+      this.burstReplayTerminalEvents.delete(sessionId);
+      return;
+    }
+
+    this.burstReplayTerminalEvents.set(sessionId, { kind: 'failed', data });
+    console.warn(`[CloudBridge] BurstReplayFailed cached sessionId=${sessionId}`);
+  }
+
+  private normalizeReplayCompletedData(data: any): { results: any[]; totalCycles: number } {
+    const results = Array.isArray(data?.results) ? data.results : [];
+    const totalCycles = typeof data?.totalCycles === 'number' ? data.totalCycles : 0;
+    return { results, totalCycles };
+  }
+
+  private clearReplayWaiter(sessionId: string, reason: string = 'unknown'): void {
+    const waiter = this.burstReplayWaiters.get(sessionId);
+    if (!waiter) return;
+
+    clearTimeout(waiter.timeout);
+    if (waiter.abortPoll) clearInterval(waiter.abortPoll);
+    this.burstReplayWaiters.delete(sessionId);
+    console.log(`[CloudBridge] clearReplayWaiter sessionId=${sessionId} reason=${reason}`);
+  }
+
+  private clearIgnoredReplaySession(sessionId: string): void {
+    const cleanup = this.ignoredReplayTerminalSessions.get(sessionId);
+    if (!cleanup) return;
+
+    clearTimeout(cleanup);
+    this.ignoredReplayTerminalSessions.delete(sessionId);
+    console.log(`[CloudBridge] clearIgnoredReplaySession sessionId=${sessionId}`);
+  }
+
+  private markReplayResultIgnored(sessionId: string, reason: string): void {
+    if (!sessionId) return;
+
+    this.clearIgnoredReplaySession(sessionId);
+    this.burstReplayTerminalEvents.delete(sessionId);
+    const cleanup = setTimeout(() => {
+      this.ignoredReplayTerminalSessions.delete(sessionId);
+      console.log(`[CloudBridge] ignored replay session TTL expired sessionId=${sessionId}`);
+    }, 10 * 60 * 1000);
+    this.ignoredReplayTerminalSessions.set(sessionId, cleanup);
+    console.log(`[CloudBridge] markReplayResultIgnored sessionId=${sessionId} reason=${reason}`);
+  }
+
+  private consumeIgnoredReplaySession(sessionId: string): boolean {
+    const cleanup = this.ignoredReplayTerminalSessions.get(sessionId);
+    if (!cleanup) return false;
+
+    clearTimeout(cleanup);
+    this.ignoredReplayTerminalSessions.delete(sessionId);
+    return true;
+  }
+
+  private rejectAllReplayWaiters(reason: string): void {
+    const pending = Array.from(this.burstReplayWaiters.entries());
+    if (pending.length > 0) {
+      console.warn(`[CloudBridge] rejectAllReplayWaiters count=${pending.length} reason=${reason}`);
+    }
+
+    for (const [sessionId, waiter] of pending) {
+      clearTimeout(waiter.timeout);
+      if (waiter.abortPoll) clearInterval(waiter.abortPoll);
+      try {
+        waiter.reject(new Error(reason));
+      } catch {}
+      this.burstReplayWaiters.delete(sessionId);
+      this.markReplayResultIgnored(sessionId, `rejectAll:${reason}`);
+      console.warn(`[CloudBridge] rejectAllReplayWaiters rejected sessionId=${sessionId}`);
     }
   }
 

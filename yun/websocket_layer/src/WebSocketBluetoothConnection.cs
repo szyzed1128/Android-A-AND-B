@@ -101,6 +101,18 @@ namespace OBDCloud.WebSocket
         private bool _diagPromptReceived;
         private int _diagBytesReceived;
 
+        // Burst Snapshot Mode：防御守卫 + 停稳观测
+        private volatile bool _burstModeActive;
+        private DateTime _lastIOActivityUtc = DateTime.MinValue;
+
+        // Replay 恢复保护：避免 replay 启停窗口误触发真实断开
+        private volatile bool _replayRecoveryGuardActive;
+        private DateTime _replayRecoveryGuardSinceUtc = DateTime.MinValue;
+
+        // 连接 hint：记住真实连接协议，避免后续 opaque host_port 被误判
+        private string _rememberedProtocol;
+        private string _rememberedAddress;
+
         #region IOBDConnection 接口属性
 
         /// <summary>
@@ -223,7 +235,9 @@ namespace OBDCloud.WebSocket
 
             // 调试：显示发送的命令（带序号和时间戳）
             var wSeq = System.Threading.Interlocked.Increment(ref _writeSeq);
+            _lastIOActivityUtc = DateTime.UtcNow;
             Log($"[WebSocketBT] {T()} ▶▶ W#{wSeq} AT命令: [{cmdText}] (len={data.Length})");
+            OBDCloudManager.FlowLog("A>B>ELM", "发送AT命令", cmdText);
 
             // ---- 诊断：打印上条 AT 命令的完成情况，用于识别 ELMStuck 根因 ----
             // 有数据=False → 纯超时（ReadDataTimeoutException）
@@ -315,6 +329,15 @@ namespace OBDCloud.WebSocket
         /// </summary>
         public async Task DisconnectAsync()
         {
+            if (_replayRecoveryGuardActive)
+            {
+                var ageMs = _replayRecoveryGuardSinceUtc == DateTime.MinValue
+                    ? -1
+                    : (DateTime.UtcNow - _replayRecoveryGuardSinceUtc).TotalMilliseconds;
+                Log($"[WebSocketBT] replay 恢复窗口内忽略 DisconnectAsync ageMs={ageMs:0}");
+                return;
+            }
+
             if (!_isConnected)
                 return;
 
@@ -367,9 +390,82 @@ namespace OBDCloud.WebSocket
         }
 
         /// <summary>
+        /// 记住当前真实连接的协议与地址，供后续 OBDDataReader 传入 opaque host_port 时回退使用。
+        /// </summary>
+        public void RememberConnectionHint(string protocol, string address)
+        {
+            _rememberedProtocol = NormalizeProtocolHint(protocol);
+            _rememberedAddress = address;
+            Log($"[WebSocketBT] 记住连接 hint: protocol={_rememberedProtocol ?? "(空)"} address={address ?? "(空)"}");
+        }
+
+        /// <summary>
+        /// 强制重置内部状态（不发送任何 WebSocket 消息）。
+        /// 在 HandleObdDisconnectAsync 触发 disconnectAsync 之前调用：
+        /// 确保旧 disconnectAsync 异步调用 Disconect() 时发现 _isConnected=false 而提前 return，
+        /// 避免 finally 块清掉后续 BindSession 绑定的新 session。
+        /// </summary>
+        public void ForceReset()
+        {
+            _isConnected = false;
+            _sessionId = null;
+            while (_receiveBuffer.TryDequeue(out _)) { }
+            Log("[WebSocketBT] ForceReset 完成（_isConnected=false, _sessionId=null）");
+        }
+
+        /// <summary>
+        /// 开启/关闭 replay 恢复保护，防止恢复窗口误触发真实 disconnect。
+        /// </summary>
+        public void SetReplayRecoveryGuard(bool active)
+        {
+            _replayRecoveryGuardActive = active;
+            _replayRecoveryGuardSinceUtc = active ? DateTime.UtcNow : DateTime.MinValue;
+            Log($"[WebSocketBT] SetReplayRecoveryGuard({active})");
+        }
+
+        /// <summary>
         /// 当前会话ID
         /// </summary>
         public string SessionId => _sessionId;
+
+        /// <summary>
+        /// 暴露 readSeq / writeSeq，供 Burst 停稳轮询使用
+        /// </summary>
+        public int ReadSeq => _readSeq;
+        public int WriteSeq => _writeSeq;
+
+        /// <summary>
+        /// 开启/关闭 Burst 模式守卫。开启后 OnBridgeMessageReceived 丢弃 OBDData。
+        /// </summary>
+        public void SetBurstMode(bool active)
+        {
+            _burstModeActive = active;
+            Log($"[WebSocketBT] SetBurstMode({active})");
+        }
+
+        public bool IsBurstMode => _burstModeActive;
+
+        /// <summary>
+        /// 判断最近 idleMs 毫秒内是否无 AT 级收发活动（WriteBytesAsync / OnBridgeMessageReceived 入队）
+        /// </summary>
+        public bool IsQuiesced(int idleMs)
+        {
+            if (_lastIOActivityUtc == DateTime.MinValue) return true;
+            return (DateTime.UtcNow - _lastIOActivityUtc).TotalMilliseconds > idleMs;
+        }
+
+        /// <summary>
+        /// 清空接收缓冲区和序号（进入/退出 Burst 时调用）
+        /// </summary>
+        public void ClearReceiveBuffer()
+        {
+            while (_receiveBuffer.TryDequeue(out _)) { }
+            _emptyReadCount = 0;
+            _emptyReadTotal = 0;
+            Interlocked.Exchange(ref _writeSeq, 0);
+            Interlocked.Exchange(ref _readSeq, 0);
+            Log("[WebSocketBT] ClearReceiveBuffer 完成");
+        }
 
         #endregion
 
@@ -385,6 +481,23 @@ namespace OBDCloud.WebSocket
         /// </summary>
         private string DetectProtocol(string address)
         {
+            var rememberedProtocol = NormalizeProtocolHint(_rememberedProtocol);
+            if (!string.IsNullOrWhiteSpace(rememberedProtocol))
+            {
+                if (!string.IsNullOrWhiteSpace(_rememberedAddress)
+                    && string.Equals(_rememberedAddress, address, StringComparison.OrdinalIgnoreCase))
+                {
+                    Log($"[WebSocketBT] DetectProtocol 使用已记忆协议: {rememberedProtocol} (address match)");
+                    return rememberedProtocol;
+                }
+
+                if (LooksLikeOpaqueHostPort(address))
+                {
+                    Log($"[WebSocketBT] DetectProtocol 使用已记忆协议: {rememberedProtocol} (opaque address={address})");
+                    return rememberedProtocol;
+                }
+            }
+
             if (string.IsNullOrWhiteSpace(address))
                 return "ble";
 
@@ -404,6 +517,44 @@ namespace OBDCloud.WebSocket
             return "classic";
         }
 
+        private static string NormalizeProtocolHint(string protocol)
+        {
+            if (string.IsNullOrWhiteSpace(protocol))
+                return null;
+
+            switch (protocol.Trim().ToLowerInvariant())
+            {
+                case "bt":
+                case "bluetooth":
+                case "classic":
+                    return "classic";
+                case "ble":
+                case "bluetoothle":
+                    return "ble";
+                case "wifi":
+                    return "wifi";
+                default:
+                    return protocol.Trim().ToLowerInvariant();
+            }
+        }
+
+        private static bool LooksLikeOpaqueHostPort(string address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+                return false;
+
+            if (address.Contains(".") && address.Contains(":"))
+                return false;
+
+            if (address.Length == 17 && address.Split(':').Length == 6)
+                return false;
+
+            if (Guid.TryParse(address, out _))
+                return false;
+
+            return true;
+        }
+
         /// <summary>
         /// 处理来自手机B的消息
         /// </summary>
@@ -415,6 +566,10 @@ namespace OBDCloud.WebSocket
 
             if (message.Action == MessageAction.OBDData)
             {
+                // Burst 守卫：Burst 期间丢弃来自 B 端采样的 OBDData，防止脏数据入队
+                if (_burstModeActive)
+                    return;
+
                 try
                 {
                     byte[] data = null;
@@ -466,7 +621,9 @@ namespace OBDCloud.WebSocket
                         try { preview = Encoding.ASCII.GetString(data).Replace("\r", "\\r").Replace("\n", "\\n"); } catch { }
                         if (preview.Length > 100) preview = preview.Substring(0, 100) + "...";
                         Log($"[WebSocketBT] {T()} ← ELM327→B→A (len={data.Length}): [{preview}]");
+                        OBDCloudManager.FlowLog("ELM>B>A", "收到ELM数据", $"hasPrompt={_diagPromptReceived} preview={preview}");
                         // 放入接收缓冲区（OBDDataReader 轮询 ReadBytesAsync 会取走）
+                        _lastIOActivityUtc = DateTime.UtcNow;
                         _receiveBuffer.Enqueue((data, DateTime.UtcNow));
                         Log($"[WebSocketBT] {T()} ← 数据已入队 (队列≈{_receiveBuffer.Count}, 总W={_writeSeq} 总R={_readSeq})");
                     }
@@ -478,7 +635,25 @@ namespace OBDCloud.WebSocket
             }
             else if (message.Action == MessageAction.ConnectionLost)
             {
-                Log($"[WebSocketBT] 连接丢失");
+                var reason = "Unknown";
+                try
+                {
+                    var errorData = message.GetData<dynamic>();
+                    reason = errorData?.reason?.ToString() ?? "Unknown";
+                }
+                catch { }
+
+                if (_replayRecoveryGuardActive
+                    && string.Equals(reason, "closed_by_js", StringComparison.OrdinalIgnoreCase))
+                {
+                    var ageMs = _replayRecoveryGuardSinceUtc == DateTime.MinValue
+                        ? -1
+                        : (DateTime.UtcNow - _replayRecoveryGuardSinceUtc).TotalMilliseconds;
+                    Log($"[WebSocketBT] replay 恢复窗口内忽略 ConnectionLost reason={reason} ageMs={ageMs:0}");
+                    return;
+                }
+
+                Log($"[WebSocketBT] 连接丢失 reason={reason}");
                 _isConnected = false;
                 _sessionId = null;
             }
