@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Threading;
@@ -74,9 +75,11 @@ namespace OBDCloud.WebSocket
         #endregion
 
         private readonly IWebSocketBridge _bridge;
+        private readonly object _sessionStateLock = new object();
         private string _sessionId;
         private bool _isConnected;
         private bool _disposed;
+        private readonly List<string> _queuedDisconnectSessions = new List<string>();
 
         // 数据接收缓冲区（模拟原始蓝牙的数据接收）
         // 存储 (数据, 入队时间戳) 用于计算延迟
@@ -338,14 +341,60 @@ namespace OBDCloud.WebSocket
                 return;
             }
 
-            if (!_isConnected)
+            string queuedSessionId = null;
+            string currentSessionId;
+            string sessionIdToDisconnect;
+            bool connected;
+
+            lock (_sessionStateLock)
+            {
+                currentSessionId = _sessionId;
+                connected = _isConnected;
+
+                if (_queuedDisconnectSessions.Count > 0)
+                {
+                    queuedSessionId = _queuedDisconnectSessions[0];
+                    _queuedDisconnectSessions.RemoveAt(0);
+                }
+
+                sessionIdToDisconnect = !string.IsNullOrWhiteSpace(queuedSessionId)
+                    ? queuedSessionId
+                    : currentSessionId;
+            }
+
+            if (string.IsNullOrWhiteSpace(sessionIdToDisconnect))
+            {
+                Log("[WebSocketBT] DisconnectAsync 忽略：无可用 sessionId");
                 return;
+            }
+
+            if (!connected && string.IsNullOrWhiteSpace(queuedSessionId))
+                return;
+
+            WSMessage response = null;
 
             try
             {
-                Log($"[WebSocketBT] 断开连接");
-                var request = WSMessageFactory.CreateDisconnectRequest(_sessionId);
-                await _bridge.SendAndWaitAsync(request).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(queuedSessionId) &&
+                    !string.Equals(currentSessionId, sessionIdToDisconnect, StringComparison.Ordinal))
+                {
+                    Log($"[WebSocketBT] 断开连接（使用排队 session） queued={sessionIdToDisconnect} current={currentSessionId ?? "(空)"}");
+                }
+                else
+                {
+                    Log($"[WebSocketBT] 断开连接 session={sessionIdToDisconnect}");
+                }
+
+                var request = WSMessageFactory.CreateDisconnectRequest(sessionIdToDisconnect);
+                response = await _bridge.SendAndWaitAsync(request).ConfigureAwait(false);
+
+                if (response?.Success != true)
+                {
+                    Log($"[WebSocketBT] 断开响应失败 session={sessionIdToDisconnect} err={response?.Error ?? "(空)"}");
+                    return;
+                }
+
+                Log($"[WebSocketBT] 断开响应成功 session={sessionIdToDisconnect}");
             }
             catch (Exception ex)
             {
@@ -353,8 +402,14 @@ namespace OBDCloud.WebSocket
             }
             finally
             {
-                _isConnected = false;
-                _sessionId = null;
+                lock (_sessionStateLock)
+                {
+                    if (response?.Success == true && string.Equals(_sessionId, sessionIdToDisconnect, StringComparison.Ordinal))
+                    {
+                        _isConnected = false;
+                        _sessionId = null;
+                    }
+                }
             }
         }
 
@@ -370,8 +425,11 @@ namespace OBDCloud.WebSocket
             if (string.IsNullOrWhiteSpace(sessionId))
                 return;
 
-            _sessionId = sessionId;
-            _isConnected = true;
+            lock (_sessionStateLock)
+            {
+                _sessionId = sessionId;
+                _isConnected = true;
+            }
 
             // 清空接收缓冲区，避免旧会话残留数据干扰新会话的 Initialize() 握手
             while (_receiveBuffer.TryDequeue(out _)) { }
@@ -379,6 +437,48 @@ namespace OBDCloud.WebSocket
             _emptyReadTotal = 0;
 
             Log($"[WebSocketBT] 绑定会话: {sessionId}（已清空接收缓冲区）");
+        }
+
+        /// <summary>
+        /// 为即将由原始 disconnectAsync 触发的底层断开，排队固定目标 sessionId。
+        /// 这样即使用户在旧断开尾声完成前重连，新 session 也不会被旧 disconnect 误断。
+        /// </summary>
+        public void EnqueueDisconnectSession(string sessionId)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return;
+
+            lock (_sessionStateLock)
+            {
+                _queuedDisconnectSessions.Add(sessionId);
+            }
+
+            Log($"[WebSocketBT] 排队断开 sessionId={sessionId}");
+        }
+
+        /// <summary>
+        /// 当外层在调用 JSBridge.disconnectAsync 前失败时，取消刚排队的断开目标。
+        /// </summary>
+        public void CancelQueuedDisconnectSession(string sessionId, string reason = null)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return;
+
+            bool removed = false;
+            lock (_sessionStateLock)
+            {
+                var index = _queuedDisconnectSessions.LastIndexOf(sessionId);
+                if (index >= 0)
+                {
+                    _queuedDisconnectSessions.RemoveAt(index);
+                    removed = true;
+                }
+            }
+
+            if (removed)
+            {
+                Log($"[WebSocketBT] 取消排队断开 sessionId={sessionId} reason={reason ?? "(空)"}");
+            }
         }
 
         /// <summary>
@@ -405,12 +505,32 @@ namespace OBDCloud.WebSocket
         /// 确保旧 disconnectAsync 异步调用 Disconect() 时发现 _isConnected=false 而提前 return，
         /// 避免 finally 块清掉后续 BindSession 绑定的新 session。
         /// </summary>
-        public void ForceReset()
+        public void ForceReset(bool preserveQueuedDisconnects = false, string reason = null)
         {
-            _isConnected = false;
-            _sessionId = null;
+            int queuedDisconnectCount;
+
+            lock (_sessionStateLock)
+            {
+                _isConnected = false;
+                _sessionId = null;
+                if (!preserveQueuedDisconnects)
+                {
+                    _queuedDisconnectSessions.Clear();
+                }
+                queuedDisconnectCount = _queuedDisconnectSessions.Count;
+            }
+
             while (_receiveBuffer.TryDequeue(out _)) { }
-            Log("[WebSocketBT] ForceReset 完成（_isConnected=false, _sessionId=null）");
+            _emptyReadCount = 0;
+            _emptyReadTotal = 0;
+            _diagCmdText = "";
+            _diagWriteTime = DateTime.MinValue;
+            _diagDataReceived = false;
+            _diagPromptReceived = false;
+            _diagBytesReceived = 0;
+            _lastIOActivityUtc = DateTime.MinValue;
+
+            Log($"[WebSocketBT] ForceReset 完成 reason={reason ?? "(空)"} preserveQueuedDisconnects={preserveQueuedDisconnects} queuedDisconnect={queuedDisconnectCount}");
         }
 
         /// <summary>
@@ -426,7 +546,16 @@ namespace OBDCloud.WebSocket
         /// <summary>
         /// 当前会话ID
         /// </summary>
-        public string SessionId => _sessionId;
+        public string SessionId
+        {
+            get
+            {
+                lock (_sessionStateLock)
+                {
+                    return _sessionId;
+                }
+            }
+        }
 
         /// <summary>
         /// 暴露 readSeq / writeSeq，供 Burst 停稳轮询使用
@@ -624,6 +753,7 @@ namespace OBDCloud.WebSocket
                         OBDCloudManager.FlowLog("ELM>B>A", "收到ELM数据", $"hasPrompt={_diagPromptReceived} preview={preview}");
                         // 放入接收缓冲区（OBDDataReader 轮询 ReadBytesAsync 会取走）
                         _lastIOActivityUtc = DateTime.UtcNow;
+                        OBDCloudManager.LastObdDataReceivedAt = DateTime.UtcNow;  // 记录 obdData 到达时间，供 A端处理耗时计算
                         _receiveBuffer.Enqueue((data, DateTime.UtcNow));
                         Log($"[WebSocketBT] {T()} ← 数据已入队 (队列≈{_receiveBuffer.Count}, 总W={_writeSeq} 总R={_readSeq})");
                     }

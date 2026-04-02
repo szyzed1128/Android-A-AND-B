@@ -86,6 +86,12 @@ interface BurstReplayTerminalEvent {
   data: any;
 }
 
+interface DisconnectHandleResult {
+  handled: boolean;
+  error?: string;
+  sessionId?: string | null;
+}
+
 // 事件监听器类型
 type EventListener = (data: any) => void;
 
@@ -129,6 +135,21 @@ class CloudBridgeService {
 
   // 诊断日志：时序与序号
   private btSeq = 0;
+
+  // [TIMING] 两段式时序追踪：
+  // _btTimingQueue：handleBluetoothSend 写入，sendOBDData 消费（BT 往返段）
+  // _pidTimingPending：sendOBDData 写入，pidValueChanged 消费（A处理+WS段）
+  // 原因：A端在发下一条命令(send)的同时几乎同步发出上一轮的 pidValueChanged，
+  //       因此 send 和 pidValueChanged 不是同一周期首尾，sendOBDData↔pidValueChanged 才是真正的一对。
+  private _btTimingQueue: Array<{ cmdText: string; tSend: number; tBtWrite: number }> = [];
+  private _pidTimingPending: {
+    cmdText: string;
+    tSend: number;       // A发AT命令到达B
+    tBtWrite: number;    // B写入ELM327完成
+    tElmReply: number;   // ELM327回复数据（sendOBDData入口）
+    tForwarded: number;  // B转发数据给A（sendMessage后）
+  } | null = null;
+  private _lastPidT5: Map<string, number> = new Map();  // 各 PID 上次 UI 更新时间戳
   private ts(): string {
     const d = new Date();
     return `[${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}]`;
@@ -189,6 +210,7 @@ class CloudBridgeService {
         this.ws.onclose = (event) => {
           console.log('[CloudBridge] Disconnected:', event.code, event.reason);
           this.isConnected = false;
+          this.resetTransportScopedOBDState(`ws.onclose:${event.code}:${event.reason || 'no_reason'}`);
           this.emitConnectionChanged(false);
           this.rejectAllPending('Connection closed');
           this.rejectAllReplayWaiters('Connection closed');
@@ -220,6 +242,7 @@ class CloudBridgeService {
       this.ws = null;
     }
     this.isConnected = false;
+    this.resetTransportScopedOBDState('manual_disconnect');
     this.rejectAllPending('Disconnected');
     this.rejectAllReplayWaiters('Disconnected');
     this.burstReplayTerminalEvents.clear();
@@ -494,13 +517,35 @@ class CloudBridgeService {
     // A 端 fire-and-forget 的 disconnectAsync 约 6s 后完成，完成时 A 端状态轮询会发出
     // OBDStatusChanged: Disconnected，若不过滤会打断正在进行的新连接流程。
     this.ignoreDisconnectedUntil = Date.now() + 10000;
-    await this.sendRequest(MessageAction.OBDConnect, { protocol, address, sessionId });
+
+    const optimisticSessionId = sessionId ?? null;
+    if (optimisticSessionId) {
+      this.currentSessionId = optimisticSessionId;
+    }
+
+    try {
+      const result = await this.sendRequest(MessageAction.OBDConnect, { protocol, address, sessionId });
+      const responseSessionId = result?.sessionId ?? result?.SessionId ?? optimisticSessionId;
+      if (responseSessionId) {
+        this.currentSessionId = responseSessionId;
+      }
+    } catch (e) {
+      if (optimisticSessionId && this.currentSessionId === optimisticSessionId) {
+        this.currentSessionId = null;
+      }
+      throw e;
+    }
   }
 
   /**
    * 断开 ELM327 设备
    */
   async disconnectOBD(): Promise<void> {
+    if (!this.currentSessionId) {
+      console.log('[CloudBridge] 跳过 obdDisconnect：当前无活动 sessionId');
+      return;
+    }
+
     // 用户主动断开：关闭”忽略滞后 Disconnected”窗口，允许真实的 Disconnected 状态通过
     this.ignoreDisconnectedUntil = 0;
     // 标记”允许远端断开”的短窗口（用户主动断开）
@@ -517,6 +562,13 @@ class CloudBridgeService {
     if (!this.isConnected || !this.ws) {
       console.warn('[CloudBridge] Not connected, cannot send OBD data');
       return;
+    }
+
+    const timingT2 = Date.now();                                                    // [TIMING] t2: ELM327回复数据（B收到）
+    // 从队列取出对应的 BT 计时，组合成完整的 pending 条目供 pidValueChanged 消费
+    const btEntry = this._btTimingQueue.shift();
+    if (btEntry) {
+      this._pidTimingPending = { ...btEntry, tElmReply: timingT2, tForwarded: 0 };
     }
 
     const message: WSMessage = {
@@ -539,6 +591,9 @@ class CloudBridgeService {
     console.log(`[CloudBridge] ${this.ts()} ◀◀ ELM327→B→A session=${sessionId} has_prompt=${hasPrompt} (b64len=${base64Data?.length || 0}): [${preview}]`);
     this.flowLog('B>A', 'ELM数据转发', `session=${sessionId} len=${base64Data.length} has_prompt=${hasPrompt}`);
     this.sendMessage(message);
+    if (this._pidTimingPending && this._pidTimingPending.tForwarded === 0) {
+      this._pidTimingPending.tForwarded = Date.now();                               // [TIMING] t3: B转发数据给A完成
+    }
   }
 
   /**
@@ -758,8 +813,19 @@ class CloudBridgeService {
           break;
 
         case MessageAction.Disconnect:
-          await this.handleBluetoothDisconnect(message);
-          this.sendResponse(requestId, message.action, true);
+          const disconnectResult = await this.handleBluetoothDisconnect(message);
+          if (disconnectResult.handled) {
+            this.sendResponse(requestId, message.action, true, undefined, undefined, disconnectResult.sessionId || undefined);
+          } else {
+            this.sendResponse(
+              requestId,
+              message.action,
+              false,
+              { ignored: true, sessionId: disconnectResult.sessionId ?? null },
+              disconnectResult.error || 'Disconnect ignored',
+              disconnectResult.sessionId || undefined
+            );
+          }
           break;
 
         case MessageAction.StartScan:
@@ -804,10 +870,19 @@ class CloudBridgeService {
 
     const seq = ++this.btSeq;
     const preview = this.decodeB64(base64Data);
-    const t0 = Date.now();
+    const timingT0 = Date.now();
+    let cmdText = '?';
+    try {
+      cmdText = Buffer.from(base64Data, 'base64').slice(0, 8).toString('ascii')
+        .replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/[^\x20-\x7E\\]/g, '?');
+    } catch {}
+    // 在 await 前入队，防止 await 期间 sendOBDData 被调用时队列为空
+    const btEntry = { cmdText, tSend: timingT0, tBtWrite: 0 };
+    this._btTimingQueue.push(btEntry);
     console.log(`[CloudBridge] ${this.ts()} ▶▶ BT#${seq} A→B→ELM327: [${preview}] (b64len=${base64Data?.length || 0})`);
     await this.onBluetoothSendRequest(base64Data);
-    console.log(`[CloudBridge] ${this.ts()} ✓ BT#${seq} 转发完成 (耗时=${Date.now()-t0}ms)`);
+    btEntry.tBtWrite = Date.now();                                                  // [TIMING] t1: B写入ELM327完成（原地更新）
+    console.log(`[CloudBridge] ${this.ts()} ✓ BT#${seq} 转发完成 (耗时=${btEntry.tBtWrite - timingT0}ms)`);
   }
 
   /**
@@ -833,21 +908,48 @@ class CloudBridgeService {
   /**
    * 处理蓝牙断开请求
    */
-  private async handleBluetoothDisconnect(message: WSMessage): Promise<void> {
+  private async handleBluetoothDisconnect(message: WSMessage): Promise<DisconnectHandleResult> {
     if (!this.onBluetoothDisconnectRequest) {
       throw new Error('Bluetooth bridge not initialized');
     }
 
-    const now = Date.now();
-    if (now > this.allowRemoteDisconnectUntil) {
-      console.warn('[CloudBridge] 忽略远端断开请求：未在允许窗口内');
-      return;
+    const remoteSessionId = message.sessionId ?? null;
+    const currentSessionId = this.currentSessionId;
+
+    if (remoteSessionId) {
+      if (!currentSessionId) {
+        const error = `忽略远端断开请求：当前无活动会话 remote=${remoteSessionId}`;
+        console.warn(`[CloudBridge] ${error}`);
+        return { handled: false, error, sessionId: remoteSessionId };
+      }
+
+      if (remoteSessionId !== currentSessionId) {
+        const error = `忽略远端断开请求：sessionId 不匹配 remote=${remoteSessionId} current=${currentSessionId}`;
+        console.warn(`[CloudBridge] ${error}`);
+        return { handled: false, error, sessionId: remoteSessionId };
+      }
+
+      console.log(`[CloudBridge] Disconnecting Bluetooth by matched sessionId=${remoteSessionId}`);
+      this.allowRemoteDisconnectUntil = 0;
+      await this.onBluetoothDisconnectRequest();
+      if (this.currentSessionId === remoteSessionId) {
+        this.currentSessionId = null;
+      }
+      return { handled: true, sessionId: remoteSessionId };
     }
 
-    console.log('[CloudBridge] Disconnecting Bluetooth (allowed)');
+    const now = Date.now();
+    if (now > this.allowRemoteDisconnectUntil) {
+      const error = '忽略远端断开请求：缺少 sessionId 且未在允许窗口内';
+      console.warn(`[CloudBridge] ${error}`);
+      return { handled: false, error, sessionId: null };
+    }
+
+    console.log('[CloudBridge] Disconnecting Bluetooth (fallback allow window)');
     this.allowRemoteDisconnectUntil = 0;
     await this.onBluetoothDisconnectRequest();
     this.currentSessionId = null;
+    return { handled: true, sessionId: null };
   }
 
   /**
@@ -938,6 +1040,11 @@ class CloudBridgeService {
           this.ignoreDisconnectedUntil = 0;
         }
 
+        if (newStatus === 'Disconnected') {
+          this.currentSessionId = null;
+          this.allowRemoteDisconnectUntil = 0;
+        }
+
         // 若当前已完全连接到 ECU，过滤掉诊断操作触发的中间过渡状态
         // 允许：Disconnected（断开）、Disconnecting（断开中）、ConnectingToECU（重连）
         const allowedFromConnectedToECU = ['Disconnected', 'Disconnecting', 'ConnectingToECU'];
@@ -953,6 +1060,9 @@ class CloudBridgeService {
       }
 
       case MessageAction.PIDValueChanged: {
+        const timingT4 = Date.now();                                                // [TIMING] t4: B收到A解析结果
+        // 在 normalize 之前提取 A端处理耗时字段（normalize 可能丢弃未知字段）
+        const aMs: number = (message.data as any)?._aMs ?? -1;
         const normalized = this.normalizePidEvent(message.data);
         if (normalized) {
           const idx = normalized.originalIndex ?? normalized.index;
@@ -960,6 +1070,32 @@ class CloudBridgeService {
           console.log(`[CloudBridge] PIDValueChanged idx=${idx} NM=${normalized.NM} val=${typeof val === 'object' ? '[object]' : val}`);
           this.flowLog('B<A', `PID值变化: ${normalized.NM}=${typeof val === 'object' ? '[obj]' : val}`);
           this.onPIDValueChanged?.(normalized);
+          const timingT5 = Date.now();
+
+          // 输出 [TIMING] 日志
+          const entry = this._pidTimingPending;
+          if (entry && entry.tElmReply > 0) {
+            this._pidTimingPending = null;
+            const name = normalized.NM ?? '?';
+            const total = timingT5 - entry.tSend;
+            const btRtt = entry.tElmReply - entry.tSend;
+            const aWs = aMs >= 0 ? aMs : (timingT4 - entry.tForwarded);
+            const lastT5 = this._lastPidT5.get(name);
+            const gap = lastT5 !== undefined ? (timingT5 - lastT5) : -1;
+            const d = new Date(entry.tSend);
+            const ts = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}`;
+            const gapStr = gap >= 0 ? `  距上次: ${gap}ms` : '';
+            console.log(
+              `[TIMING] ${name}  ${entry.cmdText}  ${ts}  总耗时: ${total}ms${gapStr}\n` +
+              `  +0ms    A发AT命令到达B\n` +
+              `  +${entry.tBtWrite - entry.tSend}ms    B写入ELM327完成\n` +
+              `  +${entry.tElmReply - entry.tSend}ms   ELM327回复数据              BT往返: ${btRtt}ms\n` +
+              `  +${entry.tForwarded - entry.tSend}ms   B转发数据给A\n` +
+              `  +${timingT4 - entry.tSend}ms  B收到A解析结果              A处理+WS: ${aWs}ms\n` +
+              `  +${timingT5 - entry.tSend}ms  UI数字更新`
+            );
+            this._lastPidT5.set(name, timingT5);
+          }
         }
         break;
       }
@@ -1013,34 +1149,122 @@ class CloudBridgeService {
 
       case MessageAction.ECUInfoResult: {
         const callbacks = this.callbacks.get('ecuInfo');
-        const parsed = this.parseResult(message.data, message.data as any);
-        console.log(`[CloudBridge] ECUInfoResult received (${Array.isArray(parsed) ? 'array' : typeof parsed})`);
-        this.flowLog('B<A', 'ECU信息结果收到');
-        const indices = this.pendingMeta.get('ecuInfo')?.indices as number[] | undefined;
-        if (callbacks?.onProgress) {
-          if (Array.isArray(parsed) && Array.isArray(parsed[0])) {
-            parsed.forEach((item: any[], idx: number) => {
-              const ecuIndex = indices?.[idx] ?? idx;
-              callbacks.onProgress(ecuIndex, this.normalizeEcuInfoList(item));
-            });
-          } else {
-            const normalized = this.normalizeEcuInfoList(parsed);
-            const targets = indices && indices.length > 0 ? indices : [0];
-            targets.forEach((ecuIndex: number, idx: number) => {
-              callbacks.onProgress(ecuIndex, idx === 0 ? normalized : []);
-            });
+        // 诊断日志：打印原始 message.data 类型和前200字符
+        const rawDataType = typeof message.data;
+        const rawDataPreview = typeof message.data === 'string'
+          ? message.data.substring(0, 200)
+          : Array.isArray(message.data)
+            ? `Array[${(message.data as any[]).length}] first=${JSON.stringify((message.data as any[])[0])?.substring(0, 100)}`
+            : JSON.stringify(message.data)?.substring(0, 200);
+        console.log(`[ECUInfo-RAW] type=${rawDataType} data=${rawDataPreview}`);
+
+        let parsed: any = this.parseResult(message.data, message.data as any);
+        // 若解析结果仍为字符串，尝试多种方式解析（A端数据含 \" 转义 + 裸换行符）
+        if (typeof parsed === 'string') {
+          // 尝试1：直接 JSON.parse
+          try { parsed = JSON.parse(parsed); } catch {}
+          if (typeof parsed === 'string') {
+            // 尝试2：替换 \" → "，同时把裸 CR/LF/Tab 转为 JSON 合法转义序列
+            try {
+              const cleaned = parsed
+                .replace(/\\"/g, '"')        // \" → "
+                .replace(/\r\n/g, '\\r\\n')  // 真实 CR+LF → JSON 转义
+                .replace(/\r/g, '\\r')       // 真实 CR → JSON 转义
+                .replace(/\n/g, '\\n')       // 真实 LF → JSON 转义
+                .replace(/\t/g, '\\t');      // 真实 Tab → JSON 转义
+              parsed = JSON.parse(cleaned);
+            } catch {}
           }
-          callbacks.onFinish?.();
-        } else {
-          callbacks?.onSuccess?.(this.normalizeEcuInfoList(parsed));
-          callbacks?.onFinish?.();
+          // 尝试3：字符级扫描，专门处理 A端真实格式 [\n \"str1\",\n \"str2\"]
+          // A端数据中字符串用 \" (反斜杠+引号) 作为边界，非标准JSON，导致上述所有解析失败
+          if (typeof parsed === 'string') {
+            try {
+              const s = parsed;
+              const items: string[] = [];
+              let ci = 0;
+              while (ci < s.length) {
+                // 找开始的 \" (反斜杠+引号)
+                if (s.charAt(ci) === '\\' && ci + 1 < s.length && s.charAt(ci + 1) === '"') {
+                  ci += 2; // 跳过开始的 \"
+                  let seg = '';
+                  while (ci < s.length) {
+                    // 找结束的 \" (反斜杠+引号)
+                    if (s.charAt(ci) === '\\' && ci + 1 < s.length && s.charAt(ci + 1) === '"') {
+                      ci += 2; // 跳过结束的 \"
+                      break;
+                    }
+                    // 其他转义序列：原样保留，交给 cleanStr / normalizeEcuInfoList 处理
+                    if (s.charAt(ci) === '\\' && ci + 1 < s.length) {
+                      seg += s.charAt(ci);
+                      seg += s.charAt(ci + 1);
+                      ci += 2;
+                    } else {
+                      seg += s.charAt(ci);
+                      ci++;
+                    }
+                  }
+                  items.push(seg);
+                } else {
+                  ci++;
+                }
+              }
+              if (items.length >= 2) {
+                parsed = items;
+              }
+            } catch (_e3) { /* ignore */ }
+          }
         }
+        console.log(`[ECUInfo] parsed type=${Array.isArray(parsed) ? `array(${parsed.length})` : typeof parsed}`);
+        this.flowLog('B<A', 'ECU信息结果收到');
+
+        // 构建分组数据：[{ title: ECU名, items: [{key,value},...] }, ...]
+        // A 端格式：交替数组 [ECU名0, ECU数据文本0, ECU名1, ECU数据文本1, ...]
+        const cleanStr = (s: string) => s
+          .replace(/\u0000/g, '').replace(/\\u0000/g, '')  // 去空字节
+          .replace(/\\r\\n|\\r|\\n/g, '')                   // 去字面量转义换行
+          .replace(/[\r\n]/g, '')                            // 去实际换行
+          .replace(/\\/g, '')                                // 去残留反斜杠
+          .trim();
+
+        const sections: { title: string; data: { key: string; value: string }[] }[] = [];
+
+        if (Array.isArray(parsed) && parsed.length >= 2) {
+          const pairCount = Math.floor(parsed.length / 2);
+          for (let pairIdx = 0; pairIdx < pairCount; pairIdx++) {
+            const ecuName = cleanStr((parsed[pairIdx * 2] ?? '').toString());
+            const infoText = (parsed[pairIdx * 2 + 1] ?? '').toString();
+            const infoItems = this.normalizeEcuInfoList(infoText);
+            // 如果数据第一行与 ECU 名重复，跳过它
+            const filtered = infoItems.filter((item, idx) =>
+              !(idx === 0 && !item.value && cleanStr(item.key) === ecuName)
+            );
+            sections.push({ title: ecuName, data: filtered });
+          }
+        } else {
+          // 降级：整体作为一个无名分组
+          const infoItems = this.normalizeEcuInfoList(parsed);
+          sections.push({ title: '', data: infoItems });
+        }
+
+        // 诊断：输出每个 section 的 title 和前3项数据
+        sections.forEach((sec, i) => {
+          const preview = sec.data.slice(0, 3).map(d => `${d.key}|${d.value}`).join(' || ');
+          console.log(`[ECUInfo-SECTIONS] [${i}] title="${sec.title}" items=${sec.data.length} preview: ${preview}`);
+        });
+
+        callbacks?.onSuccess?.(sections);
+        callbacks?.onFinish?.();
         this.pendingMeta.delete('ecuInfo');
         break;
       }
 
       case MessageAction.FreezeFrameResult: {
-        const parsed = this.parseResult(message.data, message.data);
+        let parsed: any = this.parseResult(message.data, message.data);
+        // 若解析结果仍为字符串（A 端 JSON 双重编码），再解析一次
+        if (typeof parsed === 'string') {
+          console.log(`[CloudBridge] FreezeFrameResult raw string (first 120): ${parsed.substring(0, 120)}`);
+          try { parsed = JSON.parse(parsed); } catch {}
+        }
         console.log(`[CloudBridge] FreezeFrameResult received (${Array.isArray(parsed) ? 'array' : typeof parsed})`);
         this.flowLog('B<A', '冻结帧结果收到');
         this.triggerCallbacks('freezeFrame', 'onSuccess', this.normalizeFreezeFrame(parsed));
@@ -1223,6 +1447,23 @@ class CloudBridgeService {
     });
   }
 
+  private resetTransportScopedOBDState(reason: string): void {
+    const prevStatus = this.currentOBDStatus || '(empty)';
+    this.currentSessionId = null;
+    this.allowRemoteDisconnectUntil = 0;
+    this.ignoreDisconnectedUntil = 0;
+
+    if (this.currentOBDStatus !== 'Disconnected') {
+      console.log(`[CloudBridge] transport closed → 强制回收 OBD 状态 prev=${prevStatus} reason=${reason}`);
+      this.currentOBDStatus = 'Disconnected';
+      this.emitOBDStatusChanged('Disconnected');
+      return;
+    }
+
+    this.currentOBDStatus = 'Disconnected';
+    console.log(`[CloudBridge] transport closed → OBD 状态已是 Disconnected reason=${reason}`);
+  }
+
   private emitOBDStatusChanged(status: string): void {
     try {
       this.onOBDStatusChanged?.(status);
@@ -1279,21 +1520,43 @@ class CloudBridgeService {
     if (raw === null || raw === undefined) return [];
 
     if (typeof raw === 'string') {
-      const parsed = this.parseResult(raw, raw);
-      if (parsed !== raw) return this.normalizeEcuInfoList(parsed);
-      return raw
-        .split(/\r?\n/)
-        .map(line => line.trim())
+      // 先尝试 JSON 解析（可能是双重编码字符串）
+      const jsonParsed = this.parseResult(raw, raw);
+      if (jsonParsed !== raw) return this.normalizeEcuInfoList(jsonParsed);
+
+      // 清理各种形式的无效字符，并统一换行符
+      const text = raw
+        .replace(/\u0000/g, '')        // 真实 null 字节
+        .replace(/\\u0000/g, '')       // 字面量 \u0000（6字符）
+        .replace(/\\r\\n/g, '\n')      // 字面量 \r\n → 真实换行
+        .replace(/\\n/g, '\n')         // 字面量 \n → 真实换行
+        .replace(/\\r/g, '')           // 字面量 \r → 删除
+        .replace(/\r\n/g, '\n')        // 真实 CR+LF → LF
+        .replace(/\r/g, '\n')          // 真实 CR → LF
+        .replace(/\\t/g, '\t');        // 字面量 \t → 真实 Tab
+
+      return text
+        .split('\n')
+        .map((line: string) => line.trim())
         .filter(Boolean)
-        .map(line => {
-          const parts = line.split(':');
-          if (parts.length > 1) {
+        .map((line: string) => {
+          // 优先用 Tab 分隔（ECU 数据的标准格式），再尝试冒号
+          const tabIdx = line.indexOf('\t');
+          if (tabIdx > -1) {
             return {
-              key: parts[0].trim(),
-              value: parts.slice(1).join(':').trim(),
+              key: line.substring(0, tabIdx).replace(/\\/g, '').trim(),
+              value: line.substring(tabIdx + 1).replace(/\\/g, '').trim(),
             };
           }
-          return { key: line, value: '' };
+          const colonIdx = line.indexOf(':');
+          if (colonIdx > -1) {
+            return {
+              key: line.substring(0, colonIdx).replace(/\\/g, '').trim(),
+              value: line.substring(colonIdx + 1).replace(/\\/g, '').trim(),
+            };
+          }
+          // 无分隔符的行：整行作为标题/描述文本，去掉残留反斜杠
+          return { key: line.replace(/\\/g, '').trim(), value: '' };
         });
     }
 
@@ -1356,16 +1619,34 @@ class CloudBridgeService {
     }
 
     if (typeof raw === 'string') {
+      // 先尝试直接 JSON 解析
+      try {
+        const p = JSON.parse(raw);
+        if (Array.isArray(p) || (p && typeof p === 'object')) {
+          return this.normalizeFreezeFrame(p);
+        }
+      } catch {}
+
+      // 尝试去除 CarScanner 的 \" 字面量转义后解析（A 端 WebView JSBridge 会产生此格式）
+      try {
+        const unescaped = raw.replace(/\\"/g, '"');
+        const p = JSON.parse(unescaped);
+        if (Array.isArray(p) || (p && typeof p === 'object')) {
+          return this.normalizeFreezeFrame(p);
+        }
+      } catch {}
+
+      // 降级：按行分割处理
       const lines = raw
         .split(/\r?\n/)
-        .map(line => line.trim())
+        .map((line: string) => line.trim())
         .filter(Boolean);
 
       if (lines.length === 1 && /no freeze frame/i.test(lines[0])) {
         return [];
       }
 
-      return lines.map(line => {
+      return lines.map((line: string) => {
         const parts = line.split(':');
         const name = parts[0]?.trim() || '';
         const value = parts.slice(1).join(':').trim();

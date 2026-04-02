@@ -81,7 +81,9 @@ function formatBridgeWireText(text: string, maxLen = 600): string {
   return normalized.length > maxLen ? normalized.slice(0, maxLen) + '…' : normalized;
 }
 
-export function useBluetoothBridge() {
+export function useBluetoothBridge(options?: {
+  onConnectionLost?: (sessionId: string, reason: string) => void;
+}) {
   const { connectDevice, disconnectDevice, sendData, startScan, stopScan } = useLocalBluetooth();
   const { elmTimeoutMs } = useAppContext();
   const unsubscribeRef = useRef<Array<() => void>>([]);
@@ -184,7 +186,13 @@ export function useBluetoothBridge() {
       const lostUnsub = bluetoothGateway.addConnectionLostListener(
         (sessionId: string, reason: string) => {
           console.warn(`[BluetoothBridge] 蓝牙连接丢失: ${reason} (session=${sessionId})`);
-          CloudBridge.sendConnectionLost(sessionId, reason);
+          if (options?.onConnectionLost) {
+            // 外部处理（含自动重连逻辑）
+            options.onConnectionLost(sessionId, reason);
+          } else {
+            // 兜底：原有行为
+            CloudBridge.sendConnectionLost(sessionId, reason);
+          }
         }
       );
       // 移除设备扫描事件转发 - A 端不需要这些信息，B 端本地处理即可

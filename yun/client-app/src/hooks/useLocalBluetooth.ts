@@ -53,6 +53,13 @@ export function useLocalBluetooth() {
           next.push(device);
         }
       }
+      // BLE 开头的设备排到最后，非 BLE 设备保持原有相对顺序
+      next.sort((a, b) => {
+        const aIsBLE = (a.name ?? '').startsWith('BLE');
+        const bIsBLE = (b.name ?? '').startsWith('BLE');
+        if (aIsBLE === bIsBLE) return 0;
+        return aIsBLE ? 1 : -1;
+      });
       return next;
     });
   };

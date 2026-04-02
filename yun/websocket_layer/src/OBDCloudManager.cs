@@ -100,6 +100,12 @@ namespace OBDCloud.WebSocket
         private static string _pendingServerUrl = "ws://0.0.0.0:8080/ws";  // 默认监听地址
 
         /// <summary>
+        /// B端最后一次 OBD 数据入队时间，由 WebSocketBluetoothConnection 更新，
+        /// 用于计算 A端处理耗时（obdData到达 → onPIDValueChanged触发）
+        /// </summary>
+        internal static DateTime LastObdDataReceivedAt;
+
+        /// <summary>
         /// 设置服务器URL（在首次访问 Instance 之前调用）
         /// </summary>
         public static void SetServerUrl(string url)
@@ -235,10 +241,21 @@ namespace OBDCloud.WebSocket
         private readonly ManualResetEventSlim _uiBridgeReady = new ManualResetEventSlim(false);
         private const int UiBridgeWaitMs = 5000;
         private readonly object _obdReaderEventLock = new object();
+        private readonly object _disconnectCleanupLock = new object();
         private Delegate _obdStatusChangedDelegate;
         private object _obdReaderInstance;
         private Type _cachedObdReaderType;
         private Type _cachedAppType;
+        private bool _disconnectCleanupPending;
+        private string _disconnectCleanupSessionId;
+        private DateTime _disconnectCleanupMarkedUtc = DateTime.MinValue;
+        private readonly object _connectAttemptLock = new object();
+        private bool _connectAttemptInProgress;
+        private int _connectAttemptGeneration;
+        private string _connectAttemptSessionId;
+        private string _connectAttemptAddress;
+        private string _connectAttemptProtocol;
+        private DateTime _connectAttemptStartedUtc = DateTime.MinValue;
 
         // Burst Snapshot Mode 状态
         private volatile bool _isBurstMode;
@@ -349,6 +366,11 @@ namespace OBDCloud.WebSocket
 
             // 转发事件
             _bridge.StateChanged += (s, state) => ConnectionStateChanged?.Invoke(this, state);
+            _bridge.ConnectionClosed += (s, reason) =>
+            {
+                Log($"[OBDCloudManager] Bridge connection closed: {reason}");
+                HandleBridgeConnectionClosed(reason);
+            };
             // 注意：设备发现事件不再转发给 JS，B 端会自己处理蓝牙扫描
             // A 端（云端）不需要知道 B 端扫描到了哪些设备
             _discovery.DeviceDiscovered += (s, device) =>
@@ -362,6 +384,7 @@ namespace OBDCloud.WebSocket
             {
                 OBDConnectionLost?.Invoke(this, reason);
                 Log($"[OBDCloudManager] OBD connection lost: {reason}");
+                FinalizePendingDisconnectCleanupIfNeeded($"ConnectionLost:{reason}");
                 try
                 {
                     _ = _bridge.SendAsync(WSMessageFactory.CreateOBDStatusChangedEvent("Disconnected"));
@@ -619,9 +642,13 @@ namespace OBDCloud.WebSocket
             switch (methodName)
             {
                 case "onPIDValueChanged":
-                    var normalizedPidEvent = NormalizeArg(args, 0);
-                    TryCaptureReplayPidValueChanged(normalizedPidEvent);
-                    SendEvent(MessageAction.PIDValueChanged, normalizedPidEvent);
+                    // 计算 A端处理耗时：从最后一次 obdData 入队到此回调触发的时间差
+                    var aProcessingMs = (long)(DateTime.UtcNow - LastObdDataReceivedAt).TotalMilliseconds;
+                    var pidRaw = NormalizeArg(args, 0);
+                    var pidJo = (pidRaw as JObject) ?? JObject.FromObject(pidRaw ?? new object());
+                    pidJo["_aMs"] = aProcessingMs;
+                    TryCaptureReplayPidValueChanged(pidJo);
+                    SendEvent(MessageAction.PIDValueChanged, pidJo);
                     break;
 
                 case "onReadDTCSuccess":
@@ -905,6 +932,10 @@ namespace OBDCloud.WebSocket
                     return;
                 }
 
+                ClearPendingDisconnectCleanup($"new connect sessionId={sessionId}");
+
+                var isNewAttempt = TryBeginConnectAttempt(sessionId, address, protocol, out var connectGeneration);
+
                 // 绑定 sessionId 到 WebSocketBluetoothConnection
                 _bluetoothConnection.BindSession(sessionId);
                 _obdConnection.BindSession(sessionId);
@@ -913,6 +944,15 @@ namespace OBDCloud.WebSocket
 
                 // 配置 OBDDataReader 的 WebSocket 连接
                 ConfigureOBDDataReaderForWebSocket();
+
+                if (!isNewAttempt)
+                {
+                    Log($"[OBDCloudManager] 连接初始化已在进行中，复用当前尝试 generation={connectGeneration} sessionId={sessionId}");
+                    await SendResponseAsync(message, true, new { connecting = true, sessionId, reused = true }).ConfigureAwait(false);
+                    return;
+                }
+
+                Log($"[OBDCloudManager] 开始新的连接尝试 generation={connectGeneration} sessionId={sessionId}");
 
                 // 先返回响应，避免 B 端等待超时（初始化异步执行）
                 await SendResponseAsync(message, true, new { connecting = true, sessionId }).ConfigureAwait(false);
@@ -925,9 +965,9 @@ namespace OBDCloud.WebSocket
                     {
                         // 触发原 CarScanner 的 OBDDataReader.Initialize 流程（完全使用原逻辑）
                         var initOk = await TryInitializeObdReaderAsync(initAddress, protocol).ConfigureAwait(false);
-                        Log($"[OBDCloudManager] OBDDataReader.Initialize 触发完成 (ok={initOk})");
+                        Log($"[OBDCloudManager] OBDDataReader.Initialize 触发完成 (ok={initOk}, generation={connectGeneration})");
 
-                        if (!initOk)
+                        if (!initOk && IsCurrentConnectAttempt(connectGeneration))
                         {
                             await _bridge.SendAsync(WSMessageFactory.CreateOBDStatusChangedEvent("Disconnected"))
                                 .ConfigureAwait(false);
@@ -935,9 +975,16 @@ namespace OBDCloud.WebSocket
                     }
                     catch (Exception initEx)
                     {
-                        Log($"[OBDCloudManager] OBD 初始化异常: {initEx.Message}");
-                        await _bridge.SendAsync(WSMessageFactory.CreateOBDStatusChangedEvent("Disconnected"))
-                            .ConfigureAwait(false);
+                        Log($"[OBDCloudManager] OBD 初始化异常 generation={connectGeneration}: {initEx.Message}");
+                        if (IsCurrentConnectAttempt(connectGeneration))
+                        {
+                            await _bridge.SendAsync(WSMessageFactory.CreateOBDStatusChangedEvent("Disconnected"))
+                                .ConfigureAwait(false);
+                        }
+                    }
+                    finally
+                    {
+                        CompleteConnectAttempt(connectGeneration, "Initialize task finished");
                     }
                 });
             }
@@ -947,6 +994,7 @@ namespace OBDCloud.WebSocket
                 await SendResponseAsync(message, false, null, ex.Message).ConfigureAwait(false);
             }
         }
+
 
         /// <summary>
         /// 通过反射配置 OBDDataReader 使用 WebSocket 连接
@@ -1122,7 +1170,7 @@ namespace OBDCloud.WebSocket
                 // 原版 SimpleMainPage.StartConnection()（第883行）的行为：
                 // 连接前重置 DisconnectRequested = false，否则 Connect()/Initialize() 会立即返回 false
                 var disconnectReqField = obdReaderType.GetField("DisconnectRequested",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (disconnectReqField != null)
                 {
                     disconnectReqField.SetValue(obdReader, false);
@@ -1347,6 +1395,8 @@ namespace OBDCloud.WebSocket
             var statusText = statusObj?.ToString() ?? "Unknown";
             Log($"[OBDCloudManager] OBDDataReader.StatusChanged -> {statusText}");
 
+            NotifyUIStatusChanged(statusText);
+
             try
             {
                 if (_bridge?.IsConnected == true)
@@ -1358,6 +1408,332 @@ namespace OBDCloud.WebSocket
             {
                 Log($"[OBDCloudManager] 转发状态事件失败: {ex.Message}");
             }
+
+            if (string.Equals(statusText, "ConnectedToECU", StringComparison.OrdinalIgnoreCase))
+            {
+                CompleteConnectAttempt(_connectAttemptGeneration, "StatusChanged:ConnectedToECU");
+            }
+
+            if (string.Equals(statusText, "Disconnected", StringComparison.OrdinalIgnoreCase))
+            {
+                FinalizePendingDisconnectCleanupIfNeeded("StatusChanged:Disconnected");
+            }
+        }
+
+
+        private bool TryBeginConnectAttempt(string sessionId, string address, string protocol, out int generation)
+        {
+            lock (_connectAttemptLock)
+            {
+                if (_connectAttemptInProgress &&
+                    string.Equals(_connectAttemptAddress, address, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(_connectAttemptProtocol, protocol, StringComparison.OrdinalIgnoreCase))
+                {
+                    _connectAttemptSessionId = sessionId;
+                    generation = _connectAttemptGeneration;
+                    return false;
+                }
+
+                _connectAttemptInProgress = true;
+                _connectAttemptGeneration++;
+                _connectAttemptSessionId = sessionId;
+                _connectAttemptAddress = address;
+                _connectAttemptProtocol = protocol;
+                _connectAttemptStartedUtc = DateTime.UtcNow;
+                generation = _connectAttemptGeneration;
+                return true;
+            }
+        }
+
+        private void CancelConnectAttempt(string reason)
+        {
+            bool hadAttempt;
+            string sessionId;
+            string address;
+            string protocol;
+            double ageMs;
+
+            lock (_connectAttemptLock)
+            {
+                hadAttempt = _connectAttemptInProgress;
+                sessionId = _connectAttemptSessionId;
+                address = _connectAttemptAddress;
+                protocol = _connectAttemptProtocol;
+                ageMs = _connectAttemptStartedUtc == DateTime.MinValue
+                    ? -1
+                    : (DateTime.UtcNow - _connectAttemptStartedUtc).TotalMilliseconds;
+
+                _connectAttemptInProgress = false;
+                _connectAttemptGeneration++;
+                _connectAttemptSessionId = null;
+                _connectAttemptAddress = null;
+                _connectAttemptProtocol = null;
+                _connectAttemptStartedUtc = DateTime.MinValue;
+            }
+
+            if (hadAttempt)
+            {
+                Log($"[OBDCloudManager] 取消连接尝试 reason={reason} sessionId={sessionId ?? "(空)"} address={address ?? "(空)"} protocol={protocol ?? "(空)"} ageMs={ageMs:0}");
+            }
+        }
+
+        private void CompleteConnectAttempt(int generation, string reason)
+        {
+            string sessionId;
+            string address;
+            string protocol;
+            double ageMs;
+
+            lock (_connectAttemptLock)
+            {
+                if (!_connectAttemptInProgress || generation != _connectAttemptGeneration)
+                {
+                    return;
+                }
+
+                sessionId = _connectAttemptSessionId;
+                address = _connectAttemptAddress;
+                protocol = _connectAttemptProtocol;
+                ageMs = _connectAttemptStartedUtc == DateTime.MinValue
+                    ? -1
+                    : (DateTime.UtcNow - _connectAttemptStartedUtc).TotalMilliseconds;
+
+                _connectAttemptInProgress = false;
+                _connectAttemptSessionId = null;
+                _connectAttemptAddress = null;
+                _connectAttemptProtocol = null;
+                _connectAttemptStartedUtc = DateTime.MinValue;
+            }
+
+            Log($"[OBDCloudManager] 完成连接尝试 generation={generation} reason={reason} sessionId={sessionId ?? "(空)"} address={address ?? "(空)"} protocol={protocol ?? "(空)"} ageMs={ageMs:0}");
+        }
+
+        private bool IsCurrentConnectAttempt(int generation)
+        {
+            lock (_connectAttemptLock)
+            {
+                return _connectAttemptInProgress && generation == _connectAttemptGeneration;
+            }
+        }
+
+        private void MarkPendingDisconnectCleanup(string sessionId)
+        {
+            lock (_disconnectCleanupLock)
+            {
+                _disconnectCleanupPending = true;
+                _disconnectCleanupSessionId = sessionId;
+                _disconnectCleanupMarkedUtc = DateTime.UtcNow;
+            }
+
+            Log($"[OBDCloudManager] 标记待收口断开 sessionId={sessionId ?? "(空)"}");
+        }
+
+        private void ClearPendingDisconnectCleanup(string reason)
+        {
+            bool hadPending;
+            string sessionId;
+            double ageMs;
+
+            lock (_disconnectCleanupLock)
+            {
+                hadPending = _disconnectCleanupPending || !string.IsNullOrWhiteSpace(_disconnectCleanupSessionId);
+                sessionId = _disconnectCleanupSessionId;
+                ageMs = _disconnectCleanupMarkedUtc == DateTime.MinValue
+                    ? -1
+                    : (DateTime.UtcNow - _disconnectCleanupMarkedUtc).TotalMilliseconds;
+                _disconnectCleanupPending = false;
+                _disconnectCleanupSessionId = null;
+                _disconnectCleanupMarkedUtc = DateTime.MinValue;
+            }
+
+            if (hadPending)
+            {
+                Log($"[OBDCloudManager] 清除待收口断开 reason={reason} sessionId={sessionId ?? "(空)"} ageMs={ageMs:0}");
+            }
+        }
+
+        private void TrySetObdReaderDisconnectRequested(bool requested, string reason)
+        {
+            try
+            {
+                if (!TryResolveObdReader(out var obdReader, out var obdReaderType))
+                {
+                    Log($"[OBDCloudManager] 设置 DisconnectRequested 失败：无法解析 OBDDataReader reason={reason}");
+                    return;
+                }
+
+                var disconnectReqField = obdReaderType.GetField("DisconnectRequested",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (disconnectReqField == null)
+                {
+                    Log($"[OBDCloudManager] 设置 DisconnectRequested 失败：未找到字段 reason={reason}");
+                    return;
+                }
+
+                disconnectReqField.SetValue(obdReader, requested);
+                Log($"[OBDCloudManager] 设置 DisconnectRequested = {requested} reason={reason}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] 设置 DisconnectRequested 异常 reason={reason}: {ex.Message}");
+            }
+        }
+
+        private void HandleBridgeConnectionClosed(string reason)
+        {
+            var normalizedReason = string.IsNullOrWhiteSpace(reason) ? "unknown" : reason;
+            var activeSessionId = _bluetoothConnection?.SessionId ?? _obdConnection?.SessionId;
+
+            CancelConnectAttempt($"BridgeConnectionClosed:{normalizedReason}");
+            ClearPendingDisconnectCleanup($"BridgeConnectionClosed:{normalizedReason}");
+            TrySetObdReaderDisconnectRequested(true, $"BridgeConnectionClosed:{normalizedReason}");
+            TryForceObdReaderStatus("Disconnected", $"BridgeConnectionClosed:{normalizedReason}");
+            NotifyUIStatusChanged("Disconnected");
+
+            try
+            {
+                ResetOBDDataReaderWebSocket();
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] Bridge closed ResetOBDDataReaderWebSocket 失败: {ex.Message}");
+            }
+
+            try
+            {
+                _bluetoothConnection?.ForceReset(reason: $"BridgeConnectionClosed:{normalizedReason}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] Bridge closed ForceReset 失败: {ex.Message}");
+            }
+
+            try
+            {
+                _obdConnection?.ResetSession();
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] Bridge closed ResetSession 失败: {ex.Message}");
+            }
+
+            Log($"[OBDCloudManager] Bridge 真失联收口完成 reason={normalizedReason} sessionId={activeSessionId ?? "(空)"}");
+        }
+
+        private void TryForceObdReaderStatus(string statusName, string reason)
+        {
+            try
+            {
+                if (!TryResolveObdReader(out var obdReader, out var obdReaderType))
+                {
+                    Log($"[OBDCloudManager] 强制设置 CurrentStatus 失败：无法解析 OBDDataReader reason={reason}");
+                    return;
+                }
+
+                var setStatusMethod = obdReaderType.GetMethod("SetStatusForTest",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (setStatusMethod != null)
+                {
+                    var parameters = setStatusMethod.GetParameters();
+                    if (parameters.Length == 1)
+                    {
+                        var targetStatus = Enum.Parse(parameters[0].ParameterType, statusName);
+                        setStatusMethod.Invoke(obdReader, new object[] { targetStatus });
+                        Log($"[OBDCloudManager] 强制设置 CurrentStatus = {statusName} reason={reason} via SetStatusForTest");
+                        return;
+                    }
+                }
+
+                var currentStatusProperty = obdReaderType.GetProperty("CurrentStatus",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (currentStatusProperty?.CanWrite == true)
+                {
+                    var targetStatus = Enum.Parse(currentStatusProperty.PropertyType, statusName);
+                    currentStatusProperty.SetValue(obdReader, targetStatus);
+                    Log($"[OBDCloudManager] 强制设置 CurrentStatus = {statusName} reason={reason} via Property");
+                    return;
+                }
+
+                var currentStatusField = obdReaderType.GetField("CurrentStatus",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (currentStatusField != null)
+                {
+                    var targetStatus = Enum.Parse(currentStatusField.FieldType, statusName);
+                    currentStatusField.SetValue(obdReader, targetStatus);
+                    Log($"[OBDCloudManager] 强制设置 CurrentStatus = {statusName} reason={reason} via Field");
+                    return;
+                }
+
+                Log($"[OBDCloudManager] 强制设置 CurrentStatus 失败：未找到可写入口 reason={reason}");
+            }
+            catch (Exception ex)
+            {
+                var message = ex.InnerException?.Message ?? ex.Message;
+                Log($"[OBDCloudManager] 强制设置 CurrentStatus 异常 reason={reason}: {message}");
+            }
+        }
+
+        private void FinalizePendingDisconnectCleanupIfNeeded(string trigger)
+        {
+            bool pending;
+            string expectedSessionId;
+            double ageMs;
+
+            lock (_disconnectCleanupLock)
+            {
+                pending = _disconnectCleanupPending;
+                expectedSessionId = _disconnectCleanupSessionId;
+                ageMs = _disconnectCleanupMarkedUtc == DateTime.MinValue
+                    ? -1
+                    : (DateTime.UtcNow - _disconnectCleanupMarkedUtc).TotalMilliseconds;
+
+                if (!pending)
+                {
+                    return;
+                }
+
+                _disconnectCleanupPending = false;
+                _disconnectCleanupSessionId = null;
+                _disconnectCleanupMarkedUtc = DateTime.MinValue;
+            }
+
+            var activeSessionId = _bluetoothConnection?.SessionId ?? _obdConnection?.SessionId;
+            if (!string.IsNullOrWhiteSpace(expectedSessionId) &&
+                !string.IsNullOrWhiteSpace(activeSessionId) &&
+                !string.Equals(expectedSessionId, activeSessionId, StringComparison.Ordinal))
+            {
+                Log($"[OBDCloudManager] 跳过断开收口 trigger={trigger} pending={expectedSessionId} current={activeSessionId} ageMs={ageMs:0}");
+                return;
+            }
+
+            try
+            {
+                ResetOBDDataReaderWebSocket();
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] 断开收口 ResetOBDDataReaderWebSocket 失败: {ex.Message}");
+            }
+
+            try
+            {
+                _bluetoothConnection.ForceReset(reason: $"FinalizePendingDisconnectCleanupIfNeeded:{trigger}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] 断开收口 ForceReset 失败: {ex.Message}");
+            }
+
+            try
+            {
+                _obdConnection.ResetSession();
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] 断开收口 ResetSession 失败: {ex.Message}");
+            }
+
+            Log($"[OBDCloudManager] 完成断开收口 trigger={trigger} sessionId={expectedSessionId ?? "(空)"} ageMs={ageMs:0}");
         }
 
         private bool TryResolveObdReader(out object obdReader, out Type obdReaderType)
@@ -1480,39 +1856,41 @@ namespace OBDCloud.WebSocket
 
         private async Task HandleObdDisconnectAsync(WSMessage message)
         {
+            bool disconnectRequestedSet = false;
+            bool jsBridgeInvoked = false;
+
             try
             {
-                // 先 ForceReset：让 _bluetoothConnection._isConnected=false
-                // 这样旧 disconnectAsync 异步调到 Disconect() 时直接 return（不进 try/finally），
-                // 不会在 BindSession 后再把新 session 的 _isConnected/sessionId 清掉。
-                // B 端 BT 已由 B 端自己 disconnect，这里无需再发 Disconnect 请求到 B 端。
-                _bluetoothConnection.ForceReset();
-                Log("[OBDCloudManager] _bluetoothConnection.ForceReset 完成");
-
-                // 调用原软件的断开连接方法（fire-and-forget，旧 disconnectAsync 遇到 _isConnected=false 会提前 return）
-                if (_uiBridge != null)
+                if (_uiBridge == null)
                 {
-                    try
-                    {
-                        InvokeJsBridge("disconnectAsync");
-                        Log("[OBDCloudManager] disconnectAsync 调用成功");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log($"[OBDCloudManager] disconnectAsync 调用失败: {ex.Message}");
-                    }
+                    throw new InvalidOperationException("JSBridge未注册");
                 }
 
-                // 重置 WebSocket 连接状态
-                ResetOBDDataReaderWebSocket();
+                var activeSessionId = _bluetoothConnection.SessionId ?? _obdConnection.SessionId;
+                CancelConnectAttempt("HandleObdDisconnectAsync");
+                TrySetObdReaderDisconnectRequested(true, "HandleObdDisconnectAsync");
+                disconnectRequestedSet = true;
+                MarkPendingDisconnectCleanup(activeSessionId);
+                _bluetoothConnection.EnqueueDisconnectSession(activeSessionId);
 
+                InvokeJsBridge("disconnectAsync");
+                jsBridgeInvoked = true;
+                _bluetoothConnection.ForceReset(preserveQueuedDisconnects: true, reason: "HandleObdDisconnectAsync");
                 _obdConnection.ResetSession();
-                await _bridge.SendAsync(WSMessageFactory.CreateOBDStatusChangedEvent("Disconnected"))
+                Log($"[OBDCloudManager] disconnectAsync 调用成功 sessionId={activeSessionId ?? "(空)"}");
+
+                await SendResponseAsync(message, true, new { disconnecting = true, sessionId = activeSessionId })
                     .ConfigureAwait(false);
-                await SendResponseAsync(message, true, new { disconnected = true }).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
+                var activeSessionId = _bluetoothConnection.SessionId ?? _obdConnection.SessionId;
+                _bluetoothConnection.CancelQueuedDisconnectSession(activeSessionId, $"HandleObdDisconnectAsync failed: {ex.Message}");
+                ClearPendingDisconnectCleanup($"HandleObdDisconnectAsync failed: {ex.Message}");
+                if (disconnectRequestedSet && !jsBridgeInvoked)
+                {
+                    TrySetObdReaderDisconnectRequested(false, $"HandleObdDisconnectAsync rollback: {ex.Message}");
+                }
                 await SendResponseAsync(message, false, null, ex.Message).ConfigureAwait(false);
             }
         }
@@ -1546,7 +1924,11 @@ namespace OBDCloud.WebSocket
                     System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
                 useWsField?.SetValue(null, false);
 
-                Log("[OBDCloudManager] 重置 OBDDataReader.UseWebSocketConnection = false");
+                var wsConnField = obdDataReaderType.GetField("WebSocketConnection",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                wsConnField?.SetValue(null, null);
+
+                Log("[OBDCloudManager] 重置 OBDDataReader.UseWebSocketConnection = false, WebSocketConnection = null");
             }
             catch (Exception ex)
             {
