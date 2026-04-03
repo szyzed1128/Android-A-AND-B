@@ -1586,9 +1586,11 @@ namespace OBDCloud.WebSocket
 
             CancelConnectAttempt($"BridgeConnectionClosed:{normalizedReason}");
             ClearPendingDisconnectCleanup($"BridgeConnectionClosed:{normalizedReason}");
-            TrySetObdReaderDisconnectRequested(true, $"BridgeConnectionClosed:{normalizedReason}");
-            TryForceObdReaderStatus("Disconnected", $"BridgeConnectionClosed:{normalizedReason}");
-            NotifyUIStatusChanged("Disconnected");
+
+            if (TryInvokeStage2DisconnectOnBridgeLoss(normalizedReason, activeSessionId))
+            {
+                return;
+            }
 
             try
             {
@@ -1617,7 +1619,27 @@ namespace OBDCloud.WebSocket
                 Log($"[OBDCloudManager] Bridge closed ResetSession 失败: {ex.Message}");
             }
 
-            Log($"[OBDCloudManager] Bridge 真失联收口完成 reason={normalizedReason} sessionId={activeSessionId ?? "(空)"}");
+            Log($"[OBDCloudManager] Bridge 真失联兜底收口完成 reason={normalizedReason} sessionId={activeSessionId ?? "(空)"}");
+        }
+
+        private bool TryInvokeStage2DisconnectOnBridgeLoss(string reason, string sessionId)
+        {
+            try
+            {
+                Log($"[OBDCloudManager] Bridge 真失联 -> 触发阶段二同源断开 reason={reason} sessionId={sessionId ?? "(空)"}");
+                InvokeJsBridge("disconnectAsync");
+                Log($"[OBDCloudManager] Bridge 真失联 -> 已触发 A 端断开按钮同源链 reason={reason} sessionId={sessionId ?? "(空)"}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"[OBDCloudManager] Bridge 真失联 -> 触发阶段二同源断开失败，转兜底收口 reason={reason} sessionId={sessionId ?? "(空)"} err={ex.Message}");
+            }
+
+            TrySetObdReaderDisconnectRequested(true, $"BridgeConnectionClosedFallback:{reason}");
+            TryForceObdReaderStatus("Disconnected", $"BridgeConnectionClosedFallback:{reason}");
+            NotifyUIStatusChanged("Disconnected");
+            return false;
         }
 
         private void TryForceObdReaderStatus(string statusName, string reason)
@@ -1990,14 +2012,55 @@ namespace OBDCloud.WebSocket
                 var indices = obj?["indices"];
                 var json = indices != null ? indices.ToString(Formatting.None) : "[]";
 
+                // ── 方案A：OBD mode01 批量合并优化 ──────────────────────────────────────
+                // 原版 CarScanner 的真实入口是 RequestProducerStatic.UpdateOBDReaderRequests()，
+                // 该方法内部调用 OBDRequestQueueOptimizer.Optimize()，将同 Header 下的 mode01
+                // 命令合并为 OBDMultiRequest（最多6条/帧），一次 AT 命令读多个 PID，大幅提速。
+                // 我们的 JSBridge startReadPIDs 绕过了这一步，导致每个 PID 单独发命令。
+                // 修复：在调用 startReadPIDs 前，用反射走完整的优化路径并写入 CommandQueue。
+                //
+                // UDS mode22 优化（TODO）：
+                //   将 SharedSettings.CANOptimizeMode22 设为 true 即可启用，
+                //   但 UDS 需要自学习数据长度字典（CANOptimizeMode22DataLengthDictionary）
+                //   积累足够数据后才能合并，首次连接会自然退化为逐条发送，无风险。
+                //   启用时在下方 SetOptimizeFlags 处增加一行：
+                //     canOptimizeMode22Prop?.SetValue(settings, true);
+                // ────────────────────────────────────────────────────────────────────────
+                bool optimizeApplied = false;
                 try
                 {
-                    InvokeJsBridge("startReadPIDs", json);
-                    Log($"[OBDCloudManager] ✓ StartReadPIDs: InvokeJsBridge 成功 indices={json}");
+                    int[] pidIndices = indices != null
+                        ? indices.ToObject<int[]>() ?? Array.Empty<int>()
+                        : Array.Empty<int>();
+
+                    if (pidIndices.Length > 0 && TryResolveObdReader(out var obdReader, out var obdReaderType))
+                    {
+                        optimizeApplied = TryApplyOptimizedQueue(obdReader, obdReaderType, pidIndices);
+                    }
                 }
-                catch (Exception jex)
+                catch (Exception optEx)
                 {
-                    Log($"[OBDCloudManager] ⚠ StartReadPIDs: JSBridge 调用失败 {jex.GetType().Name}: {jex.Message}");
+                    Log($"[OBDCloudManager] ⚠ StartReadPIDs: 优化队列失败，回退到 JSBridge: {optEx.Message}");
+                }
+
+                // 无论优化是否成功，始终调用 startReadPIDs 确保 CarScanner 内部状态（Running 标志等）正确启动
+                // 注意：optimizeApplied=true 时队列已由 ReplaceQueue+StartLoopV3 写入并启动，
+                //       不再需要调用 JSBridge startReadPIDs（否则会覆盖已优化的队列）
+                if (!optimizeApplied)
+                {
+                    try
+                    {
+                        InvokeJsBridge("startReadPIDs", json);
+                        Log($"[OBDCloudManager] ✓ StartReadPIDs: InvokeJsBridge 成功 indices={json}");
+                    }
+                    catch (Exception jex)
+                    {
+                        Log($"[OBDCloudManager] ⚠ StartReadPIDs: JSBridge 调用失败 {jex.GetType().Name}: {jex.Message}");
+                    }
+                }
+                else
+                {
+                    Log($"[OBDCloudManager] ✓ StartReadPIDs: 优化队列已写入并启动，跳过 JSBridge indices={json}");
                 }
 
                 await SendResponseAsync(message, true).ConfigureAwait(false);
@@ -2006,6 +2069,119 @@ namespace OBDCloud.WebSocket
             {
                 await SendResponseAsync(message, false, null, ex.Message).ConfigureAwait(false);
             }
+        }
+
+        /// <summary>
+        /// 按 pidIndices 走原版优化路径：GetRequests → Optimize → ReplaceQueue。
+        /// 复刻 RequestProducerStatic.UpdateOBDReaderRequests() 的核心逻辑。
+        /// OBD mode01 命令会被合并为 OBDMultiRequest（最多6条/帧）；
+        /// UDS mode22 命令在 CANOptimizeMode22=false 时原样保留，不受影响。
+        /// 返回 true 表示优化后的队列已写入，startReadPIDs 仍会被调用以启动 Running 状态。
+        /// </summary>
+        private bool TryApplyOptimizedQueue(object obdReader, Type obdReaderType, int[] pidIndices)
+        {
+            // 1. 获取 LiveDataPIDModel 类型及 _PIDCollection 字段
+            var ldpmType = FindType("CarScannerXamarinForms.ViewModels.LiveDataPIDModel");
+            if (ldpmType == null) { Log("[OBDCloudManager] OptQueue: LiveDataPIDModel 类型未找到"); return false; }
+
+            var pidCollectionField = ldpmType.GetField("_PIDCollection",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+                | System.Reflection.BindingFlags.Public);
+            if (pidCollectionField == null) { Log("[OBDCloudManager] OptQueue: _PIDCollection 字段未找到"); return false; }
+
+            var pidCollection = pidCollectionField.GetValue(null);
+            if (pidCollection == null) { Log("[OBDCloudManager] OptQueue: _PIDCollection 为 null"); return false; }
+
+            var collectionType = pidCollection.GetType();
+            var countProp = collectionType.GetProperty("Count");
+            var itemProp  = collectionType.GetProperty("Item");
+            int totalPids = (int)countProp.GetValue(pidCollection);
+
+            // 2. 构建 List<OBDRequest>，对每个 index 调用 GetRequests
+            var obdRequestType  = FindType("CarScannerXamarinForms.OBD2.OBDRequest");
+            if (obdRequestType == null) { Log("[OBDCloudManager] OptQueue: OBDRequest 类型未找到"); return false; }
+            var requestListType = typeof(System.Collections.Generic.List<>).MakeGenericType(obdRequestType);
+            var requestList     = Activator.CreateInstance(requestListType);
+
+            var getRequestsMethod = ldpmType.GetMethod("GetRequests",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                null, new Type[]
+                {
+                    FindType("CarScannerXamarinForms.OBD2.PIDS.IPID"),
+                    requestListType,
+                    typeof(string),
+                    typeof(string)
+                }, null);
+            if (getRequestsMethod == null) { Log("[OBDCloudManager] OptQueue: GetRequests 方法未找到"); return false; }
+
+            foreach (var idx in pidIndices)
+            {
+                if (idx < 0 || idx >= totalPids) continue;
+                var pid = itemProp.GetValue(pidCollection, new object[] { idx });
+                if (pid == null) continue;
+                getRequestsMethod.Invoke(null, new object[] { pid, requestList, null, "" });
+            }
+
+            int rawCount = (int)requestListType.GetProperty("Count").GetValue(requestList);
+            Log($"[OBDCloudManager] OptQueue: GetRequests 生成 {rawCount} 条原始请求");
+            if (rawCount == 0) return false;
+
+            // 3. 开启 CANOptimizeRequests 并调用 Optimize()
+            //    仅在本次调用前临时设置，Optimize 内部读取该值后立即生效。
+            //    TODO（UDS）：若需启用 mode22 合并，在此处增加：
+            //      canOptimizeMode22Prop?.SetValue(settings, true);
+            var settingsType = FindType("CarScannerXamarinForms.Settings.SharedSettings");
+            var settingsCurrentProp = settingsType?.GetProperty("Current",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            var settings = settingsCurrentProp?.GetValue(null);
+            var canOptimizeProp = settingsType?.GetProperty("CANOptimizeRequests");
+            if (settings != null && canOptimizeProp != null)
+                canOptimizeProp.SetValue(settings, true);
+
+            IEnumerable<object> optimized = null;
+            var optimizerType  = FindType("CarScannerXamarinForms.OBD2.OBDRequestQueueOptimizer");
+            var optimizeMethod = optimizerType?.GetMethod("Optimize",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (optimizeMethod != null)
+            {
+                var result = optimizeMethod.Invoke(null, new object[] { requestList });
+                if (result != null)
+                {
+                    optimized = result as IEnumerable<object>
+                                ?? (result as System.Collections.IEnumerable)?.Cast<object>();
+                    Log("[OBDCloudManager] OptQueue: Optimize 完成");
+                }
+            }
+            else
+            {
+                Log("[OBDCloudManager] OptQueue: Optimize 方法未找到，使用未优化队列");
+            }
+
+            // 4. 调用 ReplaceQueue 写入已优化的队列
+            var replaceQueueMethod = obdReaderType.GetMethod("ReplaceQueue",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (replaceQueueMethod == null) { Log("[OBDCloudManager] OptQueue: ReplaceQueue 方法未找到"); return false; }
+
+            replaceQueueMethod.Invoke(obdReader, new object[] { optimized ?? requestList });
+            int finalCount = optimized != null ? optimized.Count() : rawCount;
+            Log($"[OBDCloudManager] OptQueue: ReplaceQueue 写入 {finalCount} 条优化后请求（原始 {rawCount} 条）");
+
+            // 5. 直接调用 StartLoopV3 启动轮询（对应原版 SetRunning(true)）
+            //    不经过 JSBridge startReadPIDs，避免其内部再次 ReplaceQueue 覆盖优化结果
+            var startLoopMethod = obdReaderType.GetMethod("StartLoopV3",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (startLoopMethod != null)
+            {
+                startLoopMethod.Invoke(obdReader, new object[] { "OptimizedQueue" });
+                Log("[OBDCloudManager] OptQueue: StartLoopV3 已启动");
+            }
+            else
+            {
+                Log("[OBDCloudManager] OptQueue: StartLoopV3 方法未找到，回退由 JSBridge 启动");
+                return false; // 让 HandleStartReadPidsAsync 回退到 JSBridge
+            }
+
+            return true;
         }
 
         private async Task HandleStopReadPidsAsync(WSMessage message)
