@@ -73,7 +73,6 @@ export function useScheduler() {
 
   const initSession = useCallback(async () => {
     if (initializedRef.current) return;
-    // 如果调度地址还未设置（cloudHost 是默认本地值），暂不初始化
     if (!SchedulerClient.getBaseUrl()) {
       console.log('[useScheduler] 调度后端地址未设置，跳过初始化');
       return;
@@ -86,14 +85,9 @@ export function useScheduler() {
       initializedRef.current = true;
       console.log('[useScheduler] 会话初始化成功 sessionId=', sessionId);
     } catch (err: any) {
-      // 调度初始化失败是非致命错误（服务器不可达、IP未设置等），
-      // 用 warn 而非 error，避免开发模式红色弹窗。
-      // App 仍可正常工作，schedulerReady=false，走手动连接模式。
-      console.warn('[useScheduler] 调度后端连接失败（非致命）:', err.message);
-      // 只在 baseUrl 仍有效时重试，避免地址被清空后无意义轮询
-      if (SchedulerClient.getBaseUrl()) {
-        setTimeout(initSession, 5000);
-      }
+      // 调度后端暂不可达（非致命），用 log 不用 warn/error，避免开发模式弹窗。
+      // 不自动重试：等待两个时机自然触发 —— ① cloudHost 变化 ② App 回到前台
+      console.log('[useScheduler] 调度后端暂不可达，等待重试时机:', err.message);
     }
   }, [setSessionId, setSchedulerReady]);
 
@@ -137,12 +131,16 @@ export function useScheduler() {
       if (nextState === 'active' && prev !== 'active') {
         console.log('[useScheduler] App 回到前台，恢复心跳');
         startHeartbeat();
+        // 若会话尚未初始化成功（例如之前服务器不可达），趁此机会重试
+        if (!initializedRef.current) {
+          initSession();
+        }
       } else if (nextState === 'background') {
         console.log('[useScheduler] App 进入后台');
       }
     });
     return () => subscription.remove();
-  }, [startHeartbeat]);
+  }, [startHeartbeat, initSession]);
 
   useEffect(() => {
     initSession();
