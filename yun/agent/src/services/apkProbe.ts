@@ -17,7 +17,7 @@ const DEFAULT_BRAND = 'AITO';
 const DEFAULT_MODEL = 'AITO';
 const WS_CONNECT_TIMEOUT_MS = 15000;    // 等待WS连接最长15秒
 const WS_CONNECT_POLL_INTERVAL_MS = 500;
-const STEP_TIMEOUT_MS = 10000;          // 每步骤超时10秒
+const STEP_TIMEOUT_MS = 35000;          // 每步骤超时35秒（APK profiles 加载约需20秒）
 const MAX_FAILURES_BEFORE_BAD = 5;
 
 export type ProbeStatus = 'idle' | 'probing' | 'bad';
@@ -43,12 +43,16 @@ export async function runReadinessProbe(instance: InstanceConfig): Promise<Probe
       `${instance.packageName}/${instance.activityName}`
     );
 
-    // Step 3: 等待 WebSocket 可连接（使用 adb forward 的内部端口）
-    console.log(`[Probe] ${instance.id} Step3: 等待WebSocket (probePort=${instance.probePort})`);
-    await waitForWebSocket(`ws://localhost:${instance.probePort}/ws`, WS_CONNECT_TIMEOUT_MS);
+    // Step 3: 等待 APK 完全就绪（轮询 getBrands 直到成功，最多等 60 秒）
+    // 说明：APK 的 WebSocket 端口约 2 秒可连，但 JSBridge 初始化约需 20 秒
+    //       只检查 TCP 连通不够，必须等 getBrands 成功才算真正就绪
+    console.log(`[Probe] ${instance.id} Step3: 等待APK完全就绪（最多60秒）`);
+    const wsUrl = `ws://localhost:${instance.probePort}/ws`;
+    await waitForApkReady(wsUrl, 60000);
+    console.log(`[Probe] ${instance.id} Step3: APK已就绪，getBrands 可响应`);
 
-    // Step 4-6: WebSocket 业务探针
-    console.log(`[Probe] ${instance.id} Step4-6: 业务探针`);
+    // Step 4-6: 应用默认车型（AITO），验证 profiles 已加载
+    console.log(`[Probe] ${instance.id} Step4-6: 应用默认车型配置`);
     await runBusinessProbe(instance, DEFAULT_BRAND, DEFAULT_MODEL);
 
     console.log(`[Probe] ${instance.id} ✅ 就绪探针通过`);
@@ -99,14 +103,16 @@ async function runBusinessProbe(
 
   try {
     // Step 4: getBrands —— 验证 APK 已加载完毕
-    const brands = await sendRequest(ws, 'getBrands', {});
+    const rawBrands = await sendRequest(ws, 'getBrands', {});
+    const brands = parseResponseData(rawBrands);
     if (!Array.isArray(brands) || brands.length === 0) {
       throw new Error('getBrands 返回空列表');
     }
     console.log(`[Probe] ${instance.id} getBrands 成功，共${brands.length}个品牌`);
 
     // Step 5: getProfiles —— 验证指定品牌的配置已加载，同时获取 profileIndex
-    const profiles = await sendRequest(ws, 'getProfiles', { brand });
+    const rawProfiles = await sendRequest(ws, 'getProfiles', { brand });
+    const profiles = parseResponseData(rawProfiles);
     if (!Array.isArray(profiles) || profiles.length === 0) {
       throw new Error(`getProfiles("${brand}") 返回空列表`);
     }
@@ -136,7 +142,48 @@ async function runBusinessProbe(
 }
 
 /**
- * 轮询等待 WebSocket 端口可连接
+ * 解析 A端响应的 Data 字段
+ * A端返回的 Data 可能是 JSON 字符串（如 "[\"Acura\",...]"）或已解析的对象/数组
+ */
+function parseResponseData(data: any): any {
+  if (typeof data === 'string') {
+    try { return JSON.parse(data); } catch { return data; }
+  }
+  return data;
+}
+
+/**
+ * 轮询等待 APK 完全就绪（WebSocket 可连 + getBrands 成功响应）
+ *
+ * 仅检查 TCP 连通是不够的：APK 的 WebSocket 端口约 2 秒就会监听，
+ * 但 JSBridge 初始化约需 20-30 秒，过早调用 getBrands 会返回 NullReferenceException。
+ * 此函数每 3 秒尝试一次 getBrands，直到成功或超时。
+ */
+async function waitForApkReady(wsUrl: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    let ws: WebSocket | null = null;
+    try {
+      ws = await connectWebSocket(wsUrl, 3000);
+      const raw = await sendRequest(ws, 'getBrands', {});
+      const brands = parseResponseData(raw);
+      if (Array.isArray(brands) && brands.length > 0) {
+        return; // APK 完全就绪
+      }
+    } catch {
+      // 未就绪（连接失败或 getBrands 出错），等待后重试
+    } finally {
+      try { ws?.close(); } catch { /* ignore */ }
+    }
+    await sleep(3000);
+  }
+
+  throw new Error(`APK 初始化超时（${timeoutMs}ms），getBrands 始终未成功`);
+}
+
+/**
+ * 轮询等待 WebSocket 端口可连接（仅 TCP 层，用于 applyCar 前的快速检查）
  */
 async function waitForWebSocket(url: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -146,7 +193,7 @@ async function waitForWebSocket(url: string, timeoutMs: number): Promise<void> {
     try {
       const ws = await connectWebSocket(url, 2000);
       ws.close();
-      return; // 连接成功
+      return;
     } catch (err: any) {
       lastError = err.message;
       await sleep(WS_CONNECT_POLL_INTERVAL_MS);
@@ -193,15 +240,19 @@ function sendRequest(ws: WebSocket, action: string, data: any): Promise<any> {
     const handler = (raw: WebSocket.RawData) => {
       try {
         const msg = JSON.parse(raw.toString());
-        if (msg.requestId !== requestId) return;
+        // A端协议用 PascalCase（RequestId），兼容 camelCase（requestId）
+        const msgRequestId = msg.RequestId ?? msg.requestId;
+        if (msgRequestId !== requestId) return;
 
         clearTimeout(timer);
         ws.off('message', handler);
 
-        if (msg.success === false) {
-          reject(new Error(`${action} 失败: ${msg.error || '未知错误'}`));
+        // 兼容 PascalCase（Success）和 camelCase（success）
+        const isSuccess = msg.Success ?? msg.success;
+        if (isSuccess === false) {
+          reject(new Error(`${action} 失败: ${msg.Error ?? msg.error ?? '未知错误'}`));
         } else {
-          resolve(msg.data);
+          resolve(msg.Data ?? msg.data);
         }
       } catch {
         // 解析失败，等下一条消息
