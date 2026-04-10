@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useLocalBluetooth } from '../hooks/useLocalBluetooth';
+import { useSchedulerActions } from '../hooks/useScheduler';
 import { ScannedDevice } from '../context/AppContext';
 
 type ProtocolTab = 'ble' | 'classic' | 'mfi';
@@ -34,6 +35,7 @@ export default function BluetoothPage() {
     stopScan,
     selectDevice,
   } = useLocalBluetooth();
+  const { syncDevice } = useSchedulerActions();
 
   // 当前选中的协议标签
   const [activeProtocol, setActiveProtocol] = useState<ProtocolTab>('ble');
@@ -89,6 +91,10 @@ export default function BluetoothPage() {
 
     // 保存选择的设备
     selectDevice(device);
+    // 同步蓝牙设备到调度后端（异步，不阻塞 UI）
+    syncDevice(device.address, device.protocol, device.name).catch(e =>
+      console.warn('[BluetoothPage] syncDevice 失败:', e.message)
+    );
 
     // 短暂延迟让用户看到反馈
     setTimeout(() => {
@@ -97,7 +103,7 @@ export default function BluetoothPage() {
         { text: '确定', onPress: () => navigation.goBack() }
       ]);
     }, 200);
-  }, [selectingAddress, stopScan, selectDevice, navigation]);
+  }, [selectingAddress, stopScan, selectDevice, syncDevice, navigation]);
 
   // 手动确认
   const handleManualConfirm = useCallback(() => {
@@ -113,10 +119,14 @@ export default function BluetoothPage() {
       address: mac,
       protocol: activeProtocol,
     });
+    // 同步手动输入的蓝牙设备到调度后端
+    syncDevice(mac, activeProtocol, '手动配置设备').catch(e =>
+      console.warn('[BluetoothPage] syncDevice(manual) 失败:', e.message)
+    );
     Alert.alert('成功', '已保存连接地址', [
       { text: '确定', onPress: () => navigation.goBack() }
     ]);
-  }, [manualAddress, stopScan, selectDevice, navigation, activeProtocol]);
+  }, [manualAddress, stopScan, selectDevice, syncDevice, navigation, activeProtocol]);
 
   // 渲染协议选择按钮
   const renderProtocolTabs = () => (

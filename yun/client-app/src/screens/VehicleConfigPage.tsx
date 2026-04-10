@@ -20,12 +20,14 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext } from '../context/AppContext';
 import { useCloudBridge } from '../hooks/useCloudBridge';
+import { useSchedulerActions } from '../hooks/useScheduler';
 import { Profile } from '../services/CloudBridge';
 
 export default function VehicleConfigPage() {
   const navigation = useNavigation<any>();
   const { setSelectedProfile, cloudConnected, appStartTime } = useAppContext();
   const { getBrands, getProfiles, applyProfile } = useCloudBridge();
+  const { syncCar } = useSchedulerActions();
 
   const [brands, setBrands] = useState<string[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
@@ -103,6 +105,10 @@ export default function VehicleConfigPage() {
     try {
       await applyProfile(selectedBrand, index);
       setSelectedProfile({ brand: selectedBrand, name: profile.Name });
+      // 同步车型到调度后端（异步，不阻塞 UI）
+      syncCar(selectedBrand, profile.Name).catch(e =>
+        console.warn('[VehicleConfig] syncCar 失败:', e.message)
+      );
       Alert.alert('成功', '配置已应用');
       setTimeout(() => navigation.goBack(), 500);
     } catch (e) {

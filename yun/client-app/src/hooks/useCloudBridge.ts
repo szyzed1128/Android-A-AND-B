@@ -17,7 +17,7 @@ import CloudBridge, {
 } from '../services/CloudBridge';
 
 export function useCloudBridge() {
-  const { setConnectionStatus, setCloudConnected, cloudHost, cloudPort } = useAppContext();
+  const { setConnectionStatus, setCloudConnected, cloudHost, cloudPort, assignedWsUrl } = useAppContext();
 
   // 设置状态变化回调
   useEffect(() => {
@@ -36,15 +36,25 @@ export function useCloudBridge() {
   }, [setCloudConnected, setConnectionStatus]);
 
   // 连接云端
-  const connectCloud = useCallback(async () => {
+  // 优先使用调度分配的 wsUrl（assignedWsUrl），回退到手动填写的 cloudHost/cloudPort
+  const connectCloud = useCallback(async (overrideWsUrl?: string) => {
     try {
-      await CloudBridge.connect(cloudHost, cloudPort);
+      const wsUrl = overrideWsUrl ?? assignedWsUrl;
+      if (wsUrl) {
+        // 调度模式：使用分配到的精确地址（已含协议+路径）
+        console.log('[useCloudBridge] 调度模式连接:', wsUrl);
+        await CloudBridge.connect(wsUrl, 0);
+      } else {
+        // 开发/手动模式：使用手动填写的 host:port
+        console.log('[useCloudBridge] 手动模式连接:', cloudHost, cloudPort);
+        await CloudBridge.connect(cloudHost, cloudPort);
+      }
       return true;
     } catch (e) {
       console.error('[useCloudBridge] Connect failed:', e);
       return false;
     }
-  }, [cloudHost, cloudPort]);
+  }, [cloudHost, cloudPort, assignedWsUrl]);
 
   // 断开云端
   const disconnectCloud = useCallback(() => {
@@ -125,6 +135,8 @@ export function useCloudBridge() {
     [safeCall]
   );
 
+  const getOBDSessionId = useCallback(() => CloudBridge.getSessionId(), []);
+
   // 清除回调
   const clearCallbacks = useCallback((key: string) => {
     CloudBridge.clearCallbacks(key);
@@ -162,6 +174,7 @@ export function useCloudBridge() {
     // OBD 连接
     connectOBD,
     disconnectOBD,
+    getOBDSessionId,
 
     // 工具
     clearCallbacks,

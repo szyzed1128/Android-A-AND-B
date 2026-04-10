@@ -21,6 +21,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext, ConnectionStatus } from '../context/AppContext';
 import { useCloudBridge } from '../hooks/useCloudBridge';
+import { useSchedulerActions } from '../hooks/useScheduler';
 import { getBluetoothGateway } from '../hooks/useLocalBluetooth';
 import { CONNECTION_STATUS_COLORS, CONNECTION_STATUS_TEXT } from '../constants/units';
 
@@ -30,6 +31,42 @@ type MenuItemType = {
   disabled: boolean;
   screen: string;
 };
+
+type GlobalConnectAttempt = {
+  id: number;
+  startedAt: number;
+};
+
+let activeGlobalConnectAttempt: GlobalConnectAttempt | null = null;
+let nextGlobalConnectAttemptId = 1;
+
+function hasGlobalConnectAttempt(): boolean {
+  return activeGlobalConnectAttempt !== null;
+}
+
+function beginGlobalConnectAttempt(): GlobalConnectAttempt | null {
+  if (activeGlobalConnectAttempt) {
+    return null;
+  }
+
+  const attempt = {
+    id: nextGlobalConnectAttemptId++,
+    startedAt: Date.now(),
+  };
+  activeGlobalConnectAttempt = attempt;
+  console.log(`[HomePage] 创建全局连接尝试 id=${attempt.id}`);
+  return attempt;
+}
+
+function finishGlobalConnectAttempt(id: number, reason: string): void {
+  if (!activeGlobalConnectAttempt || activeGlobalConnectAttempt.id !== id) {
+    return;
+  }
+
+  const ageMs = Date.now() - activeGlobalConnectAttempt.startedAt;
+  console.log(`[HomePage] 结束全局连接尝试 id=${id} reason=${reason} ageMs=${ageMs}`);
+  activeGlobalConnectAttempt = null;
+}
 
 export default function HomePage() {
   const navigation = useNavigation<any>();
@@ -42,23 +79,28 @@ export default function HomePage() {
     setCloudHost,
     elmTimeoutMs,
     setElmTimeoutMs,
+    schedulerReady,
+    setAssignedWsUrl,
   } = useAppContext();
 
-  const { connectOBD, disconnectOBD, connectCloud, disconnectCloud } = useCloudBridge();
+  const { connectOBD, disconnectOBD, connectCloud, disconnectCloud, getOBDSessionId } = useCloudBridge();
+  const { reserveInstance, notifyDisconnect, notifyRunning, syncDevice, syncCar } = useSchedulerActions();
 
   // 启用蓝牙桥接（连接CloudBridge和本地蓝牙）
 
   // 开发模式：云端连接状态
   const [cloudConnecting, setCloudConnecting] = useState(false);
-  // OBD 连接中状态
+  // OBD 连接中状态（包含调度预留阶段）
   const [obdConnecting, setObdConnecting] = useState(false);
-  // 断开中遮罩（等待 A 端 onDisconnectFinish 后才消失）
+  // 调度预留中（正在向调度后端申请实例）
+  const [reserving, setReserving] = useState(false);
+  // 断开中遮罩（等待 A 端真实 Disconnected 后才消失）
   const [disconnecting, setDisconnecting] = useState(false);
   const connectInFlightRef = useRef(false);
   const userCancelledRef = useRef(false);
+  const ownedConnectAttemptIdRef = useRef<number | null>(null);
   const disconnectingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 断开缓冲计时器（用 ref 存储，避免 React effect cleanup 因 connectionStatus 变化取消它）
-  const disconnectBufferRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const disconnectPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 显示文本
   const profileDisplay = selectedProfile
@@ -128,33 +170,85 @@ export default function HomePage() {
 
   // 连接/断开
   const handleConnect = async () => {
-    // 断开连接（连接中或已连接时点击都执行断开）
-    if (isConnected || connectInFlightRef.current) {
+    const localConnecting = connectInFlightRef.current || obdConnecting;
+
+    // 断开连接（连接中再次点击视为取消连接）
+    if (isConnected || localConnecting) {
       userCancelledRef.current = true;  // 标记用户主动取消
+      const ownedAttemptId = ownedConnectAttemptIdRef.current;
       connectInFlightRef.current = false;
       setObdConnecting(false);  // 连接中断开时必须清除，否则 obdConnecting 永久残留，下次无法重连
-      setDisconnecting(true);  // 显示"正在断开..."遮罩，等 connectionStatus=Disconnected 后才消失
-      // 10 秒保险：无论如何都消除遮罩，防止 A 端回调永不到达
-      disconnectingTimerRef.current = setTimeout(() => {
-        disconnectingTimerRef.current = null;
-        if (disconnectBufferRef.current) {
-          clearTimeout(disconnectBufferRef.current);
-          disconnectBufferRef.current = null;
-        }
-        setDisconnecting(false);
-      }, 10000);
+
+      const bluetoothGateway = getBluetoothGateway();
+      const hasCloudSession = !!getOBDSessionId();
+      const hasLocalSession = bluetoothGateway?.hasActiveSession?.() ?? false;
+
       try {
-        await getBluetoothGateway()?.disconnect();
-        await disconnectOBD();
+        if (hasCloudSession) {
+          setDisconnecting(true);  // 显示"正在断开..."遮罩，直到前后端状态都真正可重连才消失
+          if (disconnectingTimerRef.current) {
+            clearTimeout(disconnectingTimerRef.current);
+            disconnectingTimerRef.current = null;
+          }
+          if (disconnectPollRef.current) {
+            clearInterval(disconnectPollRef.current);
+            disconnectPollRef.current = null;
+          }
+          // 10 秒保险：若状态机异常卡住，至少不让 UI 永久被遮住
+          disconnectingTimerRef.current = setTimeout(() => {
+            disconnectingTimerRef.current = null;
+            if (disconnectPollRef.current) {
+              clearInterval(disconnectPollRef.current);
+              disconnectPollRef.current = null;
+            }
+            console.warn('[HomePage] 断开遮罩超时，强制收起');
+            setDisconnecting(false);
+          }, 10000);
+          await disconnectOBD();
+          // 调度模式：通知调度后端保留实例5分钟
+          if (schedulerReady) {
+            notifyDisconnect().catch(e =>
+              console.warn('[HomePage] notifyDisconnect 失败:', e.message)
+            );
+          }
+        } else if (hasLocalSession) {
+          console.log('[HomePage] 取消连接：仅断开本地蓝牙，会话尚未同步到云端');
+          await bluetoothGateway?.disconnect();
+          if (ownedAttemptId !== null) {
+            finishGlobalConnectAttempt(ownedAttemptId, '取消连接：仅断开本地蓝牙');
+            ownedConnectAttemptIdRef.current = null;
+          }
+        } else {
+          console.log('[HomePage] 取消连接：当前无可断开的云端/本地会话');
+          if (ownedAttemptId !== null) {
+            finishGlobalConnectAttempt(ownedAttemptId, '取消连接：当前无会话');
+            ownedConnectAttemptIdRef.current = null;
+          }
+        }
       } catch (e) {
         console.error('Disconnect error:', e);
-        if (disconnectingTimerRef.current) {
-          clearTimeout(disconnectingTimerRef.current);
-          disconnectingTimerRef.current = null;
+        if (hasCloudSession) {
+          if (disconnectingTimerRef.current) {
+            clearTimeout(disconnectingTimerRef.current);
+            disconnectingTimerRef.current = null;
+          }
+          if (disconnectPollRef.current) {
+            clearInterval(disconnectPollRef.current);
+            disconnectPollRef.current = null;
+          }
+          setDisconnecting(false);  // 出错时立即收起遮罩
         }
-        setDisconnecting(false);  // 出错时立即收起遮罩
+        if (ownedAttemptId !== null) {
+          finishGlobalConnectAttempt(ownedAttemptId, `取消连接失败:${(e as any)?.message || 'unknown'}`);
+          ownedConnectAttemptIdRef.current = null;
+        }
       }
-      userCancelledRef.current = false;
+      return;
+    }
+
+    // 其他实例/重复回调导致的重复进入：直接忽略，不把它当成"取消连接"
+    if (hasGlobalConnectAttempt()) {
+      console.log('[HomePage] 忽略重复开始连接：已有全局连接尝试进行中');
       return;
     }
 
@@ -172,18 +266,61 @@ export default function HomePage() {
       return;
     }
 
-    if (!cloudConnected) {
+    // 调度模式：需要先通过调度后端预留实例
+    // 非调度模式（开发/手动）：沿用旧的 cloudConnected 检查
+    const useSchedulerMode = schedulerReady;
+
+    if (!useSchedulerMode && !cloudConnected) {
       Alert.alert('提示', '请先连接云端服务');
       return;
     }
 
+    const attempt = beginGlobalConnectAttempt();
+    if (!attempt) {
+      console.log('[HomePage] 创建全局连接尝试失败：已有进行中的连接');
+      return;
+    }
+
     // 开始连接
+    ownedConnectAttemptIdRef.current = attempt.id;
     userCancelledRef.current = false;
     connectInFlightRef.current = true;
     setObdConnecting(true);
 
     try {
-      // 新流程：B 端先本地连接蓝牙，获取 sessionId 后再通知 A 端
+      // 【调度模式】步骤0：向调度后端申请实例，获取 wsUrl
+      let assignedUrl: string | undefined;
+      if (useSchedulerMode) {
+        console.log('[HomePage] 调度模式：向调度后端申请实例...');
+        setReserving(true);
+        try {
+          assignedUrl = await reserveInstance();
+          setAssignedWsUrl(assignedUrl);
+          console.log('[HomePage] 调度分配成功 wsUrl=', assignedUrl);
+        } finally {
+          setReserving(false);
+        }
+
+        if (userCancelledRef.current) {
+          console.log('[HomePage] 调度完成但用户已取消，释放已分配实例');
+          // 通知调度后端释放刚分配的实例（保留5分钟，以防用户立刻重试）
+          notifyDisconnect().catch(e =>
+            console.warn('[HomePage] 取消后 notifyDisconnect 失败:', e.message)
+          );
+          setAssignedWsUrl(null);
+          finishGlobalConnectAttempt(attempt.id, '用户取消：调度完成后');
+          ownedConnectAttemptIdRef.current = null;
+          connectInFlightRef.current = false;
+          setObdConnecting(false);
+          return;
+        }
+
+        // 连接到调度分配的 CloudBridge ws 地址
+        const cloudOk = await connectCloud(assignedUrl);
+        if (!cloudOk) throw new Error('连接调度实例失败');
+      }
+
+      // 【蓝牙连接】B 端先本地连接蓝牙，获取 sessionId 后再通知 A 端
       console.log('[HomePage] 开始本地蓝牙连接:', selectedDevice.protocol, selectedDevice.address);
       const gateway = getBluetoothGateway();
       if (!gateway) {
@@ -194,11 +331,24 @@ export default function HomePage() {
         selectedDevice.address
       );
 
+      if (userCancelledRef.current) {
+        console.log('[HomePage] 本地蓝牙连接完成，但用户已取消，立即断开并停止后续初始化');
+        await gateway.disconnect();
+        finishGlobalConnectAttempt(attempt.id, '用户取消：本地蓝牙连接完成后立即断开');
+        ownedConnectAttemptIdRef.current = null;
+        return;
+      }
+
       console.log('[HomePage] 本地蓝牙已连接, sessionId:', sessionId);
       console.log('[HomePage] 通知云端开始初始化:', selectedDevice.protocol, selectedDevice.address);
 
-      // 步骤2: 通知云端开始初始化（A 端直接使用 sessionId，不再发起 Connect 请求）
+      // 通知云端开始初始化（A 端直接使用 sessionId，不再发起 Connect 请求）
       await connectOBD(selectedDevice.protocol, selectedDevice.address, sessionId);
+
+      // 调度模式：通知调度后端进入 running 状态
+      if (useSchedulerMode) {
+        await notifyRunning();
+      }
 
       console.log('[HomePage] 云端已通知，等待初始化结果...');
     } catch (e: any) {
@@ -210,40 +360,105 @@ export default function HomePage() {
       userCancelledRef.current = false;
       // 断开蓝牙
       await getBluetoothGateway()?.disconnect();
+      // 调度模式：连接失败时通知调度后端释放实例（不保留，直接归池）
+      if (schedulerReady) {
+        notifyDisconnect().catch(e =>
+          console.warn('[HomePage] 连接失败后 notifyDisconnect 失败:', e.message)
+        );
+        setAssignedWsUrl(null);
+      }
+      finishGlobalConnectAttempt(attempt.id, `连接失败:${e?.message || 'unknown'}`);
+      ownedConnectAttemptIdRef.current = null;
       connectInFlightRef.current = false;
       setObdConnecting(false);
     }
   };
 
+
   useEffect(() => {
-    if (!connectInFlightRef.current) return;
+    if (!connectInFlightRef.current && ownedConnectAttemptIdRef.current === null) return;
     if (connectionStatus === 'ConnectedToECU' || connectionStatus === 'Disconnected') {
       connectInFlightRef.current = false;
       setObdConnecting(false);
+      if (ownedConnectAttemptIdRef.current !== null) {
+        finishGlobalConnectAttempt(ownedConnectAttemptIdRef.current, `状态收口:${connectionStatus}`);
+        ownedConnectAttemptIdRef.current = null;
+      }
     }
   }, [connectionStatus]);
 
-  // 断开完成时消除遮罩（监听 A 端 Disconnected 回调）
-  // 用 disconnectBufferRef 存储缓冲计时器而非局部变量：
-  // 若用局部变量并 return cleanup，则 connectionStatus 后续变化（A 端后台任务发来的 ConnectingToELM 等）
-  // 会触发 React cleanup 取消计时器，而 10 秒保险已被清掉，导致遮罩永远不消失。
+  // 断开遮罩只在"真正可重连"时消失，而不是固定延时。
+  // 需要同时满足：
+  // 1) A 端状态已到 Disconnected
+  // 2) CloudBridge 已清空 sessionId
+  // 3) 本地蓝牙网关已无活动会话/挂起连接
+  // 4) HomePage 自己的连接门禁已完全收口
   useEffect(() => {
-    if (!disconnecting) return;
-    if (connectionStatus === 'Disconnected') {
-      // 清除 10 秒保险（已有缓冲计时器接手）
+    if (!disconnecting) {
+      if (disconnectPollRef.current) {
+        clearInterval(disconnectPollRef.current);
+        disconnectPollRef.current = null;
+      }
+      return;
+    }
+
+    const checkDisconnectReady = () => {
+      const bluetoothGateway = getBluetoothGateway();
+      const hasCloudSession = !!getOBDSessionId();
+      const localReady =
+        bluetoothGateway?.isReadyForConnect?.() ??
+        !(bluetoothGateway?.hasActiveSession?.() ?? false);
+      const ready =
+        connectionStatus === 'Disconnected' &&
+        !hasCloudSession &&
+        localReady &&
+        !connectInFlightRef.current &&
+        !obdConnecting &&
+        ownedConnectAttemptIdRef.current === null &&
+        !hasGlobalConnectAttempt();
+
+      if (!ready) {
+        return;
+      }
+
+      console.log('[HomePage] 断开流程已完全收口，关闭断开遮罩');
       if (disconnectingTimerRef.current) {
         clearTimeout(disconnectingTimerRef.current);
         disconnectingTimerRef.current = null;
       }
-      // 只启动一次缓冲计时器，防止重复触发
-      if (!disconnectBufferRef.current) {
-        disconnectBufferRef.current = setTimeout(() => {
-          disconnectBufferRef.current = null;
-          setDisconnecting(false);
-        }, 3000);
+      if (disconnectPollRef.current) {
+        clearInterval(disconnectPollRef.current);
+        disconnectPollRef.current = null;
       }
+      setDisconnecting(false);
+    };
+
+    checkDisconnectReady();
+
+    if (!disconnectPollRef.current) {
+      disconnectPollRef.current = setInterval(checkDisconnectReady, 100);
     }
-  }, [connectionStatus, disconnecting]);
+
+    return () => {
+      if (disconnectPollRef.current) {
+        clearInterval(disconnectPollRef.current);
+        disconnectPollRef.current = null;
+      }
+    };
+  }, [connectionStatus, disconnecting, getOBDSessionId, obdConnecting]);
+
+  useEffect(() => {
+    return () => {
+      if (disconnectingTimerRef.current) {
+        clearTimeout(disconnectingTimerRef.current);
+        disconnectingTimerRef.current = null;
+      }
+      if (disconnectPollRef.current) {
+        clearInterval(disconnectPollRef.current);
+        disconnectPollRef.current = null;
+      }
+    };
+  }, []);
 
   // 监控 UI 状态变化（用于诊断）
   useEffect(() => {
@@ -395,13 +610,13 @@ export default function HomePage() {
         <TouchableOpacity
           style={[
             styles.connectButton,
-            isConnected && styles.disconnectButton,
+            (isConnected || obdConnecting) && styles.disconnectButton,
           ]}
           onPress={handleConnect}
           activeOpacity={0.8}
         >
           <Text style={styles.connectButtonText}>
-            {isConnected ? '断开连接' : '开始连接'}
+            {isConnected ? '断开连接' : (reserving ? '分配实例中...' : obdConnecting ? '取消连接' : '开始连接')}
           </Text>
         </TouchableOpacity>
       </View>

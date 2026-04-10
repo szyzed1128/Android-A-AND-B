@@ -61,6 +61,14 @@ type AppContextValue = {
   // ELM327 超时覆盖（ms）：400=默认不拦截，800/1000/1020=覆盖 ATST 命令
   elmTimeoutMs: number;
   setElmTimeoutMs: React.Dispatch<React.SetStateAction<number>>;
+
+  // 调度系统
+  sessionId: string | null;
+  setSessionId: React.Dispatch<React.SetStateAction<string | null>>;
+  schedulerReady: boolean;
+  setSchedulerReady: React.Dispatch<React.SetStateAction<boolean>>;
+  assignedWsUrl: string | null;        // 调度分配的 ws 地址
+  setAssignedWsUrl: React.Dispatch<React.SetStateAction<string | null>>;
 };
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -113,6 +121,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // ELM327 ATST 超时覆盖（ms），400=默认不拦截
   const [elmTimeoutMs, setElmTimeoutMs] = useState<number>(400);
 
+  // 调度系统
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [schedulerReady, setSchedulerReady] = useState<boolean>(false);
+  const [assignedWsUrl, setAssignedWsUrl] = useState<string | null>(null);
+
   return (
     <AppContext.Provider
       value={{
@@ -139,6 +152,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         appStartTime,
         elmTimeoutMs,
         setElmTimeoutMs,
+        sessionId,
+        setSessionId,
+        schedulerReady,
+        setSchedulerReady,
+        assignedWsUrl,
+        setAssignedWsUrl,
       }}
     >
       {children}
