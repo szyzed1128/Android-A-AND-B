@@ -34,18 +34,36 @@ async function getOrCreateDeviceId(): Promise<string> {
 }
 
 /**
+ * 从 cloudHost 推导调度后端地址
+ * 调度后端与 APK 共用同一台服务器，通过 Nginx /api/ 路径代理：
+ *   cloudHost = "47.x.x.x" → http://47.x.x.x:8080/api
+ *   cloudHost = "wss://domain.com" → http://domain.com:8080/api
+ */
+function deriveSchedulerUrl(cloudHost: string): string {
+  // 去掉协议前缀，提取纯域名/IP
+  const host = cloudHost.replace(/^wss?:\/\//i, '').replace(/\/.*$/, '');
+  if (!host || host === '192.168.1.100') return ''; // 本地默认值，不启用调度模式
+  return `http://${host}:8080/api`;
+}
+
+/**
  * useScheduler - 完整 Hook，只在 App 根挂载一次
  * 负责会话初始化、心跳、AppState 监听
  * 同时返回操作方法供调用方便
  */
 export function useScheduler() {
-  const { setSessionId, setSchedulerReady } = useAppContext();
+  const { setSessionId, setSchedulerReady, cloudHost } = useAppContext();
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef<AppStateStatus>('active');
   const initializedRef = useRef(false);
 
   const initSession = useCallback(async () => {
     if (initializedRef.current) return;
+    // 如果调度地址还未设置（cloudHost 是默认本地值），暂不初始化
+    if (!SchedulerClient.getBaseUrl()) {
+      console.log('[useScheduler] 调度后端地址未设置，跳过初始化');
+      return;
+    }
     try {
       const deviceId = await getOrCreateDeviceId();
       const sessionId = await SchedulerClient.initSession(deviceId);
@@ -58,6 +76,19 @@ export function useScheduler() {
       setTimeout(initSession, 5000);
     }
   }, [setSessionId, setSchedulerReady]);
+
+  // 监听 cloudHost 变化，自动更新 SchedulerClient 的 baseUrl
+  // 用户在 App 设置里输入服务器 IP 后，调度地址自动同步，并触发会话初始化
+  useEffect(() => {
+    const url = deriveSchedulerUrl(cloudHost);
+    if (url) {
+      SchedulerClient.setBaseUrl(url);
+      console.log('[useScheduler] 调度后端地址已更新:', url);
+      // baseUrl 刚变有效，重置 initializedRef 让 initSession 重新执行
+      initializedRef.current = false;
+      initSession();
+    }
+  }, [cloudHost, initSession]);
 
   const startHeartbeat = useCallback(() => {
     if (heartbeatTimerRef.current) return;

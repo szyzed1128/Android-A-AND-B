@@ -1,9 +1,14 @@
 /**
  * SchedulerClient - 调度后端 HTTP 调用封装
  * B端与调度后端通信的统一入口
+ *
+ * 调度后端地址通过 setBaseUrl() 动态设置，由 useScheduler 从 cloudHost 推导：
+ *   cloudHost = "47.110.246.8" → schedulerUrl = "http://47.110.246.8:8080/api"
+ * 调度后端通过 Nginx /api/ 路径代理，与 APK WebSocket /ws 共用 8080 端口。
  */
 
-const SCHEDULER_BASE_URL = 'http://scheduler.yourdomain.com:3000'; // 部署后替换
+// 默认无地址，必须在 useScheduler 初始化时通过 setBaseUrl() 设置
+const SCHEDULER_BASE_URL = '';
 
 class SchedulerClientService {
   private baseUrl: string = SCHEDULER_BASE_URL;
@@ -11,6 +16,10 @@ class SchedulerClientService {
 
   setBaseUrl(url: string) {
     this.baseUrl = url;
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   setSessionId(id: string | null) {
