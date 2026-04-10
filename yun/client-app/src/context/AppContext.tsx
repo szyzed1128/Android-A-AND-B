@@ -109,7 +109,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   // 云端连接
   const [cloudConnected, setCloudConnected] = useState<boolean>(false);
-  const [cloudHost, setCloudHost] = useState<string>('192.168.1.100');
+  const [cloudHost, setCloudHost] = useState<string>('');
   const [cloudPort, setCloudPort] = useState<number>(8080);
 
   // 后端初始化状态

@@ -38,11 +38,25 @@ async function getOrCreateDeviceId(): Promise<string> {
  * 调度后端与 APK 共用同一台服务器，通过 Nginx /api/ 路径代理：
  *   cloudHost = "47.x.x.x" → http://47.x.x.x:8080/api
  *   cloudHost = "wss://domain.com" → http://domain.com:8080/api
+ *
+ * 对以下情况返回空字符串（不触发调度初始化）：
+ *   - 默认本地地址 '192.168.1.100'
+ *   - 输入中的不完整 IP（如 "47."、"47.1"）
+ *   - 少于 4 个字符的任何输入
  */
 function deriveSchedulerUrl(cloudHost: string): string {
-  // 去掉协议前缀，提取纯域名/IP
-  const host = cloudHost.replace(/^wss?:\/\//i, '').replace(/\/.*$/, '');
-  if (!host || host === '192.168.1.100') return ''; // 本地默认值，不启用调度模式
+  const host = cloudHost.replace(/^wss?:\/\//i, '').replace(/\/.*$/, '').trim();
+
+  // 默认值（空字符串）或太短，不处理
+  if (!host || host.length < 4) return '';
+
+  // 如果看起来像 IP 地址，要求格式完整（a.b.c.d，每段1-3位数字）
+  const looksLikeIp = /^\d/.test(host);
+  if (looksLikeIp) {
+    const isCompleteIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+    if (!isCompleteIp) return ''; // 输入中的不完整 IP，等用户输完再触发
+  }
+
   return `http://${host}:8080/api`;
 }
 
@@ -72,22 +86,33 @@ export function useScheduler() {
       initializedRef.current = true;
       console.log('[useScheduler] 会话初始化成功 sessionId=', sessionId);
     } catch (err: any) {
-      console.error('[useScheduler] 会话初始化失败:', err.message);
-      setTimeout(initSession, 5000);
+      // 调度初始化失败是非致命错误（服务器不可达、IP未设置等），
+      // 用 warn 而非 error，避免开发模式红色弹窗。
+      // App 仍可正常工作，schedulerReady=false，走手动连接模式。
+      console.warn('[useScheduler] 调度后端连接失败（非致命）:', err.message);
+      // 只在 baseUrl 仍有效时重试，避免地址被清空后无意义轮询
+      if (SchedulerClient.getBaseUrl()) {
+        setTimeout(initSession, 5000);
+      }
     }
   }, [setSessionId, setSchedulerReady]);
 
   // 监听 cloudHost 变化，自动更新 SchedulerClient 的 baseUrl
-  // 用户在 App 设置里输入服务器 IP 后，调度地址自动同步，并触发会话初始化
+  // 加 800ms 防抖：用户在输入框逐字输入时不触发，停止输入后才执行
+  // 这样 "47."、"47.1" 等中间状态不会触发网络请求
   useEffect(() => {
-    const url = deriveSchedulerUrl(cloudHost);
-    if (url) {
-      SchedulerClient.setBaseUrl(url);
-      console.log('[useScheduler] 调度后端地址已更新:', url);
-      // baseUrl 刚变有效，重置 initializedRef 让 initSession 重新执行
-      initializedRef.current = false;
-      initSession();
-    }
+    const timer = setTimeout(() => {
+      const url = deriveSchedulerUrl(cloudHost);
+      if (url) {
+        SchedulerClient.setBaseUrl(url);
+        console.log('[useScheduler] 调度后端地址已更新:', url);
+        // baseUrl 刚变有效，重置 initializedRef 让 initSession 重新执行
+        initializedRef.current = false;
+        initSession();
+      }
+    }, 800); // 800ms 防抖：用户停止输入后再触发
+
+    return () => clearTimeout(timer);
   }, [cloudHost, initSession]);
 
   const startHeartbeat = useCallback(() => {
