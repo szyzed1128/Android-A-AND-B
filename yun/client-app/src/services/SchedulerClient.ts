@@ -112,7 +112,7 @@ class SchedulerClientService {
     try {
       await this.request('POST', `/session/${this.sessionId}/disconnect`);
     } catch (e: any) {
-      console.warn('[SchedulerClient] disconnect 失败:', e.message);
+      console.log('[SchedulerClient] disconnect 跳过（非致命）:', e.message);
     }
   }
 
@@ -124,7 +124,7 @@ class SchedulerClientService {
     try {
       await this.request('PUT', `/session/${this.sessionId}/status`, { status });
     } catch (e: any) {
-      console.warn('[SchedulerClient] updateStatus 失败:', e.message);
+      console.log('[SchedulerClient] updateStatus 跳过（非致命）:', e.message);
     }
   }
 }

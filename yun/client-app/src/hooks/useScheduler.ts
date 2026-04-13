@@ -154,7 +154,7 @@ export function useScheduler() {
       try {
         await SchedulerClient.setDevice(btAddress, btProtocol, btName);
       } catch (err: any) {
-        console.warn('[Scheduler] syncDevice 失败:', err.message);
+        console.log('[Scheduler] syncDevice 跳过（调度未就绪）:', err.message);
       }
     }, []),
 
@@ -162,7 +162,7 @@ export function useScheduler() {
       try {
         await SchedulerClient.setCar(carBrand, carModel);
       } catch (err: any) {
-        console.warn('[Scheduler] syncCar 失败:', err.message);
+        console.log('[Scheduler] syncCar 跳过（调度未就绪）:', err.message);
       }
     }, []),
 
@@ -194,7 +194,7 @@ export function useSchedulerActions() {
       try {
         await SchedulerClient.setDevice(btAddress, btProtocol, btName);
       } catch (err: any) {
-        console.warn('[Scheduler] syncDevice 失败:', err.message);
+        console.log('[Scheduler] syncDevice 跳过（调度未就绪）:', err.message);
       }
     },
 
@@ -202,7 +202,7 @@ export function useSchedulerActions() {
       try {
         await SchedulerClient.setCar(carBrand, carModel);
       } catch (err: any) {
-        console.warn('[Scheduler] syncCar 失败:', err.message);
+        console.log('[Scheduler] syncCar 跳过（调度未就绪）:', err.message);
       }
     },
 
