@@ -43,7 +43,7 @@ export interface Profile {
 // ECU 类型
 export interface ECUItem {
   name: string;
-  selected?: boolean;
+  selected?: boolean;   // CarScanner 序列化的 ECUExists：true = 该 ECU 在车上存活
 }
 
 // PID 类型
@@ -1071,6 +1071,11 @@ class CloudBridgeService {
           this.flowLog('B<A', `PID值变化: ${normalized.NM}=${typeof val === 'object' ? '[obj]' : val}`);
           this.onPIDValueChanged?.(normalized);
           const timingT5 = Date.now();
+
+          // 虚拟 PID 过滤：Current time 由 CarScanner 内部计算，没有对应的 AT 命令，
+          // 不消费 _pidTimingPending，避免错位污染其他真实 PID 的计时
+          const isVirtualPid = normalized.NM === 'Current time';
+          if (isVirtualPid) break;
 
           // 输出 [TIMING] 日志
           const entry = this._pidTimingPending;

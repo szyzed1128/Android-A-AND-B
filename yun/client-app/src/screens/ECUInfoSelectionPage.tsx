@@ -42,8 +42,13 @@ export default function ECUInfoSelectionPage() {
     try {
       const data = await getECUList();
       setEcuList(data || []);
-      // 默认全选
-      setSelectedIndices(data?.map((_, i) => i) || []);
+      // 默认选存活的 ECU（selected === true），而非全选
+      // CarScanner 通过 selected 字段标记该 ECU 是否在车上存活
+      const aliveIndices = (data || [])
+        .map((item, index) => (item.selected ? index : -1))
+        .filter(index => index !== -1);
+      // 如果没有存活的 ECU（首次进入或未检测），fallback 到全选
+      setSelectedIndices(aliveIndices.length > 0 ? aliveIndices : (data || []).map((_, i) => i));
     } catch (e) {
       console.error('Load ECU list error:', e);
     }
