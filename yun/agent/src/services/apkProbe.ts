@@ -32,6 +32,13 @@ export interface ProbeResult {
  */
 export async function runReadinessProbe(instance: InstanceConfig): Promise<ProbeResult> {
   try {
+    // Step 0: 确保 adb 连接有效（systemd 环境下 adb server 可能没有设备注册）
+    console.log(`[Probe] ${instance.id} Step0: adb connect ${instance.adbTarget}`);
+    await execShell(`adb connect ${instance.adbTarget}`);
+    // adb daemon 重启后 forward 会消失，每次探针前都重建
+    await execShell(`adb -s ${instance.adbTarget} forward tcp:${instance.probePort} tcp:8080`);
+    console.log(`[Probe] ${instance.id} Step0: forward ${instance.probePort}→8080 已建立`);
+
     // Step 1: pm clear（清除残留数据）
     console.log(`[Probe] ${instance.id} Step1: pm clear`);
     await execShell(`adb -s ${instance.adbTarget} shell pm clear ${instance.packageName}`);
