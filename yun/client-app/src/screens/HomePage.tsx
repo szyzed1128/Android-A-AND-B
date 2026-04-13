@@ -266,14 +266,21 @@ export default function HomePage() {
       return;
     }
 
-    // 调度模式：需要先通过调度后端预留实例
-    // 非调度模式（开发/手动）：沿用旧的 cloudConnected 检查
-    const useSchedulerMode = schedulerReady;
+    // 强制走调度模式：必须等 schedulerReady = true 才能连接
+    // （手动模式降级暂时注释掉，确保始终走新调度框架）
+    const useSchedulerMode = true; // schedulerReady;
 
+    if (!schedulerReady) {
+      Alert.alert('提示', '调度服务尚未就绪，请稍候或检查服务器 IP 是否正确');
+      return;
+    }
+
+    /* 手动模式降级（暂时关闭）
     if (!useSchedulerMode && !cloudConnected) {
       Alert.alert('提示', '请先连接云端服务');
       return;
     }
+    */
 
     const attempt = beginGlobalConnectAttempt();
     if (!attempt) {
