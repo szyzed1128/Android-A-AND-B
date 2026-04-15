@@ -27,6 +27,12 @@ export interface ProbeResult {
   error?: string;
 }
 
+export interface CatalogProfileItem {
+  profileIndex: number;
+  name: string;
+  description?: string;
+}
+
 /**
  * 执行完整就绪探针流程（供外部调用）
  */
@@ -45,22 +51,22 @@ export async function runReadinessProbe(instance: InstanceConfig): Promise<Probe
 
     // Step 2: am start（冷启动）
     console.log(`[Probe] ${instance.id} Step2: am start`);
-    await execShell(
-      `adb -s ${instance.adbTarget} shell am start -n ` +
-      `${instance.packageName}/${instance.activityName}`
-    );
+    await startApkActivity(instance);
 
-    // Step 3: 等待 APK 完全就绪（轮询 getBrands 直到成功，最多等 60 秒）
-    // 说明：APK 的 WebSocket 端口约 2 秒可连，但 JSBridge 初始化约需 20 秒
-    //       只检查 TCP 连通不够，必须等 getBrands 成功才算真正就绪
-    console.log(`[Probe] ${instance.id} Step3: 等待APK完全就绪（最多60秒）`);
+    // Step 3: 等待 APK 完全就绪（不仅 getBrands 成功，还要默认品牌 profiles 真正可用）
+    // 说明：只看到 getBrands 成功并不代表 profiles 已加载完成；过早调用 getProfiles/applyProfile
+    //      会得到空列表或 NullReferenceException，导致实例被误判成 idle。
+    console.log(`[Probe] ${instance.id} Step3: 等待APK完全就绪（默认品牌 catalog 可用，最多60秒）`);
     const wsUrl = `ws://localhost:${instance.probePort}/ws`;
-    await waitForApkReady(wsUrl, 60000);
-    console.log(`[Probe] ${instance.id} Step3: APK已就绪，getBrands 可响应`);
+    await waitForApkReady(wsUrl, 60000, DEFAULT_BRAND);
+    console.log(`[Probe] ${instance.id} Step3: APK已就绪，默认品牌 catalog 可响应`);
 
     // Step 4-6: 应用默认车型（AITO），验证 profiles 已加载
     console.log(`[Probe] ${instance.id} Step4-6: 应用默认车型配置`);
-    await runBusinessProbe(instance, DEFAULT_BRAND, DEFAULT_MODEL);
+    const applyResult = await applyCarProfile(instance, DEFAULT_BRAND, 0, DEFAULT_MODEL);
+    if (!applyResult.success) {
+      throw new Error(applyResult.error || `默认车型 ${DEFAULT_BRAND}/${DEFAULT_MODEL} 应用失败`);
+    }
 
     console.log(`[Probe] ${instance.id} ✅ 就绪探针通过`);
     return { success: true };
@@ -78,16 +84,56 @@ export async function runReadinessProbe(instance: InstanceConfig): Promise<Probe
 export async function applyCarProfile(
   instance: InstanceConfig,
   carBrand: string,
-  carModel: string
+  profileIndex: number,
+  profileName?: string
 ): Promise<ProbeResult> {
   try {
-    console.log(`[Probe] ${instance.id} applyCar: ${carBrand}/${carModel}`);
-    await runBusinessProbe(instance, carBrand, carModel);
+    console.log(`[Probe] ${instance.id} applyCar: ${carBrand} index=${profileIndex} name=${profileName || '-'}`);
+    // 多实例下，idle 并不等于 APK 进程仍然存活。分配前显式拉起 Activity，
+    // 避免实例2这类“探针通过后进程已退出”导致的分配成功但 ws 不可连。
+    await startApkActivity(instance);
+    // 这里不能只等 getBrands 成功；目标品牌的 profiles 也必须可用，否则 applyCar 仍会在
+    // getProfiles/applyProfile 阶段失败。
+    const wsUrl = `ws://localhost:${instance.probePort}/ws`;
+    await waitForApkReady(wsUrl, 45000, carBrand);
+    await runBusinessProbe(instance, carBrand, profileIndex, profileName);
     return { success: true };
   } catch (err: any) {
     console.error(`[Probe] ${instance.id} applyCar 失败:`, err.message);
     return { success: false, error: err.message };
   }
+}
+
+export async function getCatalogBrands(instance: InstanceConfig): Promise<string[]> {
+  return withProbeSocket(instance, async (ws) => {
+    const rawBrands = await sendRequest(ws, 'getBrands', {});
+    const brands = parseResponseData(rawBrands);
+    if (!Array.isArray(brands)) {
+      throw new Error('getBrands 返回格式异常');
+    }
+    return brands
+      .map((item) => String(item ?? '').trim())
+      .filter(Boolean);
+  });
+}
+
+export async function getCatalogProfiles(
+  instance: InstanceConfig,
+  brand: string
+): Promise<CatalogProfileItem[]> {
+  return withProbeSocket(instance, async (ws) => {
+    const rawProfiles = await sendRequest(ws, 'getProfiles', { brand });
+    const profiles = parseResponseData(rawProfiles);
+    if (!Array.isArray(profiles)) {
+      throw new Error(`getProfiles("${brand}") 返回格式异常`);
+    }
+
+    return profiles.map((profile: any, index: number) => ({
+      profileIndex: index,
+      name: String(profile?.Name ?? profile?.name ?? `配置${index + 1}`),
+      description: profile?.Description ?? profile?.description ?? undefined,
+    }));
+  });
 }
 
 /**
@@ -103,12 +149,10 @@ export async function applyCarProfile(
 async function runBusinessProbe(
   instance: InstanceConfig,
   brand: string,
-  model: string
+  profileIndex: number,
+  profileName?: string
 ): Promise<void> {
-  const wsUrl = `ws://localhost:${instance.probePort}/ws`;
-  const ws = await connectWebSocket(wsUrl);
-
-  try {
+  await withProbeSocket(instance, async (ws) => {
     // Step 4: getBrands —— 验证 APK 已加载完毕
     const rawBrands = await sendRequest(ws, 'getBrands', {});
     const brands = parseResponseData(rawBrands);
@@ -125,27 +169,37 @@ async function runBusinessProbe(
     }
     console.log(`[Probe] ${instance.id} getProfiles 成功，共${profiles.length}个配置`);
 
-    // 找到目标车型的 profileIndex
-    // 默认探针(AITO)只有一个配置，直接用 index=0
-    // 用户选择的车型通过名字匹配（Profile.Name 字段）
-    let profileIndex = 0;
-    if (model !== DEFAULT_MODEL || brand !== DEFAULT_BRAND) {
-      // 用户车型：在列表中查找匹配的名字
-      const idx = profiles.findIndex((p: any) =>
-        (p.Name ?? p.name ?? '') === model
+    if (profileIndex < 0 || profileIndex >= profiles.length) {
+      throw new Error(
+        `品牌 ${brand} 的配置下标越界: index=${profileIndex}, count=${profiles.length}, name=${profileName || '-'}`
       );
-      if (idx < 0) {
-        throw new Error(`在 ${brand} 的配置列表中找不到车型 "${model}"`);
-      }
-      profileIndex = idx;
     }
 
     // Step 6: applyProfile —— 参数：brand + profileIndex（数字下标）
     await sendRequest(ws, 'applyProfile', { brand, profileIndex });
     console.log(`[Probe] ${instance.id} applyProfile("${brand}", index=${profileIndex}) 成功`);
+  });
+}
+
+async function withProbeSocket<T>(
+  instance: InstanceConfig,
+  runner: (ws: WebSocket) => Promise<T>
+): Promise<T> {
+  const wsUrl = `ws://localhost:${instance.probePort}/ws`;
+  const ws = await connectWebSocket(wsUrl);
+
+  try {
+    return await runner(ws);
   } finally {
     ws.close();
   }
+}
+
+async function startApkActivity(instance: InstanceConfig): Promise<void> {
+  await execShell(
+    `adb -s ${instance.adbTarget} shell am start -n ` +
+    `${instance.packageName}/${instance.activityName}`
+  );
 }
 
 /**
@@ -160,14 +214,17 @@ function parseResponseData(data: any): any {
 }
 
 /**
- * 轮询等待 APK 完全就绪（WebSocket 可连 + getBrands 成功响应）
+ * 轮询等待 APK 完全就绪
  *
  * 仅检查 TCP 连通是不够的：APK 的 WebSocket 端口约 2 秒就会监听，
- * 但 JSBridge 初始化约需 20-30 秒，过早调用 getBrands 会返回 NullReferenceException。
- * 此函数每 3 秒尝试一次 getBrands，直到成功或超时。
+ * 但 JSBridge / ProfilesV2 初始化可能更晚完成。过早调用 getBrands/getProfiles
+ * 会返回空列表或 NullReferenceException。
+ *
+ * 当传入 brand 时，除了 getBrands 成功，还要求 getProfiles(brand) 返回非空列表。
  */
-async function waitForApkReady(wsUrl: string, timeoutMs: number): Promise<void> {
+async function waitForApkReady(wsUrl: string, timeoutMs: number, brand?: string): Promise<void> {
   const deadline = Date.now() + timeoutMs;
+  let lastError = '';
 
   while (Date.now() < deadline) {
     let ws: WebSocket | null = null;
@@ -175,18 +232,31 @@ async function waitForApkReady(wsUrl: string, timeoutMs: number): Promise<void> 
       ws = await connectWebSocket(wsUrl, 3000);
       const raw = await sendRequest(ws, 'getBrands', {});
       const brands = parseResponseData(raw);
-      if (Array.isArray(brands) && brands.length > 0) {
-        return; // APK 完全就绪
+      if (!Array.isArray(brands) || brands.length === 0) {
+        throw new Error('getBrands 返回空列表');
       }
-    } catch {
-      // 未就绪（连接失败或 getBrands 出错），等待后重试
+
+      if (brand) {
+        const rawProfiles = await sendRequest(ws, 'getProfiles', { brand });
+        const profiles = parseResponseData(rawProfiles);
+        if (!Array.isArray(profiles) || profiles.length === 0) {
+          throw new Error(`getProfiles("${brand}") 返回空列表`);
+        }
+      }
+      return;
+    } catch (err: any) {
+      lastError = err?.message || '未知错误';
+      // 未就绪（连接失败或 getBrands/getProfiles 出错），等待后重试
     } finally {
       try { ws?.close(); } catch { /* ignore */ }
     }
     await sleep(3000);
   }
 
-  throw new Error(`APK 初始化超时（${timeoutMs}ms），getBrands 始终未成功`);
+  if (brand) {
+    throw new Error(`APK 初始化超时（${timeoutMs}ms），${brand} 的 profiles 始终未就绪: ${lastError}`);
+  }
+  throw new Error(`APK 初始化超时（${timeoutMs}ms），getBrands 始终未成功: ${lastError}`);
 }
 
 /**

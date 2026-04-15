@@ -17,6 +17,8 @@ export interface AgentConfig {
   agentPort: number;         // Agent HTTP 监听端口
   schedulerUrl: string;      // 调度后端地址
   healthReportIntervalMs: number;  // 健康上报间隔
+  publicWsHost?: string;     // 对 B 端可见的实例公网/域名地址（可选，优先于自动探测）
+  publicWsScheme: 'ws' | 'wss'; // B 端连接实例时使用的协议
   instances: InstanceConfig[];
 }
 
@@ -38,6 +40,8 @@ const config: AgentConfig = {
   agentPort: parseInt(getEnv('AGENT_PORT', '4000')),
   schedulerUrl: getEnv('SCHEDULER_URL', 'http://scheduler:3000'),
   healthReportIntervalMs: 60 * 1000,
+  publicWsHost: process.env.PUBLIC_WS_HOST || undefined,
+  publicWsScheme: getEnv('PUBLIC_WS_SCHEME', 'ws') === 'wss' ? 'wss' : 'ws',
 
   instances: JSON.parse(getEnv('INSTANCES_CONFIG', JSON.stringify([
     {
