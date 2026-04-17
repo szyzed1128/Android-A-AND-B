@@ -828,6 +828,41 @@ public_ws_host: ${PUBLIC_WS_HOST}
 - Dashboard 看上去有 idle
 - 真分配时还是失败
 
+## 8.8 把 `create_instance.sh` 误当成“新机从零部署脚本”
+
+会出现：
+
+- 一上来就报 `/var/lib/waydroid/images` 不存在
+- 或 `slot_1` 不存在
+- 或 Agent 环境文件不存在
+
+因为：
+
+- `create_instance.sh` 只负责 `slot_2+`
+- 新机从零部署必须先跑：
+  - `bootstrap_host.sh`
+  - `bootstrap_slot1.sh`
+
+## 8.9 忽略宿主机内核前置条件
+
+会出现：
+
+- Waydroid 包安装成功
+- 但 `/dev/binderfs/binder-control` 不存在
+- 后续所有实例脚本都无法真正启动
+
+因为：
+
+- 用户态包可以通过 `apt` 安装
+- 但 `binder / binderfs` 是宿主机内核能力，不是脚本能补出来的
+
+所以新 EC2 部署前必须先确认：
+
+- ARM64 / aarch64
+- Ubuntu 22.04 LTS
+- 内核支持 `binder_linux` 或 `binder`
+- 内核支持 `binderfs`
+
 ---
 
 ## 9. 这次阶段对未来脚本设计的直接结论
@@ -867,6 +902,19 @@ public_ws_host: ${PUBLIC_WS_HOST}
 
 只有第三步通过，实例才能被 Agent 注册为 `idle`。
 
+### D. `bootstrap_host() / bootstrap_slot1()`
+
+未来已经不能再把“宿主机基线”和“slot_1 基线”默认为人工步骤。
+
+它们也必须显式脚本化，并承担下面的职责：
+
+- 安装宿主机依赖包
+- 校验 binder / binderfs
+- 部署 Agent / Scheduler / dashboard-web
+- 完成 `waydroid init`
+- 建立官方 `slot_1`
+- 再把 `slot_2+` 交给 `create_instance.sh`
+
 ---
 
 ## 10. 建议与现有文档的关系
@@ -875,7 +923,7 @@ public_ws_host: ${PUBLIC_WS_HOST}
 
 - `NewUI/yun/deployment/总体架构说明文档.md`
 - `NewUI/yun/deployment/实例层大规模部署说明文档.md`
-- `NewUI/yun/deployment/服务器审计报告_20260414.md`
+- `NewUI/yun/deployment/archive/audits/服务器审计报告_20260414.md`
 
 三者职责不同：
 

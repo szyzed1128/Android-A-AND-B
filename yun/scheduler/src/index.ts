@@ -3,10 +3,13 @@
  */
 
 import express from 'express';
+import path from 'path';
 import { initRedis } from './services/redis';
 import { startHeartbeatMonitor, handleAgentHealthReport } from './services/scheduler';
 import sessionRouter from './routes/session';
 import instanceRouter from './routes/instance';
+import dashboardRouter from './routes/dashboard';
+import catalogRouter from './routes/catalog';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -23,6 +26,11 @@ app.use((req, res, next) => {
 // 路由
 app.use('/session', sessionRouter);
 app.use('/instance', instanceRouter);
+app.use('/catalog', catalogRouter);
+app.use('/dashboard/api', dashboardRouter);
+
+const dashboardDir = path.resolve(__dirname, '../../dashboard-web');
+app.use('/dashboard', express.static(dashboardDir));
 
 // Agent 健康上报入口
 app.post('/agent/health', async (req, res) => {

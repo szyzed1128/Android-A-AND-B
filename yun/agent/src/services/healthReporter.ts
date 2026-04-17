@@ -11,18 +11,25 @@ import { AgentConfig } from '../config';
 export function startHealthReporter(config: AgentConfig): void {
   const report = async () => {
     try {
+      const publicWsHost = await resolvePublicWsHost(config);
+      const serverIp = await resolveServerIp(config);
       const statuses = getAllInstanceStatuses();
       const instances = statuses.map(s => ({
         id: s.id,
         wsPort: s.wsPort,
-        status: s.status,
+        agentStatus: s.status,
         health: s.status === 'bad' ? 'bad' : 'ok',
+        failureCount: s.failureCount,
+        lastError: s.lastError,
+        statusChangedAt: s.statusChangedAt,
         ...getResourceUsage(),
       }));
 
       await axios.post(`${config.schedulerUrl}/agent/health`, {
         serverId: config.serverId,
-        serverIp: getServerIp(),
+        serverIp,
+        publicWsHost,
+        publicWsScheme: config.publicWsScheme,
         agentPort: config.agentPort,
         instances,
         reportedAt: Date.now(),
@@ -37,6 +44,76 @@ export function startHealthReporter(config: AgentConfig): void {
   report();
   setInterval(report, config.healthReportIntervalMs);
   console.log(`[HealthReporter] 已启动，每${config.healthReportIntervalMs / 1000}秒上报`);
+}
+
+let cachedPublicWsHost: string | null = null;
+let cachedServerIp: string | null = null;
+
+async function resolvePublicWsHost(config: AgentConfig): Promise<string> {
+  if (config.publicWsHost) {
+    cachedPublicWsHost = config.publicWsHost;
+    return config.publicWsHost;
+  }
+
+  if (cachedPublicWsHost) {
+    return cachedPublicWsHost;
+  }
+
+  const candidates = [
+    'http://100.100.100.200/latest/meta-data/eipv4',
+    'http://100.100.100.200/latest/meta-data/public-ipv4',
+    'http://169.254.169.254/latest/meta-data/public-ipv4',
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await axios.get(url, { timeout: 1200, responseType: 'text' });
+      const value = String(res.data || '').trim();
+      if (value) {
+        cachedPublicWsHost = value;
+        return value;
+      }
+    } catch {
+      // ignore and try next candidate
+    }
+  }
+
+  const fallback = getServerIp();
+  cachedPublicWsHost = fallback;
+  return fallback;
+}
+
+async function resolveServerIp(config: AgentConfig): Promise<string> {
+  if (config.serverIpOverride) {
+    cachedServerIp = config.serverIpOverride;
+    return config.serverIpOverride;
+  }
+
+  if (cachedServerIp) {
+    return cachedServerIp;
+  }
+
+  const candidates = [
+    'http://100.100.100.200/latest/meta-data/inner-ipv4',
+    'http://169.254.169.254/latest/meta-data/local-ipv4',
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await axios.get(url, { timeout: 1200, responseType: 'text' });
+      const value = String(res.data || '').trim();
+      if (value) {
+        cachedServerIp = value;
+        return value;
+      }
+    } catch {
+      // ignore and try next candidate
+    }
+  }
+
+  const fallback = getServerIp();
+  cachedServerIp = fallback;
+  return fallback;
 }
 
 function getResourceUsage(): { cpu?: number; memory?: number } {

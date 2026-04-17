@@ -33,11 +33,12 @@ router.get('/pool/stats', async (req: Request, res: Response) => {
     const idleCount = await redis.getIdlePoolSize();
     const allIds = await redis.getAllInstanceIds();
 
-    const stats = { total: allIds.length, idle: idleCount, busy: 0, bad: 0, reserved: 0 };
+    const stats = { total: allIds.length, idle: idleCount, busy: 0, bad: 0, reserved: 0, probing: 0 };
     for (const id of allIds) {
       const inst = await redis.getInstance(id);
       if (inst?.status === 'busy') stats.busy++;
       else if (inst?.status === 'bad') stats.bad++;
+      else if (inst?.status === 'probing') stats.probing++;
       else if (inst?.status === 'reserved' || inst?.status === 'reserved_for_user') stats.reserved++;
     }
 

@@ -7,7 +7,7 @@
 # 前提：create_instance.sh 已成功执行（实例目录、Nginx 配置、脚本都在）。
 #
 # 本脚本做三件事：
-#   1. 确认 obd-instance@.service template 存在（由 create_instance.sh 生成）
+#   1. 覆盖写 obd-instance@.service template（唯一正式来源）
 #   2. systemctl enable obd-instance@<slot>（注册开机启动）
 #   3. 验证 systemctl is-enabled 返回 enabled
 #
@@ -50,7 +50,8 @@ cat > "$SYSTEMD_TEMPLATE" << UNIT
 # 由 install_persist.sh 创建
 [Unit]
 Description=OBD Waydroid Instance slot=%i
-After=network.target
+After=network.target obd-agent.service
+Wants=obd-agent.service
 # 若 slot_1 由 cardemo.service 管理，可按需追加 After=cardemo.service
 
 [Service]

@@ -26,7 +26,10 @@ export async function initSession(deviceId: string): Promise<SessionInfo> {
   const oldSessionId = await redis.getSessionIdByDevice(deviceId);
 
   // 保存旧 session 配置，用于5分钟重连时沿用
-  let inheritedConfig: Pick<SessionInfo, 'carBrand' | 'carModel' | 'btAddress' | 'btProtocol'> = {};
+  let inheritedConfig: Pick<
+    SessionInfo,
+    'carBrand' | 'carModel' | 'profileIndex' | 'profileName' | 'btAddress' | 'btName' | 'btProtocol'
+  > = {};
 
   if (oldSessionId) {
     console.log(`[Token] deviceId=${deviceId} 存在旧session=${oldSessionId}，处理旧状态`);
@@ -49,7 +52,10 @@ export async function initSession(deviceId: string): Promise<SessionInfo> {
         inheritedConfig = {
           carBrand: oldSession.carBrand,
           carModel: oldSession.carModel,
+          profileIndex: oldSession.profileIndex,
+          profileName: oldSession.profileName,
           btAddress: oldSession.btAddress,
+          btName: oldSession.btName,
           btProtocol: oldSession.btProtocol,
         };
       } else {
@@ -80,7 +86,7 @@ export async function initSession(deviceId: string): Promise<SessionInfo> {
   await redis.setDeviceSession(deviceId, sessionId);
 
   const inheritedMsg = inheritedConfig.carBrand
-    ? ` (继承配置: ${inheritedConfig.carBrand}/${inheritedConfig.carModel})`
+    ? ` (继承配置: ${inheritedConfig.carBrand}/${inheritedConfig.profileName || inheritedConfig.carModel})`
     : '';
   console.log(`[Token] 新session已创建 sessionId=${sessionId} deviceId=${deviceId}${inheritedMsg}`);
   return session;

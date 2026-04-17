@@ -20,10 +20,10 @@
 #   因此，当前脚本集的真实定位是：
 #     "在已有官方 slot_1 基线的前提下，创建与管理 slot_2+"
 #
-#   如需在新 EC2 上从零部署完整 slot_1~N 系统，还需要另外两个脚本：
-#     - bootstrap_host.sh    : 宿主机基线（Waydroid/ADB/Node.js/Nginx 等安装配置）
-#     - bootstrap_slot1.sh   : 官方实例初始化（waydroid init + APK + cardemo.service）
-#   这两个脚本当前尚未实现，属于新 EC2 部署路径的待办项。
+#   如需在新 EC2 上从零部署完整 slot_1~N 系统，正式入口为：
+#     - bootstrap_scheduler_host.sh : 独立调度层基线（Redis/Scheduler/Nginx:8080）
+#     - bootstrap_host.sh           : 实例层宿主机基线（Waydroid/ADB/Node.js/Nginx）
+#     - bootstrap_slot1.sh          : 官方实例初始化（waydroid init + APK + cardemo.service）
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # 所有其他脚本（create/start/stop/reset/status）都应该 source 本文件，
@@ -42,9 +42,29 @@
 #   export SERVER_ID=ec2-apne1-a01
 #   export PUBLIC_WS_HOST=1.2.3.4
 # 若未设置，derive_identity 会直接报错退出，防止生成错误身份或错误地址。
+__IDENTITY_ENV_LOADED=0
+_load_identity_env_from_file_once() {
+  [[ "${__IDENTITY_ENV_LOADED}" == "1" ]] && return 0
+  __IDENTITY_ENV_LOADED=1
+
+  local env_file="${OBD_INSTANCE_ENV_FILE:-/etc/obd-instance.env}"
+  [[ -f "${env_file}" ]] || return 0
+
+  set -a
+  # shellcheck disable=SC1090
+  source "${env_file}"
+  set +a
+}
+
 _require_env() {
   local var="$1"
+  _load_identity_env_from_file_once
   [[ -n "${!var:-}" ]] || {
+    echo "[identity] 错误: 环境变量 ${var} 未设置。" >&2
+    echo "[identity] 用法示例: SERVER_ID=my-server PUBLIC_WS_HOST=1.2.3.4 $0 ..." >&2
+    exit 1
+  }
+  [[ "${!var}" != PLEASE_SET_* ]] || {
     echo "[identity] 错误: 环境变量 ${var} 未设置。" >&2
     echo "[identity] 用法示例: SERVER_ID=my-server PUBLIC_WS_HOST=1.2.3.4 $0 ..." >&2
     exit 1
@@ -56,6 +76,9 @@ _require_env() {
 : "${APK_ACTIVITY:=crc64b16463db6be126c1.MainActivity}"
 : "${APK_PATH:=/opt/cardemo/Release_com.companyname.cardemo-Server-Signed.apk}"
 : "${DEFAULT_BRAND:=AITO}"
+: "${PUBLIC_INGRESS_CIDRS:=0.0.0.0/0}"
+: "${AGENT_INGRESS_CIDRS:=}"
+: "${FIREWALL_AUTOMATION_STRICT:=1}"
 : "${WAYDROID_BASE_DIR:=/var/lib}"   # Waydroid LXC 目录根，固定在 /var/lib
 : "${DATA_BASE_DIR:=/root/.local/share}"
 
@@ -249,6 +272,277 @@ die() { log_error "$*"; exit 1; }
 # 要求以 root 运行
 require_root() {
   [[ $EUID -eq 0 ]] || die "必须以 root 运行"
+}
+
+_split_list_items() {
+  local raw="${1:-}"
+  python3 - "$raw" <<'PYEOF'
+import sys
+raw = sys.argv[1]
+for part in raw.replace(",", " ").split():
+    item = part.strip()
+    if item:
+        print(item)
+PYEOF
+}
+
+extract_url_host() {
+  local url="${1:-}"
+  python3 - "$url" <<'PYEOF'
+import sys
+from urllib.parse import urlparse
+
+url = sys.argv[1].strip()
+parsed = urlparse(url)
+host = parsed.hostname or ""
+if not host:
+    raise SystemExit(1)
+print(host)
+PYEOF
+}
+
+resolve_host_ipv4s() {
+  local host="${1:-}"
+  python3 - "$host" <<'PYEOF'
+import socket
+import sys
+
+host = sys.argv[1].strip()
+seen = []
+for info in socket.getaddrinfo(host, None, socket.AF_INET, socket.SOCK_STREAM):
+    ip = info[4][0]
+    if ip not in seen:
+        seen.append(ip)
+for ip in seen:
+    print(ip)
+PYEOF
+}
+
+_firewall_fail() {
+  local message="$1"
+  if [[ "${FIREWALL_AUTOMATION_STRICT}" == "1" ]]; then
+    die "${message}"
+  fi
+  log_warn "${message}"
+}
+
+_aws_imds_get() {
+  local path="$1"
+  local base="${AWS_IMDS_BASE_URL:-http://169.254.169.254}"
+  local token
+  token="$(curl -fsS -m 1 -X PUT "${base}/latest/api/token" \
+    -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null || true)"
+  if [[ -n "${token}" ]]; then
+    curl -fsS -m 1 -H "X-aws-ec2-metadata-token: ${token}" \
+      "${base}/latest/${path}" 2>/dev/null
+    return $?
+  fi
+  curl -fsS -m 1 "${base}/latest/${path}" 2>/dev/null
+}
+
+is_aws_ec2() {
+  _aws_imds_get "meta-data/instance-id" >/dev/null 2>&1
+}
+
+detect_aws_region() {
+  if [[ -n "${AWS_REGION:-}" ]]; then
+    echo "${AWS_REGION}"
+    return 0
+  fi
+  if [[ -n "${AWS_DEFAULT_REGION:-}" ]]; then
+    echo "${AWS_DEFAULT_REGION}"
+    return 0
+  fi
+
+  local doc
+  doc="$(_aws_imds_get "dynamic/instance-identity/document" || true)"
+  [[ -n "${doc}" ]] || return 1
+  python3 - <<'PYEOF' <<<"${doc}"
+import json
+import sys
+
+payload = json.load(sys.stdin)
+region = str(payload.get("region") or "").strip()
+if not region:
+    raise SystemExit(1)
+print(region)
+PYEOF
+}
+
+detect_aws_security_group_ids() {
+  if [[ -n "${AWS_SECURITY_GROUP_IDS:-}" ]]; then
+    _split_list_items "${AWS_SECURITY_GROUP_IDS}"
+    return 0
+  fi
+
+  local macs mac
+  macs="$(_aws_imds_get "meta-data/network/interfaces/macs/" || true)"
+  [[ -n "${macs}" ]] || return 1
+  while read -r mac; do
+    [[ -n "${mac}" ]] || continue
+    _aws_imds_get "meta-data/network/interfaces/macs/${mac}security-group-ids" 2>/dev/null || true
+  done <<<"${macs}" | awk 'NF {print $1}' | sort -u
+}
+
+_aws_authorize_cidr() {
+  local sg_id="$1"
+  local region="$2"
+  local port="$3"
+  local cidr="$4"
+  local output rc=0
+
+  output="$(aws ec2 authorize-security-group-ingress \
+    --region "${region}" \
+    --group-id "${sg_id}" \
+    --protocol tcp \
+    --port "${port}" \
+    --cidr "${cidr}" 2>&1)" || rc=$?
+
+  if [[ ${rc} -eq 0 ]] || [[ "${output}" == *"InvalidPermission.Duplicate"* ]]; then
+    return 0
+  fi
+
+  log_error "AWS Security Group 放行失败 sg=${sg_id} port=${port} cidr=${cidr}: ${output}"
+  return 1
+}
+
+_ensure_ufw_public_tcp_port_open() {
+  local port="$1"
+  local label="$2"
+  local cidr count=0
+  while read -r cidr; do
+    [[ -n "${cidr}" ]] || continue
+    ufw allow proto tcp from "${cidr}" to any port "${port}" >/dev/null 2>&1 || \
+      _firewall_fail "${label} 的 ufw 放行失败: tcp/${port} from ${cidr}"
+    count=$((count + 1))
+  done < <(_split_list_items "${PUBLIC_INGRESS_CIDRS}")
+  [[ ${count} -gt 0 ]] || _firewall_fail "${label} 的 PUBLIC_INGRESS_CIDRS 为空，未生成任何 ufw 规则"
+  log_info "${label}: ufw 已放行 tcp/${port}"
+}
+
+_resolve_agent_ingress_cidrs() {
+  local scheduler_url="$1"
+  if [[ -n "${AGENT_INGRESS_CIDRS:-}" ]]; then
+    _split_list_items "${AGENT_INGRESS_CIDRS}"
+    return 0
+  fi
+
+  local host
+  host="$(extract_url_host "${scheduler_url}" 2>/dev/null)" || return 1
+  resolve_host_ipv4s "${host}" 2>/dev/null | sed 's#$#/32#'
+}
+
+_ensure_ufw_scheduler_tcp_port_open() {
+  local port="$1"
+  local scheduler_url="$2"
+  local label="$3"
+  local cidr count=0
+
+  while read -r cidr; do
+    [[ -n "${cidr}" ]] || continue
+    ufw allow proto tcp from "${cidr}" to any port "${port}" >/dev/null 2>&1 || \
+      _firewall_fail "${label} 的 ufw 放行失败: tcp/${port} from ${cidr}"
+    count=$((count + 1))
+  done < <(_resolve_agent_ingress_cidrs "${scheduler_url}")
+
+  [[ ${count} -gt 0 ]] || _firewall_fail "${label} 无法从 SCHEDULER_URL / AGENT_INGRESS_CIDRS 推导来源地址"
+  log_info "${label}: ufw 已按调度层来源放行 tcp/${port}"
+}
+
+_ensure_aws_public_tcp_port_open() {
+  local port="$1"
+  local label="$2"
+  local region sg_id cidr sg_count=0 cidr_count=0
+
+  region="$(detect_aws_region)" || {
+    _firewall_fail "无法自动识别 AWS region，无法为 ${label} 配置 Security Group"
+    return 1
+  }
+  while read -r sg_id; do
+    [[ -n "${sg_id}" ]] || continue
+    sg_count=$((sg_count + 1))
+    while read -r cidr; do
+      [[ -n "${cidr}" ]] || continue
+      cidr_count=$((cidr_count + 1))
+      _aws_authorize_cidr "${sg_id}" "${region}" "${port}" "${cidr}" || \
+        _firewall_fail "${label} 的 AWS Security Group 放行失败: sg=${sg_id} tcp/${port} ${cidr}"
+    done < <(_split_list_items "${PUBLIC_INGRESS_CIDRS}")
+  done < <(detect_aws_security_group_ids)
+  [[ ${sg_count} -gt 0 ]] || _firewall_fail "${label} 无法发现当前 EC2 的 Security Group"
+  [[ ${cidr_count} -gt 0 ]] || _firewall_fail "${label} 的 PUBLIC_INGRESS_CIDRS 为空，未生成任何 AWS 规则"
+  log_info "${label}: AWS Security Group 已放行 tcp/${port}"
+}
+
+_ensure_aws_scheduler_tcp_port_open() {
+  local port="$1"
+  local scheduler_url="$2"
+  local label="$3"
+  local region sg_id cidr sg_count=0 cidr_count=0
+
+  region="$(detect_aws_region)" || {
+    _firewall_fail "无法自动识别 AWS region，无法为 ${label} 配置 Security Group"
+    return 1
+  }
+  while read -r sg_id; do
+    [[ -n "${sg_id}" ]] || continue
+    sg_count=$((sg_count + 1))
+    while read -r cidr; do
+      [[ -n "${cidr}" ]] || continue
+      cidr_count=$((cidr_count + 1))
+      _aws_authorize_cidr "${sg_id}" "${region}" "${port}" "${cidr}" || \
+        _firewall_fail "${label} 的 AWS Security Group 放行失败: sg=${sg_id} tcp/${port} ${cidr}"
+    done < <(_resolve_agent_ingress_cidrs "${scheduler_url}")
+  done < <(detect_aws_security_group_ids)
+  [[ ${sg_count} -gt 0 ]] || _firewall_fail "${label} 无法发现当前 EC2 的 Security Group"
+  [[ ${cidr_count} -gt 0 ]] || _firewall_fail "${label} 无法从 SCHEDULER_URL / AGENT_INGRESS_CIDRS 推导来源地址"
+  log_info "${label}: AWS Security Group 已按调度层来源放行 tcp/${port}"
+}
+
+ensure_public_tcp_port_open() {
+  local port="$1"
+  local label="${2:-端口 ${port}}"
+  local configured=0
+
+  if command -v ufw >/dev/null 2>&1; then
+    _ensure_ufw_public_tcp_port_open "${port}" "${label}"
+    configured=1
+  fi
+
+  if is_aws_ec2; then
+    command -v aws >/dev/null 2>&1 || {
+      _firewall_fail "当前是 AWS EC2，但未安装 aws CLI，无法自动放行 ${label}"
+      return 1
+    }
+    _ensure_aws_public_tcp_port_open "${port}" "${label}"
+    configured=1
+  fi
+
+  [[ ${configured} -eq 1 ]] || \
+    log_warn "${label}: 未检测到 ufw / AWS EC2，未自动配置防火墙，请手工确认 tcp/${port}"
+}
+
+ensure_scheduler_agent_tcp_port_open() {
+  local port="$1"
+  local scheduler_url="$2"
+  local label="${3:-Agent 控制面端口}"
+  local configured=0
+
+  if command -v ufw >/dev/null 2>&1; then
+    _ensure_ufw_scheduler_tcp_port_open "${port}" "${scheduler_url}" "${label}"
+    configured=1
+  fi
+
+  if is_aws_ec2; then
+    command -v aws >/dev/null 2>&1 || {
+      _firewall_fail "当前是 AWS EC2，但未安装 aws CLI，无法自动放行 ${label}"
+      return 1
+    }
+    _ensure_aws_scheduler_tcp_port_open "${port}" "${scheduler_url}" "${label}"
+    configured=1
+  fi
+
+  [[ ${configured} -eq 1 ]] || \
+    log_warn "${label}: 未检测到 ufw / AWS EC2，未自动配置防火墙，请手工确认 tcp/${port}"
 }
 
 # 创建 binderfs 设备（slot>=2 调用，slot=1 不需要）

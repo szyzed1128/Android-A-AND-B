@@ -313,7 +313,7 @@ log_info "APK WebSocket 已监听 :${APK_INTERNAL_PORT}"
 
 # ─── 步骤 17：adb forward ─────────────────────────────────────────────────
 log_step "步骤17: adb forward tcp:${PROBE_PORT} → tcp:${APK_INTERNAL_PORT}"
-adb -s "${ADB_TARGET}" forward "tcp:${PROBE_PORT}" "tcp:${APK_INTERNAL_PORT}"
+adb -s "${ADB_TARGET}" forward "tcp:${PROBE_PORT}" "tcp:${APK_INTERNAL_PORT}" >/dev/null
 log_info "adb forward 完成 (${PROBE_PORT} → 容器内 ${APK_INTERNAL_PORT})"
 
 # =============================================================================
@@ -331,7 +331,8 @@ HTTP_STATUS="$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
   -H "Upgrade: websocket" -H "Connection: Upgrade" \
   -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
   -H "Sec-WebSocket-Version: 13" \
-  "http://127.0.0.1:${PROBE_PORT}${WS_PATH}" 2>/dev/null || echo "000")"
+  "http://127.0.0.1:${PROBE_PORT}${WS_PATH}" 2>/dev/null || true)"
+[[ -n "${HTTP_STATUS}" ]] || HTTP_STATUS="000"
 [[ "$HTTP_STATUS" == "101" ]] || die "[验收] 通道层失败: probePort ${PROBE_PORT} 返回 ${HTTP_STATUS}（期望 101）"
 log_info "[验收] 通道层: probe_port ${PROBE_PORT} → 101 ✓"
 
@@ -478,18 +479,7 @@ nginx -s reload || die "Nginx reload 失败，请检查 Nginx 状态"
 log_info "Nginx 已配置并重载 (port ${WS_PORT} → ${PROBE_PORT})"
 
 # 防火墙放行（问题8：失败必须明确提示，但脚本无法处理 AWS Security Group）
-if command -v ufw &>/dev/null; then
-  ufw allow "${WS_PORT}/tcp" >/dev/null 2>&1 && \
-    log_info "ufw: 已放行 ${WS_PORT}/tcp" || \
-    die "ufw allow ${WS_PORT}/tcp 失败，请检查 ufw 状态"
-else
-  # AWS / 其他环境：脚本无法自动处理 Security Group
-  # 必须手动在 AWS Console / CLI 放行
-  log_warn "ufw 不可用（可能是 AWS 环境）。"
-  log_warn "请手动放行端口 ${WS_PORT}/tcp："
-  log_warn "  AWS CLI: aws ec2 authorize-security-group-ingress --group-id <SG_ID> --protocol tcp --port ${WS_PORT} --cidr 0.0.0.0/0"
-  # 这里不退出，因为 AWS SG 是外部系统；记录为 WARNING 让运维人工确认
-fi
+ensure_public_tcp_port_open "${WS_PORT}" "slot_${SLOT_INDEX} WebSocket 入口"
 
 # ─── 步骤 20：持久化模板统一由 install_persist.sh 管理 ───────────────────
 # 问题1修复：不在 create_instance.sh 中写 systemd 模板。
@@ -498,24 +488,10 @@ fi
 # 现在统一由 install_persist.sh 覆盖写唯一版本（含 EnvironmentFile）。
 log_step "步骤20: systemd 持久化说明"
 log_info "实例创建完成，如需开机自动恢复，运行:"
-log_info "  SERVER_ID=${SERVER_ID} PUBLIC_WS_HOST=${PUBLIC_WS_HOST} ./install_persist.sh ${SLOT_INDEX}"
-
-# ─── 最终汇总 ──────────────────────────────────────────────────────────────
-echo ""
-echo "═══════════════════════════════════════════════════════════"
-echo "  实例 ${INST_ID} 创建成功 ✓"
-echo "═══════════════════════════════════════════════════════════"
-echo ""
-echo "  对外 WebSocket: ${INST_WS_URL}"
-echo "  本地探针端口:   127.0.0.1:${PROBE_PORT}"
-echo "  ADB 入口:       ${ADB_TARGET}"
-echo ""
-echo "  下一步（可选）——启用开机持久化："
-echo "    systemctl enable obd-instance@${SLOT_INDEX}"
-echo ""
-echo "═══════════════════════════════════════════════════════════"
+log_info "  SERVER_ID=${SERVER_ID} PUBLIC_WS_HOST=${PUBLIC_WS_HOST} ${SCRIPT_DIR}/install_persist.sh ${SLOT_INDEX}"
 
 # ─── 步骤21：自动接入 Agent（问题2）──────────────────────────────────────
+# 问题A修复：成功横幅移到 Agent 注册完成之后，防止 Step21 失败时终端已显示"成功"而误导运维
 # 不只打印示例，而是实际修改 INSTANCES_CONFIG 并重启 obd-agent。
 log_step "步骤21: 注册实例到 Agent"
 AGENT_ENV="/opt/cardemo/agent/.env"
@@ -551,12 +527,19 @@ except json.JSONDecodeError as e:
     print(f"[Agent] INSTANCES_CONFIG JSON 解析失败: {e}", file=sys.stderr)
     sys.exit(1)
 
-# 已存在则跳过（幂等）
-if any(i.get("id") == inst_id for i in instances):
-    print(f"[Agent] 实例 {inst_id} 已在 INSTANCES_CONFIG 中，跳过")
-    sys.exit(0)
+result = "created"
+updated = False
+for index, item in enumerate(instances):
+    if item.get("id") == inst_id:
+        merged = {**item, **new_entry}
+        instances[index] = merged
+        updated = True
+        result = "unchanged" if item == merged else "updated"
+        break
 
-instances.append(new_entry)
+if not updated:
+    instances.append(new_entry)
+
 new_line = f"INSTANCES_CONFIG={json.dumps(instances, separators=(',', ':'))}"
 new_content = re.sub(r'^INSTANCES_CONFIG=.+$', new_line, content, flags=re.MULTILINE)
 
@@ -564,7 +547,7 @@ new_content = re.sub(r'^INSTANCES_CONFIG=.+$', new_line, content, flags=re.MULTI
 fd = os.open(env_path, os.O_WRONLY | os.O_TRUNC)
 os.write(fd, new_content.encode())
 os.close(fd)
-print(f"[Agent] 已将 {inst_id} 追加到 INSTANCES_CONFIG")
+print(f"[Agent] {inst_id} -> INSTANCES_CONFIG ({result})")
 PYEOF
 
 # 重启 obd-agent（问题3修复：失败必须 die，不能只 warn）
@@ -594,3 +577,21 @@ except: print('err')
   fi
   sleep 5
 done
+
+# ─── 最终汇总（问题A修复：移至 Agent 成功接入之后）────────────────────────
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "  实例 ${INST_ID} 全流程完成 ✓"
+echo "  · 三层业务验收通过"
+echo "  · Agent 已接入，状态: idle"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+echo "  对外 WebSocket: ${INST_WS_URL}"
+echo "  本地探针端口:   127.0.0.1:${PROBE_PORT}"
+echo "  ADB 入口:       ${ADB_TARGET}"
+echo ""
+echo "  下一步——启用开机持久化（问题B修复：使用 install_persist.sh）："
+echo "    SERVER_ID=${SERVER_ID} PUBLIC_WS_HOST=${PUBLIC_WS_HOST} ${SCRIPT_DIR}/install_persist.sh ${SLOT_INDEX}"
+echo ""
+echo "  AWS 环境需额外手动放行安全组端口 ${WS_PORT}/tcp"
+echo "═══════════════════════════════════════════════════════════"

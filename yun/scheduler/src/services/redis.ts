@@ -4,13 +4,15 @@
  */
 
 import Redis from 'ioredis';
-import { InstanceInfo, SessionInfo, InstanceStatus, SessionStatus } from '../types';
+import { CatalogProfileSummary, InstanceInfo, SessionInfo, InstanceStatus, SessionStatus } from '../types';
 
 // Redis Key 前缀
 const KEYS = {
   instance: (id: string) => `instance:${id}`,
   session: (id: string) => `session:${id}`,
   device: (deviceId: string) => `device:${deviceId}`,
+  catalogBrands: 'catalog:brands',
+  catalogProfiles: (brand: string) => `catalog:profiles:${encodeURIComponent(brand)}`,
   idlePool: 'instances:idle',         // ZSet：空闲实例池
   allInstances: 'instances:all',      // Set：所有已注册实例ID
 };
@@ -19,7 +21,13 @@ const KEYS = {
 const TTL = {
   session: 60 * 60 * 24,   // 会话最长保留24小时
   device: 60 * 60 * 24,    // deviceId→sessionId 映射保留24小时
+  catalogRetention: 60 * 60 * 24 * 7, // 目录缓存保留7天，调度层自己判断新鲜度
 };
+
+export interface CatalogCachePayload<T> {
+  data: T;
+  updatedAt: number;
+}
 
 export class RedisService {
   private client: Redis;
@@ -75,6 +83,27 @@ export class RedisService {
 
   async getAllInstanceIds(): Promise<string[]> {
     return this.client.smembers(KEYS.allInstances);
+  }
+
+  async getAllSessionIds(): Promise<string[]> {
+    const ids: string[] = [];
+    let cursor = '0';
+
+    do {
+      const [nextCursor, keys] = await this.client.scan(
+        cursor,
+        'MATCH',
+        KEYS.session('*'),
+        'COUNT',
+        '200'
+      );
+      cursor = nextCursor;
+      for (const key of keys) {
+        ids.push(key.replace(/^session:/, ''));
+      }
+    } while (cursor !== '0');
+
+    return ids;
   }
 
   // ==================== 空闲池操作 ====================
@@ -149,7 +178,50 @@ export class RedisService {
     await this.client.del(KEYS.device(deviceId));
   }
 
+  // ==================== 车辆目录缓存 ====================
+
+  async getCatalogBrandsCache(): Promise<CatalogCachePayload<string[]> | null> {
+    return this.getJson<CatalogCachePayload<string[]>>(KEYS.catalogBrands);
+  }
+
+  async setCatalogBrandsCache(brands: string[]): Promise<void> {
+    await this.setJson(
+      KEYS.catalogBrands,
+      { data: brands, updatedAt: Date.now() },
+      TTL.catalogRetention
+    );
+  }
+
+  async getCatalogProfilesCache(brand: string): Promise<CatalogCachePayload<CatalogProfileSummary[]> | null> {
+    return this.getJson<CatalogCachePayload<CatalogProfileSummary[]>>(KEYS.catalogProfiles(brand));
+  }
+
+  async setCatalogProfilesCache(brand: string, profiles: CatalogProfileSummary[]): Promise<void> {
+    await this.setJson(
+      KEYS.catalogProfiles(brand),
+      { data: profiles, updatedAt: Date.now() },
+      TTL.catalogRetention
+    );
+  }
+
   // ==================== 工具方法 ====================
+
+  private async getJson<T>(key: string): Promise<T | null> {
+    const raw = await this.client.get(key);
+    if (!raw) return null;
+
+    try {
+      return JSON.parse(raw) as T;
+    } catch (err: any) {
+      console.warn(`[Redis] JSON 缓存解析失败，已清理 key=${key}: ${err.message}`);
+      await this.client.del(key);
+      return null;
+    }
+  }
+
+  private async setJson(key: string, value: unknown, ttlSec: number): Promise<void> {
+    await this.client.set(key, JSON.stringify(value), 'EX', ttlSec);
+  }
 
   /** 扁平化对象（去掉 undefined 字段）为 Redis Hash 格式 */
   private flatten(obj: Record<string, any>): Record<string, string> {
@@ -167,13 +239,23 @@ export class RedisService {
       id: data.id,
       serverId: data.serverId,
       serverIp: data.serverIp,
+      publicWsHost: data.publicWsHost || undefined,
+      publicWsScheme: (data.publicWsScheme as InstanceInfo['publicWsScheme']) || undefined,
       wsPort: parseInt(data.wsPort),
       agentPort: parseInt(data.agentPort),
       status: data.status as InstanceStatus,
+      statusSince: data.statusSince ? parseInt(data.statusSince) : undefined,
       sessionId: data.sessionId || undefined,
       lastHealthAt: data.lastHealthAt ? parseInt(data.lastHealthAt) : undefined,
       reservedForDeviceId: data.reservedForDeviceId || undefined,
       reservedUntil: data.reservedUntil ? parseInt(data.reservedUntil) : undefined,
+      health: (data.health as InstanceInfo['health']) || undefined,
+      cpu: data.cpu ? parseFloat(data.cpu) : undefined,
+      memory: data.memory ? parseInt(data.memory) : undefined,
+      agentStatus: (data.agentStatus as InstanceInfo['agentStatus']) || undefined,
+      agentStatusSince: data.agentStatusSince ? parseInt(data.agentStatusSince) : undefined,
+      failureCount: data.failureCount ? parseInt(data.failureCount) : undefined,
+      lastError: data.lastError || undefined,
     };
   }
 
@@ -186,7 +268,10 @@ export class RedisService {
       status: data.status as SessionStatus,
       carBrand: data.carBrand || undefined,
       carModel: data.carModel || undefined,
+      profileIndex: data.profileIndex ? parseInt(data.profileIndex) : undefined,
+      profileName: data.profileName || undefined,
       btAddress: data.btAddress || undefined,
+      btName: data.btName || undefined,
       btProtocol: (data.btProtocol as any) || undefined,
       lastHeartbeatAt: data.lastHeartbeatAt ? parseInt(data.lastHeartbeatAt) : undefined,
       createdAt: parseInt(data.createdAt),

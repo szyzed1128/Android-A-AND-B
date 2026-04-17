@@ -2,10 +2,10 @@
  * APK 就绪探针
  *
  * 核心操作：实例就绪流程
- * ① pm clear → ② am start → ③ 等待WS可连接 → ④ getBrands → ⑤ getProfiles("AITO")
+ * ① am force-stop → ② am start → ③ 等待WS可连接 → ④ getBrands → ⑤ getProfiles("AITO")
  * → ⑥ applyProfile("AITO","AITO") → ⑦ 断开 → ⑧ 标记 idle
  *
- * 任意步骤失败 → 回到①重试（无限重试，连续5次失败标记 bad）
+ * 任意步骤失败 → 回到①重试（最多5次，随后标记 bad）
  */
 
 import WebSocket from 'ws';
@@ -45,9 +45,9 @@ export async function runReadinessProbe(instance: InstanceConfig): Promise<Probe
     await execShell(`adb -s ${instance.adbTarget} forward tcp:${instance.probePort} tcp:8080`);
     console.log(`[Probe] ${instance.id} Step0: forward ${instance.probePort}→8080 已建立`);
 
-    // Step 1: pm clear（清除残留数据）
-    console.log(`[Probe] ${instance.id} Step1: pm clear`);
-    await execShell(`adb -s ${instance.adbTarget} shell pm clear ${instance.packageName}`);
+    // Step 1: am force-stop（日常就绪/重置不再清应用数据，避免每次都回到最脆弱的首次初始化路径）
+    console.log(`[Probe] ${instance.id} Step1: am force-stop`);
+    await stopApkActivity(instance);
 
     // Step 2: am start（冷启动）
     console.log(`[Probe] ${instance.id} Step2: am start`);
@@ -199,6 +199,12 @@ async function startApkActivity(instance: InstanceConfig): Promise<void> {
   await execShell(
     `adb -s ${instance.adbTarget} shell am start -n ` +
     `${instance.packageName}/${instance.activityName}`
+  );
+}
+
+async function stopApkActivity(instance: InstanceConfig): Promise<void> {
+  await execShell(
+    `adb -s ${instance.adbTarget} shell am force-stop ${instance.packageName}`
   );
 }
 

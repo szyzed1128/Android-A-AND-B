@@ -16,7 +16,9 @@ export type RuntimeStatus = 'idle' | 'probing' | 'busy' | 'bad';
 interface InstanceRuntime {
   config: InstanceConfig;
   status: RuntimeStatus;
+  statusChangedAt: number;
   failureCount: number;
+  lastError?: string;
   probingPromise?: Promise<void>;  // 防止并发触发多次探针
 }
 
@@ -32,6 +34,7 @@ export function initInstances(configs: InstanceConfig[]): void {
     instances.set(cfg.id, {
       config: cfg,
       status: 'probing',
+      statusChangedAt: Date.now(),
       failureCount: 0,
     });
     // 异步启动就绪流程
@@ -52,11 +55,21 @@ export function getInstanceStatus(instanceId: string): RuntimeStatus | null {
 /**
  * 获取所有实例状态
  */
-export function getAllInstanceStatuses(): Array<{ id: string; status: RuntimeStatus; wsPort: number }> {
+export function getAllInstanceStatuses(): Array<{
+  id: string;
+  status: RuntimeStatus;
+  wsPort: number;
+  statusChangedAt: number;
+  failureCount: number;
+  lastError?: string;
+}> {
   return Array.from(instances.entries()).map(([id, rt]) => ({
     id,
     status: rt.status,
     wsPort: rt.config.wsPort,
+    statusChangedAt: rt.statusChangedAt,
+    failureCount: rt.failureCount,
+    lastError: rt.lastError,
   }));
 }
 
@@ -77,8 +90,9 @@ export function triggerReset(instanceId: string): void {
     return;
   }
 
-  rt.status = 'probing';
+  setRuntimeStatus(rt, 'probing');
   rt.failureCount = 0;
+  rt.lastError = undefined;
   console.log(`[InstanceManager] ${instanceId} 触发重置`);
 
   triggerReadinessLoop(instanceId).catch(e =>
@@ -91,7 +105,7 @@ export function triggerReset(instanceId: string): void {
  */
 export function markBusy(instanceId: string): void {
   const rt = instances.get(instanceId);
-  if (rt) rt.status = 'busy';
+  if (rt) setRuntimeStatus(rt, 'busy');
 }
 
 /**
@@ -111,7 +125,7 @@ async function triggerReadinessLoop(instanceId: string): Promise<void> {
     while (true) {
       if (rt.failureCount >= MAX_FAILURES_BEFORE_BAD) {
         console.error(`[InstanceManager] ${instanceId} 连续失败${rt.failureCount}次，标记为 bad`);
-        rt.status = 'bad';
+        setRuntimeStatus(rt, 'bad');
         rt.probingPromise = undefined;
         return;
       }
@@ -120,14 +134,19 @@ async function triggerReadinessLoop(instanceId: string): Promise<void> {
       const result = await runReadinessProbe(rt.config);
 
       if (result.success) {
-        rt.status = 'idle';
+        setRuntimeStatus(rt, 'idle');
         rt.failureCount = 0;
+        rt.lastError = undefined;
         rt.probingPromise = undefined;
         console.log(`[InstanceManager] ${instanceId} ✅ 就绪，状态=idle`);
         return;
       } else {
         rt.failureCount++;
+        rt.lastError = result.error;
         console.warn(`[InstanceManager] ${instanceId} 探针失败(${rt.failureCount}/${MAX_FAILURES_BEFORE_BAD}): ${result.error}`);
+        if (rt.failureCount >= MAX_FAILURES_BEFORE_BAD) {
+          setRuntimeStatus(rt, 'bad');
+        }
         await sleep(3000); // 失败后等3秒再重试
       }
     }
@@ -135,6 +154,15 @@ async function triggerReadinessLoop(instanceId: string): Promise<void> {
 
   rt.probingPromise = promise;
   await promise;
+}
+
+function setRuntimeStatus(rt: InstanceRuntime, status: RuntimeStatus): void {
+  if (rt.status === status) {
+    return;
+  }
+
+  rt.status = status;
+  rt.statusChangedAt = Date.now();
 }
 
 /**

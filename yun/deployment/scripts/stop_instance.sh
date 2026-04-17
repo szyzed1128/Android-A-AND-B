@@ -38,9 +38,11 @@ _parse_args "$@"
 require_root
 
 if [[ "$SLOT_START" -ne "$SLOT_END" ]]; then
+  FAILED_SLOTS=()
   for s in $(seq "$SLOT_END" -1 "$SLOT_START"); do
-    bash "${BASH_SOURCE[0]}" "$s" || log_warn "slot=${s} 停止失败，继续"
+    bash "${BASH_SOURCE[0]}" "$s" || { log_warn "slot=${s} 停止失败，继续"; FAILED_SLOTS+=("$s"); }
   done
+  [[ ${#FAILED_SLOTS[@]} -eq 0 ]] || die "以下 slot 停止失败: ${FAILED_SLOTS[*]}"
   exit 0
 fi
 

@@ -7,7 +7,8 @@ import axios, { AxiosInstance } from 'axios';
 
 interface ApplyCarRequest {
   carBrand: string;
-  carModel: string;
+  profileIndex: number;
+  profileName?: string;
 }
 
 interface ApplyCarResponse {
@@ -18,6 +19,12 @@ interface ApplyCarResponse {
 interface ResetResponse {
   success: boolean;
   error?: string;
+}
+
+export interface CatalogProfileResponseItem {
+  profileIndex: number;
+  name: string;
+  description?: string;
 }
 
 interface InstanceStatusResponse {
@@ -42,11 +49,16 @@ export class AgentClient {
    * 应用用户车型配置
    * Agent 建立 WebSocket → applyProfile → 断开
    */
-  async applyCar(instanceId: string, carBrand: string, carModel: string): Promise<ApplyCarResponse> {
+  async applyCar(
+    instanceId: string,
+    carBrand: string,
+    profileIndex: number,
+    profileName?: string
+  ): Promise<ApplyCarResponse> {
     try {
       const res = await this.http.post<ApplyCarResponse>(
         `/instance/${instanceId}/applyCar`,
-        { carBrand, carModel } as ApplyCarRequest
+        { carBrand, profileIndex, profileName } as ApplyCarRequest
       );
       return res.data;
     } catch (err: any) {
@@ -98,6 +110,31 @@ export class AgentClient {
     } catch {
       return false;
     }
+  }
+
+  async getCatalogBrands(instanceId: string): Promise<string[]> {
+    const res = await this.http.get<{ success: boolean; data?: string[]; error?: string }>(
+      `/instance/${instanceId}/catalog/brands`,
+      { timeout: 15000 }
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.error || '读取品牌列表失败');
+    }
+    return res.data.data || [];
+  }
+
+  async getCatalogProfiles(instanceId: string, brand: string): Promise<CatalogProfileResponseItem[]> {
+    const res = await this.http.get<{ success: boolean; data?: CatalogProfileResponseItem[]; error?: string }>(
+      `/instance/${instanceId}/catalog/profiles`,
+      {
+        timeout: 15000,
+        params: { brand },
+      }
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.error || '读取车型配置失败');
+    }
+    return res.data.data || [];
   }
 
   getBaseUrl(): string {

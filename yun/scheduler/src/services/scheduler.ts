@@ -5,9 +5,10 @@
  * - 5分钟保留逻辑
  */
 
-import { getRedis } from './redis';
+import { CatalogCachePayload, getRedis } from './redis';
 import { createAgentClient } from './agentClient';
-import { InstanceInfo, InstanceStatus, SessionInfo } from '../types';
+import { getCatalogSnapshot, getSnapshotBrands, getSnapshotProfiles } from './catalogSnapshot';
+import { AgentRuntimeStatus, CatalogProfileSummary, InstanceInfo, InstanceStatus, SessionInfo } from '../types';
 
 // 保留时间：用户主动断开后保留实例的时长（毫秒）
 const RESERVE_FOR_USER_MS = 5 * 60 * 1000;
@@ -17,6 +18,9 @@ const HEARTBEAT_TIMEOUT_MS = 150 * 1000;
 
 // 最大重试次数（reserve时尝试不同实例）
 const MAX_RESERVE_RETRIES = 3;
+
+// 目录缓存新鲜度：1小时内直接使用缓存；超过后尝试实时刷新，失败则回退旧缓存
+const CATALOG_CACHE_FRESH_MS = 60 * 60 * 1000;
 
 /**
  * 为会话分配实例并应用用户车型配置
@@ -28,8 +32,8 @@ export async function reserveInstance(session: SessionInfo): Promise<{
 }> {
   const redis = getRedis();
 
-  if (!session.carBrand || !session.carModel || !session.btAddress) {
-    throw new Error('缺少必要配置：carBrand/carModel/btAddress');
+  if (!session.carBrand || session.profileIndex === undefined || !session.btAddress) {
+    throw new Error('缺少必要配置：carBrand/profileIndex/btAddress');
   }
 
   // 检查是否有保留给该用户的实例（主动断开后5分钟内重连）
@@ -45,7 +49,12 @@ export async function reserveInstance(session: SessionInfo): Promise<{
       status: 'reserved',
     });
     // 重新应用车型配置（可能用户换了车型）
-    await applyCarOnInstance(reservedInstance, session.carBrand, session.carModel);
+    await applyCarOnInstance(
+      reservedInstance,
+      session.carBrand,
+      session.profileIndex,
+      session.profileName || session.carModel
+    );
     const wsUrl = buildWsUrl(reservedInstance);
     return { wsUrl, instanceId: reservedInstance.id };
   }
@@ -75,7 +84,12 @@ export async function reserveInstance(session: SessionInfo): Promise<{
       });
 
       // 调用 Agent 应用用户车型配置
-      await applyCarOnInstance(instance, session.carBrand, session.carModel);
+      await applyCarOnInstance(
+        instance,
+        session.carBrand,
+        session.profileIndex,
+        session.profileName || session.carModel
+      );
 
       const wsUrl = buildWsUrl(instance);
       console.log(`[Scheduler] 实例分配成功 instanceId=${instanceId} wsUrl=${wsUrl}`);
@@ -106,12 +120,135 @@ export async function reserveInstance(session: SessionInfo): Promise<{
 async function applyCarOnInstance(
   instance: InstanceInfo,
   carBrand: string,
-  carModel: string
+  profileIndex: number,
+  profileName?: string
 ): Promise<void> {
   const agent = createAgentClient(instance.serverIp, instance.agentPort);
-  const result = await agent.applyCar(instance.id, carBrand, carModel);
+  const result = await agent.applyCar(instance.id, carBrand, profileIndex, profileName);
   if (!result.success) {
     throw new Error(`applyCar 失败: ${result.error || '未知错误'}`);
+  }
+}
+
+async function getCatalogCandidates(): Promise<InstanceInfo[]> {
+  const redis = getRedis();
+  const allIds = await redis.getAllInstanceIds();
+  const candidates: InstanceInfo[] = [];
+
+  for (const id of allIds) {
+    const instance = await redis.getInstance(id);
+    if (!instance) continue;
+    if (instance.status !== 'idle' && instance.status !== 'reserved_for_user') continue;
+    if (instance.health === 'bad') continue;
+    candidates.push(instance);
+  }
+
+  candidates.sort((a, b) => (b.lastHealthAt || 0) - (a.lastHealthAt || 0));
+  return candidates;
+}
+
+export async function getCatalogBrands(): Promise<string[]> {
+  const snapshotBrands = await getSnapshotBrands();
+  if (snapshotBrands) {
+    return snapshotBrands;
+  }
+
+  const redis = getRedis();
+  return readCatalogWithCache<string[]>({
+    label: 'catalog brands',
+    readCache: () => redis.getCatalogBrandsCache(),
+    writeCache: (brands) => redis.setCatalogBrandsCache(brands),
+    loadFromLive: loadCatalogBrandsFromLive,
+  });
+}
+
+export async function getCatalogProfiles(brand: string): Promise<CatalogProfileSummary[]> {
+  const snapshot = await getCatalogSnapshot();
+  if (snapshot) {
+    const profiles = await getSnapshotProfiles(brand);
+    if (!profiles) {
+      throw new Error(`录制目录中不存在品牌 ${brand}`);
+    }
+    return profiles;
+  }
+
+  const redis = getRedis();
+  return readCatalogWithCache<CatalogProfileSummary[]>({
+    label: `catalog profiles brand=${brand}`,
+    readCache: () => redis.getCatalogProfilesCache(brand),
+    writeCache: (profiles) => redis.setCatalogProfilesCache(brand, profiles),
+    loadFromLive: () => loadCatalogProfilesFromLive(brand),
+  });
+}
+
+async function loadCatalogBrandsFromLive(): Promise<string[]> {
+  const candidates = await getCatalogCandidates();
+  if (candidates.length === 0) {
+    throw new Error('当前没有可用于车型目录查询的空闲实例，且本地无可用缓存');
+  }
+
+  let lastError = '读取品牌列表失败';
+  for (const instance of candidates) {
+    try {
+      const agent = createAgentClient(instance.serverIp, instance.agentPort);
+      return await agent.getCatalogBrands(instance.id);
+    } catch (err: any) {
+      lastError = err.message || lastError;
+      console.warn(`[Scheduler] catalog brands 失败 instance=${instance.id}: ${lastError}`);
+    }
+  }
+
+  throw new Error(lastError);
+}
+
+async function loadCatalogProfilesFromLive(brand: string): Promise<CatalogProfileSummary[]> {
+  const candidates = await getCatalogCandidates();
+  if (candidates.length === 0) {
+    throw new Error(`当前没有可用于品牌 ${brand} 目录查询的空闲实例，且本地无可用缓存`);
+  }
+
+  let lastError = `读取品牌 ${brand} 的配置失败`;
+  for (const instance of candidates) {
+    try {
+      const agent = createAgentClient(instance.serverIp, instance.agentPort);
+      return await agent.getCatalogProfiles(instance.id, brand);
+    } catch (err: any) {
+      lastError = err.message || lastError;
+      console.warn(`[Scheduler] catalog profiles 失败 instance=${instance.id} brand=${brand}: ${lastError}`);
+    }
+  }
+
+  throw new Error(lastError);
+}
+
+function isFreshCatalogCache(updatedAt?: number): boolean {
+  return typeof updatedAt === 'number' && (Date.now() - updatedAt) < CATALOG_CACHE_FRESH_MS;
+}
+
+async function readCatalogWithCache<T>(options: {
+  label: string;
+  readCache: () => Promise<CatalogCachePayload<T> | null>;
+  writeCache: (data: T) => Promise<void>;
+  loadFromLive: () => Promise<T>;
+}): Promise<T> {
+  const cached = await options.readCache();
+  if (cached && isFreshCatalogCache(cached.updatedAt)) {
+    return cached.data;
+  }
+
+  try {
+    const data = await options.loadFromLive();
+    await options.writeCache(data);
+    return data;
+  } catch (err: any) {
+    if (cached) {
+      const ageSeconds = Math.max(0, Math.floor((Date.now() - cached.updatedAt) / 1000));
+      console.warn(
+        `[Scheduler] ${options.label} 实时刷新失败，回退缓存 age=${ageSeconds}s: ${err.message || '未知错误'}`
+      );
+      return cached.data;
+    }
+    throw err;
   }
 }
 
@@ -204,7 +341,9 @@ async function triggerInstanceReset(instance: InstanceInfo): Promise<void> {
  * 构建 WebSocket URL
  */
 function buildWsUrl(instance: InstanceInfo): string {
-  return `ws://${instance.serverIp}:${instance.wsPort}/ws`;
+  const scheme = instance.publicWsScheme || 'ws';
+  const host = instance.publicWsHost || instance.serverIp;
+  return `${scheme}://${host}:${instance.wsPort}/ws`;
 }
 
 /**
@@ -277,26 +416,25 @@ async function checkHeartbeats(): Promise<void> {
 export async function handleAgentHealthReport(report: {
   serverId: string;
   serverIp: string;
+  publicWsHost?: string;
+  publicWsScheme?: 'ws' | 'wss';
   agentPort: number;
   instances: Array<{
     id: string;
     wsPort: number;
-    status: string;
+    agentStatus: AgentRuntimeStatus;
     health: 'ok' | 'bad';
     cpu?: number;
     memory?: number;
+    failureCount?: number;
+    lastError?: string;
+    statusChangedAt?: number;
   }>;
 }): Promise<void> {
   const redis = getRedis();
   const now = Date.now();
 
   for (const inst of report.instances) {
-    // 跳过 probing 状态：Agent 正在初始化中，等探针完成变成 idle 再处理
-    // 避免将 'probing'（非法 InstanceStatus 值）写入 Redis
-    if (inst.status === 'probing') {
-      continue;
-    }
-
     // 注册或更新实例信息
     const existing = await redis.getInstance(inst.id);
 
@@ -318,21 +456,42 @@ export async function handleAgentHealthReport(report: {
       // 调度器侧状态优先，不被 Agent 的 idle 覆盖
       effectiveStatus = existing.status;
     } else {
-      effectiveStatus = inst.status as InstanceStatus;
+      effectiveStatus = inst.agentStatus as InstanceStatus;
     }
+
+    const statusSince =
+      existing?.status === effectiveStatus
+        ? existing.statusSince ?? now
+        : now;
+    const agentStatusSince =
+      typeof inst.statusChangedAt === 'number'
+        ? inst.statusChangedAt
+        : existing?.agentStatus === inst.agentStatus
+          ? existing.agentStatusSince ?? now
+          : now;
 
     const instanceInfo: InstanceInfo = {
       id: inst.id,
       serverId: report.serverId,
       serverIp: report.serverIp,
+      publicWsHost: report.publicWsHost,
+      publicWsScheme: report.publicWsScheme,
       wsPort: inst.wsPort,
       agentPort: report.agentPort,
       status: effectiveStatus,
+      statusSince,
       sessionId: existing?.sessionId,
       // 保留调度器侧的预留字段，防止 Agent 上报时丢失
       reservedForDeviceId: existing?.reservedForDeviceId,
       reservedUntil: existing?.reservedUntil,
       lastHealthAt: now,
+      health: inst.health,
+      cpu: inst.cpu,
+      memory: inst.memory,
+      agentStatus: inst.agentStatus,
+      agentStatusSince,
+      failureCount: inst.failureCount,
+      lastError: inst.lastError,
     };
 
     await redis.setInstance(instanceInfo);
@@ -343,9 +502,9 @@ export async function handleAgentHealthReport(report: {
     // 3. 未处于调度器侧的保留/使用状态
     const schedulerOwnedStatuses: InstanceStatus[] = ['reserved_for_user', 'reserved', 'busy'];
     const isSchedulerOwned = existing ? schedulerOwnedStatuses.includes(existing.status) : false;
-    if (inst.status === 'idle' && inst.health === 'ok' && !existing?.sessionId && !isSchedulerOwned) {
+    if (effectiveStatus === 'idle' && inst.health === 'ok' && !existing?.sessionId && !isSchedulerOwned) {
       await redis.addToIdlePool(inst.id);
-    } else if (inst.health === 'bad') {
+    } else {
       await redis.removeFromIdlePool(inst.id);
     }
   }

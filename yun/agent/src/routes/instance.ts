@@ -5,7 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { getInstanceStatus, triggerReset, getAllInstanceStatuses } from '../services/instanceManager';
-import { applyCarProfile } from '../services/apkProbe';
+import { applyCarProfile, getCatalogBrands, getCatalogProfiles } from '../services/apkProbe';
 import config from '../config';
 
 const router = Router();
@@ -17,10 +17,10 @@ const router = Router();
  */
 router.post('/:id/applyCar', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { carBrand, carModel } = req.body;
+  const { carBrand, profileIndex, profileName } = req.body;
 
-  if (!carBrand || !carModel) {
-    return res.status(400).json({ success: false, error: 'carBrand/carModel 必填' });
+  if (!carBrand || !Number.isInteger(profileIndex)) {
+    return res.status(400).json({ success: false, error: 'carBrand/profileIndex 必填' });
   }
 
   const instanceConfig = config.instances.find(i => i.id === id);
@@ -36,10 +36,55 @@ router.post('/:id/applyCar', async (req: Request, res: Response) => {
     });
   }
 
-  console.log(`[Agent] applyCar ${id}: ${carBrand}/${carModel}`);
-  const result = await applyCarProfile(instanceConfig, carBrand, carModel);
+  console.log(`[Agent] applyCar ${id}: ${carBrand} index=${profileIndex} name=${profileName || '-'}`);
+  const result = await applyCarProfile(instanceConfig, carBrand, profileIndex, profileName);
 
   return res.json(result);
+});
+
+router.get('/:id/catalog/brands', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const instanceConfig = config.instances.find(i => i.id === id);
+  if (!instanceConfig) {
+    return res.status(404).json({ success: false, error: `实例 ${id} 不存在` });
+  }
+
+  const status = getInstanceStatus(id);
+  if (status !== 'idle') {
+    return res.status(409).json({ success: false, error: `实例 ${id} 状态为 ${status}，无法读取目录` });
+  }
+
+  try {
+    const brands = await getCatalogBrands(instanceConfig);
+    return res.json({ success: true, data: brands });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/:id/catalog/profiles', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { brand } = req.query;
+  if (!brand || typeof brand !== 'string') {
+    return res.status(400).json({ success: false, error: 'brand 必填' });
+  }
+
+  const instanceConfig = config.instances.find(i => i.id === id);
+  if (!instanceConfig) {
+    return res.status(404).json({ success: false, error: `实例 ${id} 不存在` });
+  }
+
+  const status = getInstanceStatus(id);
+  if (status !== 'idle') {
+    return res.status(409).json({ success: false, error: `实例 ${id} 状态为 ${status}，无法读取目录` });
+  }
+
+  try {
+    const profiles = await getCatalogProfiles(instanceConfig, brand);
+    return res.json({ success: true, data: profiles });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /**

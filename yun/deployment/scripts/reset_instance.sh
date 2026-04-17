@@ -40,9 +40,11 @@ _parse_args "$@"
 require_root
 
 if [[ "$SLOT_START" -ne "$SLOT_END" ]]; then
+  FAILED_SLOTS=()
   for s in $(seq "$SLOT_START" "$SLOT_END"); do
-    bash "${BASH_SOURCE[0]}" "$s" || log_warn "slot=${s} reset 失败，继续"
+    bash "${BASH_SOURCE[0]}" "$s" || { log_warn "slot=${s} reset 失败，继续"; FAILED_SLOTS+=("$s"); }
   done
+  [[ ${#FAILED_SLOTS[@]} -eq 0 ]] || die "以下 slot reset 失败: ${FAILED_SLOTS[*]}"
   exit 0
 fi
 
@@ -76,8 +78,8 @@ log_info "APK WebSocket 就绪"
 # ─── adb forward 重建 ────────────────────────────────────────────────────
 adb -s "${ADB_TARGET}" forward "tcp:${PROBE_PORT}" "tcp:${APK_INTERNAL_PORT}"
 
-# ─── 业务验收（问题4：必须验到 getProfiles，不能只验 getBrands）──────────
-log_info "验收: getBrands + getProfiles(${DEFAULT_BRAND})..."
+# ─── 业务验收（必须验到 applyProfile，保持与 create_instance 对称）───────
+log_info "验收: getBrands + getProfiles(${DEFAULT_BRAND}) + applyProfile..."
 python3 - << PYEOF
 import asyncio, websockets, json, time, sys
 
@@ -127,6 +129,35 @@ if not asyncio.run(check()):
     print("业务验收失败：getBrands 或 getProfiles 未就绪", file=sys.stderr)
     sys.exit(1)
 print(f"  getBrands + getProfiles(${DEFAULT_BRAND}) ✓")
+
+async def check_apply():
+    ws_url = "ws://127.0.0.1:${PROBE_PORT}${WS_PATH}"
+    ws = await asyncio.wait_for(
+        websockets.connect(ws_url, ping_interval=None, open_timeout=5), timeout=6)
+    try:
+        rid = "reset_apply"
+        await ws.send(json.dumps({"type":"request","action":"applyProfile","requestId":rid,"data":{"brand":"${DEFAULT_BRAND}","profileIndex":0}}))
+        for _ in range(30):
+            raw = await asyncio.wait_for(ws.recv(), timeout=5)
+            m = json.loads(raw)
+            if (m.get("RequestId") or m.get("requestId")) == rid:
+                ok_flag = m.get("Success") if m.get("Success") is not None else m.get("success")
+                if ok_flag is False:
+                    raise Exception(m.get("Error") or m.get("error") or "applyProfile 返回失败")
+                return True
+        raise Exception("applyProfile 超时")
+    finally:
+        try:
+            await ws.close()
+        except Exception:
+            pass
+
+try:
+    asyncio.run(check_apply())
+except Exception as exc:
+    print(f"业务验收失败：applyProfile 异常: {exc}", file=sys.stderr)
+    sys.exit(1)
+print(f"  applyProfile(${DEFAULT_BRAND}, 0) ✓")
 PYEOF
 
 log_info "实例 ${INST_ID} 已重置并就绪 ✓"

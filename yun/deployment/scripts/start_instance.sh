@@ -20,6 +20,30 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib_instance_identity.sh"
 
+resolve_agent_instance_id() {
+  local health_url="http://127.0.0.1:${AGENT_PORT}/health"
+  curl -s --max-time 3 "${health_url}" 2>/dev/null | \
+    python3 -c '
+import json
+import sys
+
+expected_id = sys.argv[1]
+expected_ws_port = int(sys.argv[2])
+
+payload = json.load(sys.stdin)
+rows = payload.get("instances") or []
+
+exact = next((row for row in rows if row.get("id") == expected_id), None)
+if exact:
+    print(exact.get("id") or "")
+    raise SystemExit(0)
+
+matched = next((row for row in rows if int(row.get("wsPort") or -1) == expected_ws_port), None)
+if matched:
+    print(matched.get("id") or "")
+' "${INST_ID}" "${WS_PORT}" 2>/dev/null || true
+}
+
 _parse_args() {
   local start="" end=""
   case "$#" in
@@ -38,15 +62,18 @@ _parse_args "$@"
 require_root
 
 if [[ "$SLOT_START" -ne "$SLOT_END" ]]; then
+  FAILED_SLOTS=()
   for s in $(seq "$SLOT_START" "$SLOT_END"); do
-    bash "${BASH_SOURCE[0]}" "$s" || log_warn "slot=${s} 启动失败，继续"
+    bash "${BASH_SOURCE[0]}" "$s" || { log_warn "slot=${s} 启动失败，继续"; FAILED_SLOTS+=("$s"); }
   done
+  [[ ${#FAILED_SLOTS[@]} -eq 0 ]] || die "以下 slot 启动失败: ${FAILED_SLOTS[*]}"
   exit 0
 fi
 
 SLOT="$SLOT_START"
 derive_identity "$SLOT"
 log_info "恢复实例运行时: slot=${SLOT} / ${INST_ID}"
+: "${AGENT_PORT:=4000}"
 
 # ─── 前置：目录必须存在（create_instance.sh 已创建过）────────────────────
 [[ -d "${LXC_DIR}/lxc/${LXC_NAME}" ]] || \
@@ -164,6 +191,61 @@ for i in $(seq 1 40); do
 done
 
 # ─── 9. adb forward ───────────────────────────────────────────────────────
-adb -s "${ADB_TARGET}" forward "tcp:${PROBE_PORT}" "tcp:${APK_INTERNAL_PORT}"
+adb -s "${ADB_TARGET}" forward --remove "tcp:${PROBE_PORT}" >/dev/null 2>&1 || true
+adb -s "${ADB_TARGET}" forward "tcp:${PROBE_PORT}" "tcp:${APK_INTERNAL_PORT}" >/dev/null
+
+FORWARD_ROW="$(adb forward --list 2>/dev/null | \
+  grep -E "^${ADB_TARGET}[[:space:]]+tcp:${PROBE_PORT}[[:space:]]+tcp:${APK_INTERNAL_PORT}$" || true)"
+[[ -n "${FORWARD_ROW}" ]] || die "adb forward 校验失败: ${ADB_TARGET} tcp:${PROBE_PORT} -> tcp:${APK_INTERNAL_PORT}"
+
+HTTP_STATUS="$(
+  curl -s -o /dev/null -w '%{http_code}' \
+    --http1.1 \
+    --max-time 5 \
+    -H 'Connection: Upgrade' \
+    -H 'Upgrade: websocket' \
+    -H 'Sec-WebSocket-Version: 13' \
+    -H 'Sec-WebSocket-Key: restart-check==' \
+    "http://127.0.0.1:${PROBE_PORT}${WS_PATH}" 2>/dev/null || true
+)"
+[[ -n "${HTTP_STATUS}" ]] || HTTP_STATUS="000"
+[[ "${HTTP_STATUS}" == "101" ]] || die "probePort ${PROBE_PORT} WebSocket 校验失败: HTTP ${HTTP_STATUS}"
+log_info "adb forward 已恢复 (${PROBE_PORT} → ${APK_INTERNAL_PORT})"
+
+if curl -s --max-time 3 "http://127.0.0.1:${AGENT_PORT}/health" >/dev/null 2>&1; then
+  AGENT_INSTANCE_ID="${INST_ID}"
+  RESOLVED_AGENT_INSTANCE_ID="$(resolve_agent_instance_id)"
+  if [[ -n "${RESOLVED_AGENT_INSTANCE_ID}" ]]; then
+    AGENT_INSTANCE_ID="${RESOLVED_AGENT_INSTANCE_ID}"
+    [[ "${AGENT_INSTANCE_ID}" == "${INST_ID}" ]] || \
+      log_info "检测到 Agent 实例 ID 与正式身份证不一致，已按运行时 ID 收敛: ${AGENT_INSTANCE_ID}"
+  fi
+
+  log_info "通知 Agent 重新收敛实例状态..."
+  curl -fsS --max-time 5 -X POST "http://127.0.0.1:${AGENT_PORT}/instance/${AGENT_INSTANCE_ID}/reset" >/dev/null || \
+    die "通知 Agent 重置实例失败: ${AGENT_INSTANCE_ID}"
+
+  for i in $(seq 1 24); do
+    AGENT_STATUS="$(curl -s --max-time 3 "http://127.0.0.1:${AGENT_PORT}/health" 2>/dev/null | \
+      python3 -c "
+import sys, json
+try:
+    payload = json.load(sys.stdin)
+    rows = payload.get('instances') or []
+    row = next((item for item in rows if item.get('id') == '${AGENT_INSTANCE_ID}'), None)
+    print((row or {}).get('status') or 'not_found')
+except Exception:
+    print('err')
+" 2>/dev/null || echo 'err')"
+    if [[ "${AGENT_STATUS}" == "idle" ]]; then
+      log_info "Agent 已将 ${AGENT_INSTANCE_ID} 收敛为 idle"
+      break
+    fi
+    [[ $i -eq 24 ]] && die "等待 Agent 将 ${AGENT_INSTANCE_ID} 收敛为 idle 超时（当前=${AGENT_STATUS}）"
+    sleep 5
+  done
+else
+  log_warn "obd-agent 未在线，跳过自动收敛；实例运行态已恢复，但调度池状态可能滞后"
+fi
 
 log_info "实例 ${INST_ID} 恢复完成 ✓  WS: ${INST_WS_URL}"
