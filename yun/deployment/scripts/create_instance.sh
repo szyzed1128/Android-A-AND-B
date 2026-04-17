@@ -38,8 +38,8 @@ _parse_args() {
        start="$1"; count="$3"; end="$((start + count - 1))" ;;
     *) echo "参数过多" >&2; exit 1 ;;
   esac
-  [[ "$start" =~ ^[2-9][0-9]*$ ]] || { echo "START_SLOT 必须 >= 2" >&2; exit 1; }
-  [[ "$end" =~ ^[2-9][0-9]*$ ]]   || { echo "END_SLOT 必须 >= 2" >&2; exit 1; }
+  [[ "$start" =~ ^[0-9]+$ && "$start" -ge 2 ]] || { echo "START_SLOT 必须 >= 2" >&2; exit 1; }
+  [[ "$end" =~ ^[0-9]+$ && "$end" -ge 2 ]]     || { echo "END_SLOT 必须 >= 2" >&2; exit 1; }
   [[ "$end" -ge "$start" ]]        || { echo "END_SLOT 必须 >= START_SLOT" >&2; exit 1; }
   SLOT_START="$start"
   SLOT_END="$end"
@@ -99,6 +99,17 @@ mkdir -p "${LXC_DIR}/overlay/system" "${LXC_DIR}/overlay/vendor"
 mkdir -p "${ROOTFS_DIR}"
 mkdir -p "${HOST_PERMS_DIR}"
 mkdir -p "${DATA_DIR}"
+BASE_DATA_DIR="${DATA_BASE_DIR}/waydroid/data"
+if [[ ! -d "${BASE_DATA_DIR}" ]]; then
+  die "官方 slot_1 数据目录不存在，无法初始化实例 data 骨架: ${BASE_DATA_DIR}"
+fi
+if [[ -z "$(find "${DATA_DIR}" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
+  log_info "DATA_DIR 为空，复制官方 slot_1 数据骨架..."
+  cp -a "${BASE_DATA_DIR}/." "${DATA_DIR}/"
+  log_info "Android 数据骨架已复制: ${BASE_DATA_DIR} -> ${DATA_DIR}"
+else
+  log_info "DATA_DIR 已有内容，保留现有实例数据"
+fi
 log_info "目录结构已创建"
 
 # ─── 步骤 2：创建 binder 设备并校正权限（坑一：权限不对容器启不来）────────
@@ -338,13 +349,13 @@ log_info "[验收] 通道层: probe_port ${PROBE_PORT} → 101 ✓"
 
 # 层3：业务层 — getBrands + getProfiles + applyProfile
 # 通过 waitForApkReady（轮询，等待 getBrands 和默认品牌 getProfiles 都成功）
-log_info "[验收] 业务层: 等待 ${DEFAULT_BRAND} catalog 就绪（最多 60 秒）..."
+log_info "[验收] 业务层: 等待 ${DEFAULT_BRAND} catalog 就绪（最多 120 秒）..."
 python3 - << PYEOF
 import asyncio, websockets, json, time, sys
 
 WS_URL = "ws://127.0.0.1:${PROBE_PORT}${WS_PATH}"
 BRAND = "${DEFAULT_BRAND}"
-TIMEOUT = 60
+TIMEOUT = 120
 
 async def check():
     deadline = time.time() + TIMEOUT
@@ -386,8 +397,10 @@ async def check():
             pass
         finally:
             try:
-                if ws: ws.close()
-            except: pass
+                if ws:
+                    await ws.close()
+            except Exception:
+                pass
         await asyncio.sleep(3)
     return False
 
@@ -428,8 +441,10 @@ async def check_apply():
                 return True
         raise Exception("applyProfile 超时")
     finally:
-        try: ws.close()
-        except: pass
+        try:
+            await ws.close()
+        except Exception:
+            pass
 
 try:
     asyncio.run(check_apply())

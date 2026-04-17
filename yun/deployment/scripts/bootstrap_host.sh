@@ -103,12 +103,14 @@ if marker in text:
     print("  hardware_manager.py 已有补丁，跳过")
     sys.exit(0)
 
-pattern = r'(^def suspend\(\):\n)(?:^[ \t]+.*\n)+'
-replacement = (
-    'def suspend():\n'
-    '    logging.debug("suspend() called - headless mode: ignoring suspend request")\n'
-    '    return\n'
-)
+pattern = r'^(?P<indent>[ \t]*)def suspend\(\):\n(?:(?P=indent)[ \t]+.*\n)+'
+def replacement(match):
+    indent = match.group("indent")
+    return (
+        f'{indent}def suspend():\n'
+        f'{indent}    logging.debug("suspend() called - headless mode: ignoring suspend request")\n'
+        f'{indent}    return\n'
+    )
 new_text, count = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE)
 if count != 1:
     print("无法定位 hardware_manager.py 中的 suspend() 定义", file=sys.stderr)

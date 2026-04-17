@@ -6,7 +6,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { InstanceConfig } from '../config';
-import { runReadinessProbe } from './apkProbe';
+import { runReadinessProbe, tryAdoptReadyInstance } from './apkProbe';
 
 const execAsync = promisify(exec);
 
@@ -37,11 +37,10 @@ export function initInstances(configs: InstanceConfig[]): void {
       statusChangedAt: Date.now(),
       failureCount: 0,
     });
-    // 异步启动就绪流程
-    triggerReadinessLoop(cfg.id).catch(e =>
-      console.error(`[InstanceManager] 初始化失败 ${cfg.id}:`, e.message)
-    );
   }
+  bootstrapInstancesOnStartup(configs).catch(e =>
+    console.error(`[InstanceManager] 启动接管失败:`, e.message)
+  );
   console.log(`[InstanceManager] 初始化 ${configs.length} 个实例`);
 }
 
@@ -154,6 +153,34 @@ async function triggerReadinessLoop(instanceId: string): Promise<void> {
 
   rt.probingPromise = promise;
   await promise;
+}
+
+async function bootstrapInstancesOnStartup(configs: InstanceConfig[]): Promise<void> {
+  const coldProbeQueue: string[] = [];
+
+  for (const cfg of configs) {
+    const rt = instances.get(cfg.id);
+    if (!rt) continue;
+
+    console.log(`[InstanceManager] ${cfg.id} 启动接管：优先复用现成运行态`);
+    const adoptResult = await tryAdoptReadyInstance(cfg);
+    if (adoptResult.success) {
+      setRuntimeStatus(rt, 'idle');
+      rt.failureCount = 0;
+      rt.lastError = undefined;
+      console.log(`[InstanceManager] ${cfg.id} ✅ 已接管现成运行态，状态=idle`);
+      continue;
+    }
+
+    rt.lastError = adoptResult.error;
+    console.log(`[InstanceManager] ${cfg.id} 启动接管失败，加入冷探针队列: ${adoptResult.error}`);
+    coldProbeQueue.push(cfg.id);
+  }
+
+  for (const instanceId of coldProbeQueue) {
+    console.log(`[InstanceManager] ${instanceId} 开始启动后冷探针`);
+    await triggerReadinessLoop(instanceId);
+  }
 }
 
 function setRuntimeStatus(rt: InstanceRuntime, status: RuntimeStatus): void {

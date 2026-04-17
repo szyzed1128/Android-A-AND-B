@@ -18,6 +18,7 @@ const DEFAULT_MODEL = 'AITO';
 const WS_CONNECT_TIMEOUT_MS = 15000;    // 等待WS连接最长15秒
 const WS_CONNECT_POLL_INTERVAL_MS = 500;
 const STEP_TIMEOUT_MS = 35000;          // 每步骤超时35秒（APK profiles 加载约需20秒）
+const READINESS_TIMEOUT_MS = 120000;    // 冷探针等待默认品牌目录完成加载的最长时间
 const MAX_FAILURES_BEFORE_BAD = 5;
 
 export type ProbeStatus = 'idle' | 'probing' | 'bad';
@@ -56,9 +57,9 @@ export async function runReadinessProbe(instance: InstanceConfig): Promise<Probe
     // Step 3: 等待 APK 完全就绪（不仅 getBrands 成功，还要默认品牌 profiles 真正可用）
     // 说明：只看到 getBrands 成功并不代表 profiles 已加载完成；过早调用 getProfiles/applyProfile
     //      会得到空列表或 NullReferenceException，导致实例被误判成 idle。
-    console.log(`[Probe] ${instance.id} Step3: 等待APK完全就绪（默认品牌 catalog 可用，最多60秒）`);
+    console.log(`[Probe] ${instance.id} Step3: 等待APK完全就绪（默认品牌 catalog 可用，最多120秒）`);
     const wsUrl = `ws://localhost:${instance.probePort}/ws`;
-    await waitForApkReady(wsUrl, 60000, DEFAULT_BRAND);
+    await waitForApkReady(wsUrl, READINESS_TIMEOUT_MS, DEFAULT_BRAND);
     console.log(`[Probe] ${instance.id} Step3: APK已就绪，默认品牌 catalog 可响应`);
 
     // Step 4-6: 应用默认车型（AITO），验证 profiles 已加载
@@ -72,6 +73,28 @@ export async function runReadinessProbe(instance: InstanceConfig): Promise<Probe
     return { success: true };
   } catch (err: any) {
     console.error(`[Probe] ${instance.id} ❌ 探针失败:`, err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Agent 重启后的“接管”路径：
+ * 优先复用当前已经跑起来的实例，不主动 force-stop / am start。
+ * 只要本机对外 wsPort 已经能完成 getBrands + getProfiles + applyProfile，
+ * 就直接把实例标回 idle，避免每次 Agent 重启都把全部实例重新冷启动一遍。
+ */
+export async function tryAdoptReadyInstance(instance: InstanceConfig): Promise<ProbeResult> {
+  try {
+    console.log(`[Probe] ${instance.id} adopt: adb connect ${instance.adbTarget}`);
+    await execShell(`adb connect ${instance.adbTarget}`);
+    await execShell(`adb -s ${instance.adbTarget} forward tcp:${instance.probePort} tcp:8080`);
+    const wsUrl = `ws://127.0.0.1:${instance.probePort}/ws`;
+    console.log(`[Probe] ${instance.id} adopt: 尝试接管现成运行态 ${wsUrl}`);
+    await runBusinessProbeOnUrl(instance.id, wsUrl, DEFAULT_BRAND, 0, DEFAULT_MODEL);
+    console.log(`[Probe] ${instance.id} adopt: 接管成功`);
+    return { success: true };
+  } catch (err: any) {
+    console.warn(`[Probe] ${instance.id} adopt 失败: ${err.message}`);
     return { success: false, error: err.message };
   }
 }
@@ -152,22 +175,33 @@ async function runBusinessProbe(
   profileIndex: number,
   profileName?: string
 ): Promise<void> {
-  await withProbeSocket(instance, async (ws) => {
-    // Step 4: getBrands —— 验证 APK 已加载完毕
+  const wsUrl = `ws://localhost:${instance.probePort}/ws`;
+  await runBusinessProbeOnUrl(instance.id, wsUrl, brand, profileIndex, profileName);
+}
+
+async function runBusinessProbeOnUrl(
+  instanceId: string,
+  wsUrl: string,
+  brand: string,
+  profileIndex: number,
+  profileName?: string
+): Promise<void> {
+  const ws = await connectWebSocket(wsUrl);
+
+  try {
     const rawBrands = await sendRequest(ws, 'getBrands', {});
     const brands = parseResponseData(rawBrands);
     if (!Array.isArray(brands) || brands.length === 0) {
       throw new Error('getBrands 返回空列表');
     }
-    console.log(`[Probe] ${instance.id} getBrands 成功，共${brands.length}个品牌`);
+    console.log(`[Probe] ${instanceId} getBrands 成功，共${brands.length}个品牌`);
 
-    // Step 5: getProfiles —— 验证指定品牌的配置已加载，同时获取 profileIndex
     const rawProfiles = await sendRequest(ws, 'getProfiles', { brand });
     const profiles = parseResponseData(rawProfiles);
     if (!Array.isArray(profiles) || profiles.length === 0) {
       throw new Error(`getProfiles("${brand}") 返回空列表`);
     }
-    console.log(`[Probe] ${instance.id} getProfiles 成功，共${profiles.length}个配置`);
+    console.log(`[Probe] ${instanceId} getProfiles 成功，共${profiles.length}个配置`);
 
     if (profileIndex < 0 || profileIndex >= profiles.length) {
       throw new Error(
@@ -175,10 +209,15 @@ async function runBusinessProbe(
       );
     }
 
-    // Step 6: applyProfile —— 参数：brand + profileIndex（数字下标）
     await sendRequest(ws, 'applyProfile', { brand, profileIndex });
-    console.log(`[Probe] ${instance.id} applyProfile("${brand}", index=${profileIndex}) 成功`);
-  });
+    console.log(`[Probe] ${instanceId} applyProfile("${brand}", index=${profileIndex}) 成功`);
+  } finally {
+    try {
+      ws.close();
+    } catch {
+      // ignore
+    }
+  }
 }
 
 async function withProbeSocket<T>(

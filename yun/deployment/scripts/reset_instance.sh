@@ -85,7 +85,7 @@ import asyncio, websockets, json, time, sys
 
 async def check():
     ws_url = "ws://127.0.0.1:${PROBE_PORT}${WS_PATH}"
-    deadline = time.time() + 60
+    deadline = time.time() + 120
     while time.time() < deadline:
         ws = None
         try:
@@ -120,8 +120,10 @@ async def check():
             pass
         finally:
             try:
-                if ws: ws.close()
-            except: pass
+                if ws:
+                    await ws.close()
+            except Exception:
+                pass
         await asyncio.sleep(3)
     return False
 
