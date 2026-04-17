@@ -305,52 +305,35 @@ else
   log_info "APK 已安装，跳过"
 fi
 
-# ─── 步骤 15：启动 APK ────────────────────────────────────────────────────
-log_step "步骤15: 启动 APK"
-adb -s "${ADB_TARGET}" shell am force-stop "${APK_PACKAGE}" >/dev/null 2>&1 || true
-sleep 2
-adb -s "${ADB_TARGET}" shell am start -n "${APK_PACKAGE}/${APK_ACTIVITY}" >/dev/null 2>&1
-log_info "APK 已启动（首次启动可能因 ProfilesV2 崩溃后自动重启，属正常现象）"
+# ─── 步骤 15~18：冷启动 APK + 三层验收（带自动重试）────────────────────
+wait_apk_websocket() {
+  for i in $(seq 1 40); do
+    local ws_state
+    ws_state="$(adb -s "${ADB_TARGET}" shell ss -tlnp 2>/dev/null | grep ":${APK_INTERNAL_PORT}" || true)"
+    [[ -n "${ws_state}" ]] && return 0
+    sleep 5
+  done
+  return 1
+}
 
-# ─── 步骤 16：等待 APK WebSocket 就绪（坑六：101 不等于业务可用）──────────
-log_step "步骤16: 等待 APK WebSocket :${APK_INTERNAL_PORT} 就绪"
-for i in $(seq 1 40); do
-  WS="$(adb -s "${ADB_TARGET}" shell ss -tlnp 2>/dev/null | grep ":${APK_INTERNAL_PORT}" || true)"
-  [[ -n "$WS" ]] && break
-  sleep 5
-  [[ $i -eq 40 ]] && die "APK WebSocket 启动超时"
-done
-log_info "APK WebSocket 已监听 :${APK_INTERNAL_PORT}"
+verify_business_readiness_once() {
+  log_info "[验收] 系统层: container=RUNNING boot=1 adb=online ✓"
 
-# ─── 步骤 17：adb forward ─────────────────────────────────────────────────
-log_step "步骤17: adb forward tcp:${PROBE_PORT} → tcp:${APK_INTERNAL_PORT}"
-adb -s "${ADB_TARGET}" forward "tcp:${PROBE_PORT}" "tcp:${APK_INTERNAL_PORT}" >/dev/null
-log_info "adb forward 完成 (${PROBE_PORT} → 容器内 ${APK_INTERNAL_PORT})"
+  local http_status
+  http_status="$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
+    -H "Upgrade: websocket" -H "Connection: Upgrade" \
+    -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+    -H "Sec-WebSocket-Version: 13" \
+    "http://127.0.0.1:${PROBE_PORT}${WS_PATH}" 2>/dev/null || true)"
+  [[ -n "${http_status}" ]] || http_status="000"
+  if [[ "${http_status}" != "101" ]]; then
+    echo "[验收] 通道层失败: probePort ${PROBE_PORT} 返回 ${http_status}（期望 101）" >&2
+    return 1
+  fi
+  log_info "[验收] 通道层: probe_port ${PROBE_PORT} → 101 ✓"
 
-# =============================================================================
-# B. verify_business_readiness — 三层验收（坑五/六/七 的完整修复）
-# =============================================================================
-
-# ─── 步骤 18：业务三层验收 ───────────────────────────────────────────────
-log_step "步骤18: 业务验收"
-
-# 层1：系统层
-log_info "[验收] 系统层: container=RUNNING boot=1 adb=online ✓"
-
-# 层2：通道层 — probePort + wsPort
-HTTP_STATUS="$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
-  -H "Upgrade: websocket" -H "Connection: Upgrade" \
-  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-  -H "Sec-WebSocket-Version: 13" \
-  "http://127.0.0.1:${PROBE_PORT}${WS_PATH}" 2>/dev/null || true)"
-[[ -n "${HTTP_STATUS}" ]] || HTTP_STATUS="000"
-[[ "$HTTP_STATUS" == "101" ]] || die "[验收] 通道层失败: probePort ${PROBE_PORT} 返回 ${HTTP_STATUS}（期望 101）"
-log_info "[验收] 通道层: probe_port ${PROBE_PORT} → 101 ✓"
-
-# 层3：业务层 — getBrands + getProfiles + applyProfile
-# 通过 waitForApkReady（轮询，等待 getBrands 和默认品牌 getProfiles 都成功）
-log_info "[验收] 业务层: 等待 ${DEFAULT_BRAND} catalog 就绪（最多 120 秒）..."
-python3 - << PYEOF
+  log_info "[验收] 业务层: 等待 ${DEFAULT_BRAND} catalog 就绪（最多 120 秒）..."
+  python3 - << PYEOF
 import asyncio, websockets, json, time, sys
 
 WS_URL = "ws://127.0.0.1:${PROBE_PORT}${WS_PATH}"
@@ -366,7 +349,6 @@ async def check():
                 websockets.connect(WS_URL, ping_interval=None, open_timeout=5),
                 timeout=6)
             rid = "verify_001"
-            # getBrands
             await ws.send(json.dumps({"type":"request","action":"getBrands","requestId":rid,"data":{}}))
             for _ in range(20):
                 raw = await asyncio.wait_for(ws.recv(), timeout=5)
@@ -379,7 +361,7 @@ async def check():
                         break
             else:
                 raise Exception("getBrands 超时或返回空")
-            # getProfiles
+
             rid2 = "verify_002"
             await ws.send(json.dumps({"type":"request","action":"getProfiles","requestId":rid2,"data":{"brand":BRAND}}))
             for _ in range(20):
@@ -393,7 +375,7 @@ async def check():
                         return True
                     raise Exception(f"getProfiles({BRAND}) 返回空或异常")
             raise Exception("getProfiles 超时")
-        except Exception as e:
+        except Exception:
             pass
         finally:
             try:
@@ -410,14 +392,12 @@ if not ok:
     sys.exit(1)
 print(f"[验收] 业务层: getBrands + getProfiles({BRAND}) ✓")
 
-# 问题3：补上 applyProfile 验收，覆盖"能连但 apply 失败"的坑
 async def check_apply():
     ws_url = "ws://127.0.0.1:${PROBE_PORT}${WS_PATH}"
     ws = await asyncio.wait_for(
         websockets.connect(ws_url, ping_interval=None, open_timeout=5), timeout=6)
     try:
         rid = "apply_verify"
-        # getProfiles 取 index=0
         await ws.send(json.dumps({"type":"request","action":"getProfiles","requestId":rid+"_p","data":{"brand":"${DEFAULT_BRAND}"}}))
         profiles_resp = None
         for _ in range(30):
@@ -425,18 +405,19 @@ async def check_apply():
             m = json.loads(raw)
             if (m.get("RequestId") or m.get("requestId")) == rid+"_p":
                 d = m.get("Data") or m.get("data") or []
-                if isinstance(d, str): d = json.loads(d)
-                profiles_resp = d; break
+                if isinstance(d, str):
+                    d = json.loads(d)
+                profiles_resp = d
+                break
         if not profiles_resp:
             raise Exception("getProfiles 响应为空")
-        # applyProfile index=0
         await ws.send(json.dumps({"type":"request","action":"applyProfile","requestId":rid,"data":{"brand":"${DEFAULT_BRAND}","profileIndex":0}}))
         for _ in range(30):
             raw = await asyncio.wait_for(ws.recv(), timeout=5)
             m = json.loads(raw)
             if (m.get("RequestId") or m.get("requestId")) == rid:
                 ok_flag = m.get("Success") if m.get("Success") is not None else m.get("success")
-                if ok_flag == False:
+                if ok_flag is False:
                     raise Exception(f"applyProfile 返回失败: {m.get('Error') or m.get('error')}")
                 return True
         raise Exception("applyProfile 超时")
@@ -453,8 +434,43 @@ except Exception as e:
     print(f"[验收] applyProfile 失败: {e}", file=sys.stderr)
     sys.exit(1)
 PYEOF
+}
 
-log_info "[验收] 三层验收全部通过 ✓"
+MAX_APK_COLD_START_ATTEMPTS="${MAX_APK_COLD_START_ATTEMPTS:-5}"
+APK_READY=0
+log_step "步骤15~18: 冷启动 APK 并完成三层验收（最多 ${MAX_APK_COLD_START_ATTEMPTS} 次）"
+for attempt in $(seq 1 "${MAX_APK_COLD_START_ATTEMPTS}"); do
+  log_info "尝试 ${attempt}/${MAX_APK_COLD_START_ATTEMPTS}: am force-stop → am start"
+  adb -s "${ADB_TARGET}" shell am force-stop "${APK_PACKAGE}" >/dev/null 2>&1 || true
+  sleep 2
+  adb -s "${ADB_TARGET}" shell am start -n "${APK_PACKAGE}/${APK_ACTIVITY}" >/dev/null 2>&1 || true
+
+  if ! wait_apk_websocket; then
+    log_warn "尝试 ${attempt}/${MAX_APK_COLD_START_ATTEMPTS}: APK WebSocket 未在 :${APK_INTERNAL_PORT} 监听，准备重试"
+    continue
+  fi
+  log_info "尝试 ${attempt}/${MAX_APK_COLD_START_ATTEMPTS}: APK WebSocket 已监听 :${APK_INTERNAL_PORT}"
+
+  adb -s "${ADB_TARGET}" forward --remove "tcp:${PROBE_PORT}" >/dev/null 2>&1 || true
+  if ! adb -s "${ADB_TARGET}" forward "tcp:${PROBE_PORT}" "tcp:${APK_INTERNAL_PORT}" >/dev/null; then
+    log_warn "尝试 ${attempt}/${MAX_APK_COLD_START_ATTEMPTS}: adb forward 失败，准备重试"
+    sleep 3
+    continue
+  fi
+  log_info "尝试 ${attempt}/${MAX_APK_COLD_START_ATTEMPTS}: adb forward 完成 (${PROBE_PORT} → 容器内 ${APK_INTERNAL_PORT})"
+
+  if verify_business_readiness_once; then
+    APK_READY=1
+    log_info "[验收] 三层验收全部通过 ✓"
+    break
+  fi
+
+  log_warn "尝试 ${attempt}/${MAX_APK_COLD_START_ATTEMPTS}: 业务层仍未收敛，准备重启 APK 后重试"
+  adb -s "${ADB_TARGET}" shell am force-stop "${APK_PACKAGE}" >/dev/null 2>&1 || true
+  sleep 5
+done
+
+[[ "${APK_READY}" == "1" ]] || die "步骤15~18 失败：APK 在 ${MAX_APK_COLD_START_ATTEMPTS} 次冷启动后仍未完成三层验收"
 
 # =============================================================================
 # C. 生成持久化配置文件
@@ -543,17 +559,22 @@ except json.JSONDecodeError as e:
     sys.exit(1)
 
 result = "created"
-updated = False
-for index, item in enumerate(instances):
+existing = None
+remaining = []
+for item in instances:
     if item.get("id") == inst_id:
-        merged = {**item, **new_entry}
-        instances[index] = merged
-        updated = True
-        result = "unchanged" if item == merged else "updated"
-        break
+        existing = item
+    else:
+        remaining.append(item)
 
-if not updated:
-    instances.append(new_entry)
+if existing is not None:
+    merged = {**existing, **new_entry}
+    result = "unchanged" if existing == merged else "updated"
+    new_entry = merged
+
+# 新创建/更新的实例放到最前面，保证 Agent 重启时优先接管当前 slot，
+# 避免大批实例顺序接管时新实例排在队尾导致 Step21 超时。
+instances = [new_entry, *remaining]
 
 new_line = f"INSTANCES_CONFIG={json.dumps(instances, separators=(',', ':'))}"
 new_content = re.sub(r'^INSTANCES_CONFIG=.+$', new_line, content, flags=re.MULTILINE)
@@ -571,9 +592,10 @@ systemctl restart obd-agent 2>/dev/null || die "obd-agent 重启失败，请检�
 log_info "obd-agent 已重启"
 
 # 等待 Agent 探针完成并将实例标记为 idle（问题3：超时必须 die）
-log_info "等待 ${INST_ID} 进入 idle 状态（最多 120 秒）..."
+AGENT_ATTACH_TIMEOUT_SEC="${AGENT_ATTACH_TIMEOUT_SEC:-300}"
+log_info "等待 ${INST_ID} 进入 idle 状态（最多 ${AGENT_ATTACH_TIMEOUT_SEC} 秒）..."
 AGENT_FINAL_STATUS=""
-for i in $(seq 1 24); do
+for i in $(seq 1 $((AGENT_ATTACH_TIMEOUT_SEC / 5))); do
   AGENT_FINAL_STATUS="$(curl -s --max-time 3 http://127.0.0.1:4000/health 2>/dev/null | \
     python3 -c "
 import sys,json
@@ -587,7 +609,7 @@ except: print('err')
     log_info "Agent 已将 ${INST_ID} 标记为 idle ✓"
     break
   fi
-  if [[ $i -eq 24 ]]; then
+  if [[ $i -eq $((AGENT_ATTACH_TIMEOUT_SEC / 5)) ]]; then
     die "等待实例进入 idle 超时（当前状态: ${AGENT_FINAL_STATUS}），实例未成功接入调度池。\n  查看详情: journalctl -u obd-agent -n 50"
   fi
   sleep 5

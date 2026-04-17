@@ -19,6 +19,7 @@ const WS_CONNECT_TIMEOUT_MS = 15000;    // 等待WS连接最长15秒
 const WS_CONNECT_POLL_INTERVAL_MS = 500;
 const STEP_TIMEOUT_MS = 35000;          // 每步骤超时35秒（APK profiles 加载约需20秒）
 const READINESS_TIMEOUT_MS = 120000;    // 冷探针等待默认品牌目录完成加载的最长时间
+const ADOPT_READINESS_TIMEOUT_MS = 20000;
 const MAX_FAILURES_BEFORE_BAD = 5;
 
 export type ProbeStatus = 'idle' | 'probing' | 'bad';
@@ -41,8 +42,9 @@ export async function runReadinessProbe(instance: InstanceConfig): Promise<Probe
   try {
     // Step 0: 确保 adb 连接有效（systemd 环境下 adb server 可能没有设备注册）
     console.log(`[Probe] ${instance.id} Step0: adb connect ${instance.adbTarget}`);
-    await execShell(`adb connect ${instance.adbTarget}`);
+    await ensureAdbTransport(instance);
     // adb daemon 重启后 forward 会消失，每次探针前都重建
+    await execShell(`adb -s ${instance.adbTarget} forward --remove tcp:${instance.probePort} || true`);
     await execShell(`adb -s ${instance.adbTarget} forward tcp:${instance.probePort} tcp:8080`);
     console.log(`[Probe] ${instance.id} Step0: forward ${instance.probePort}→8080 已建立`);
 
@@ -86,9 +88,13 @@ export async function runReadinessProbe(instance: InstanceConfig): Promise<Probe
 export async function tryAdoptReadyInstance(instance: InstanceConfig): Promise<ProbeResult> {
   try {
     console.log(`[Probe] ${instance.id} adopt: adb connect ${instance.adbTarget}`);
-    await execShell(`adb connect ${instance.adbTarget}`);
+    await ensureAdbTransport(instance);
+    await execShell(`adb -s ${instance.adbTarget} forward --remove tcp:${instance.probePort} || true`);
     await execShell(`adb -s ${instance.adbTarget} forward tcp:${instance.probePort} tcp:8080`);
     const wsUrl = `ws://127.0.0.1:${instance.probePort}/ws`;
+    await waitForWebSocket(wsUrl, 3000);
+    console.log(`[Probe] ${instance.id} adopt: 等待现成运行态就绪 ${wsUrl}`);
+    await waitForApkReady(wsUrl, ADOPT_READINESS_TIMEOUT_MS, DEFAULT_BRAND);
     console.log(`[Probe] ${instance.id} adopt: 尝试接管现成运行态 ${wsUrl}`);
     await runBusinessProbeOnUrl(instance.id, wsUrl, DEFAULT_BRAND, 0, DEFAULT_MODEL);
     console.log(`[Probe] ${instance.id} adopt: 接管成功`);
@@ -245,6 +251,13 @@ async function stopApkActivity(instance: InstanceConfig): Promise<void> {
   await execShell(
     `adb -s ${instance.adbTarget} shell am force-stop ${instance.packageName}`
   );
+}
+
+async function ensureAdbTransport(instance: InstanceConfig): Promise<void> {
+  await execShell(`adb connect ${instance.adbTarget}`);
+  await sleep(1000);
+  await execShell(`adb -s ${instance.adbTarget} wait-for-device`);
+  await sleep(500);
 }
 
 /**
