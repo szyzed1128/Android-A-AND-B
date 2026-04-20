@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<FrameLayout android:orientation="vertical" android:id="@id/rootLayout" android:clipChildren="false" android:layout_width="fill_parent" android:layout_height="fill_parent"
-  xmlns:android="http://schemas.android.com/apk/res/android">
-    <crc6400cdd21e49d72e2c.SevenSegmentHelper android:id="@id/sevensegment" android:layout_width="fill_parent" android:layout_height="fill_parent" />
-    <crc6400cdd21e49d72e2c.EightCrossEightDotMatrix android:id="@id/eightsegment" android:layout_width="fill_parent" android:layout_height="fill_parent" />
-    <crc6400cdd21e49d72e2c.FourteenSegmentHelper android:id="@id/fourteensegment" android:layout_width="fill_parent" android:layout_height="fill_parent" />
-    <crc6400cdd21e49d72e2c.SixteenSegmentHelper android:id="@id/sixteensegment" android:layout_width="fill_parent" android:layout_height="fill_parent" />
-</FrameLayout>

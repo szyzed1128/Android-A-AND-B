@@ -31,9 +31,16 @@ yarn-error.log*
 
 # ===== React/Metro 构建产物 =====
 yun/client-app/build/
+yun/client-app/android/app/src/main/assets/index.android.bundle
+yun/client-app/ios/main.jsbundle
 react_ui/build/
 .metro-health-check*
 .bundle/
+*.jsbundle
+
+# ===== TypeScript 编译产物（npm run build 可重建）=====
+yun/agent/dist/
+yun/scheduler/dist/
 
 # ===== CarScanner 原始资源文件 =====
 *.db
@@ -94,6 +101,16 @@ yun/client-app/ios/Pods/
 
 # ===== iOS 构建产物 =====
 yun/client-app/ios/build/
+yun/client-app/ios/build_ios/
+yun/client-app/ios/build_ios_cli/
+yun/client-app/ios/DerivedData/
+yun/client-app/ios/*.xcarchive/
+yun/client-app/ios/**/*.dSYM/
+yun/client-app/ios/**/Intermediates.noindex/
+yun/client-app/ios/**/Index.noindex/
 yun/client-app/ios/*.xcworkspace/xcuserdata/
 yun/client-app/ios/*.xcodeproj/xcuserdata/
 yun/client-app/ios/.xcode.env.local
+
+# ===== 本地副本/备份目录 =====
+*_副本/

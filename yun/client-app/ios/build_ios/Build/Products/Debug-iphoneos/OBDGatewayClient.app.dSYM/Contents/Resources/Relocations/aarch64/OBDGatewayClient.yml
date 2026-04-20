@@ -1,5 +1,0 @@
----
-triple:          'arm64-apple-darwin'
-binary-path:     '/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Products/Debug-iphoneos/OBDGatewayClient.app/OBDGatewayClient'
-relocations:     []
-...
