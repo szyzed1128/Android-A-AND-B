@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { getInstanceStatus, triggerReset, getAllInstanceStatuses } from '../services/instanceManager';
 import { applyCarProfile, getCatalogBrands, getCatalogProfiles } from '../services/apkProbe';
+import { collectInstanceRuntimeLogs, restartInstanceRuntime } from '../services/runtimeAdmin';
 import config from '../config';
 
 const router = Router();
@@ -104,6 +105,36 @@ router.post('/:id/reset', async (req: Request, res: Response) => {
   triggerReset(id);  // 异步执行，立即返回
 
   return res.json({ success: true, message: '重置已触发，正在后台执行' });
+});
+
+router.post('/:id/restart-runtime', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const instanceConfig = config.instances.find(i => i.id === id);
+  if (!instanceConfig) {
+    return res.status(404).json({ success: false, error: `实例 ${id} 不存在` });
+  }
+
+  try {
+    await restartInstanceRuntime(instanceConfig);
+    return res.json({ success: true, message: '运行时重启完成' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/:id/logs', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const instanceConfig = config.instances.find(i => i.id === id);
+  if (!instanceConfig) {
+    return res.status(404).json({ success: false, error: `实例 ${id} 不存在` });
+  }
+
+  try {
+    const data = await collectInstanceRuntimeLogs(instanceConfig);
+    return res.json({ success: true, data });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /**

@@ -1,0 +1,26 @@
+dependencies: \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/Darwin.modulemap \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/evmap.c \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Target\ Support\ Files/libevent/libevent-prefix.pch \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/include/event2/event-config.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/evconfig-private.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/DarwinFoundation2.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/DarwinFoundation1.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/DarwinFoundation3.modulemap \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/event-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/include/event2/event_struct.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/include/event2/util.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/include/event2/visibility.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/include/event2/keyvalq_struct.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/minheap-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/include/event2/event.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/util-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/log-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/time-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/ipv6-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/mm-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/evsignal-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/defer-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/evmap-internal.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/libevent/changelist-internal.h

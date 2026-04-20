@@ -6,13 +6,14 @@
 #
 # 前提：create_instance.sh 已成功执行（实例目录、Nginx 配置、脚本都在）。
 #
-# 本脚本做三件事：
-#   1. 覆盖写 obd-instance@.service template（唯一正式来源）
-#   2. systemctl enable obd-instance@<slot>（注册开机启动）
-#   3. 验证 systemctl is-enabled 返回 enabled
+# 本脚本做四件事：
+#   1. 覆盖写 obd-weston@.service template（slot_2+ 的独立 wayland runtime）
+#   2. 覆盖写 obd-instance@.service template（唯一正式来源）
+#   3. systemctl enable obd-weston@<slot> + obd-instance@<slot>
+#   4. 验证 systemctl is-enabled 返回 enabled
 #
 # 开机恢复链路：
-#   systemd → obd-instance@N.service → start_instance.sh N
+#   systemd → obd-weston@N.service → obd-instance@N.service → start_instance.sh N
 #
 # 注意：
 #   - 本脚本不启动实例（只注册），如需立即启动请用 start_instance.sh
@@ -41,18 +42,40 @@ _parse_args "$@"
 require_root
 
 SYSTEMD_TEMPLATE="/etc/systemd/system/obd-instance@.service"
+WESTON_TEMPLATE="/etc/systemd/system/obd-weston@.service"
 
-# ─── systemd template（问题1修复：总是覆盖写，确保唯一来源带 EnvironmentFile）
-# 无论是否已存在，都重新写入，防止 create_instance.sh 先写了不带 EnvironmentFile 的旧版本。
-log_info "写入 systemd template: ${SYSTEMD_TEMPLATE}"
+# ─── systemd template：weston runtime ──────────────────────────────────────
+log_info "写入 weston template: ${WESTON_TEMPLATE}"
+cat > "$WESTON_TEMPLATE" << UNIT
+# /etc/systemd/system/obd-weston@.service
+# 由 install_persist.sh 创建
+[Unit]
+Description=OBD Weston Runtime slot=%i
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/obd-instance.env
+ExecStart=/bin/bash ${SCRIPT_DIR}/run_weston_slot.sh %i
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# ─── systemd template：实例恢复链 ──────────────────────────────────────────
+log_info "写入 instance template: ${SYSTEMD_TEMPLATE}"
 cat > "$SYSTEMD_TEMPLATE" << UNIT
 # /etc/systemd/system/obd-instance@.service
 # 由 install_persist.sh 创建
 [Unit]
 Description=OBD Waydroid Instance slot=%i
-After=network.target obd-agent.service
-Wants=obd-agent.service
-# 若 slot_1 由 cardemo.service 管理，可按需追加 After=cardemo.service
+After=network.target obd-agent.service obd-weston@%i.service
+Wants=obd-agent.service obd-weston@%i.service
+Requires=obd-weston@%i.service
 
 [Service]
 Type=oneshot
@@ -68,20 +91,20 @@ StandardError=journal
 WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload
-log_info "systemd template 已写入: ${SYSTEMD_TEMPLATE}"
+log_info "systemd template 已写入: ${WESTON_TEMPLATE} / ${SYSTEMD_TEMPLATE}"
 
-# ─── /etc/obd-instance.env（给 start_instance.sh 提供必填环境变量）────────
+# ─── /etc/obd-instance.env（给 start_instance.sh 提供环境变量）──────────────
 ENV_FILE="/etc/obd-instance.env"
 if [[ ! -f "$ENV_FILE" ]]; then
-  log_info "创建 ${ENV_FILE}（SERVER_ID / PUBLIC_WS_HOST 必须填写）..."
+  log_info "创建 ${ENV_FILE}（SERVER_ID 必填，PUBLIC_WS_HOST 可选覆盖）..."
   cat > "$ENV_FILE" << ENV
-# obd-instance 实例环境变量（必填）
-# 安装后请修改以下两行为正确的值：
+# obd-instance 实例环境变量
+# 安装后请至少修改 SERVER_ID；PUBLIC_WS_HOST 留空则由 Agent 自动探测公网地址
 SERVER_ID=${SERVER_ID:-PLEASE_SET_SERVER_ID}
-PUBLIC_WS_HOST=${PUBLIC_WS_HOST:-PLEASE_SET_PUBLIC_WS_HOST}
+PUBLIC_WS_HOST=${PUBLIC_WS_HOST:-}
 PUBLIC_WS_SCHEME=${PUBLIC_WS_SCHEME:-ws}
 ENV
-  log_warn "请确认 ${ENV_FILE} 中的 SERVER_ID 和 PUBLIC_WS_HOST 已填写正确值！"
+  log_warn "请确认 ${ENV_FILE} 中的 SERVER_ID 已填写正确值；PUBLIC_WS_HOST 留空即可走 Agent 自动探测。"
 fi
 
 # ─── 逐 slot 注册 ─────────────────────────────────────────────────────────
@@ -95,14 +118,21 @@ for s in $(seq "$SLOT_START" "$SLOT_END"); do
     FAILED_SLOTS+=("$s"); continue
   fi
 
-  # enable
-  if systemctl enable "obd-instance@${s}" 2>/dev/null; then
-    STATUS="$(systemctl is-enabled "obd-instance@${s}" 2>/dev/null || echo unknown)"
-    log_info "slot=${s} (${INST_ID}): systemctl enable → ${STATUS}"
-  else
-    log_error "slot=${s} systemctl enable 失败"
+  if ! systemctl enable "obd-weston@${s}" >/dev/null 2>&1; then
+    log_error "slot=${s} weston template enable 失败"
     FAILED_SLOTS+=("$s")
+    continue
   fi
+
+  if ! systemctl enable "obd-instance@${s}" >/dev/null 2>&1; then
+    log_error "slot=${s} instance template enable 失败"
+    FAILED_SLOTS+=("$s")
+    continue
+  fi
+
+  WESTON_STATUS="$(systemctl is-enabled "obd-weston@${s}" 2>/dev/null || echo unknown)"
+  INSTANCE_STATUS="$(systemctl is-enabled "obd-instance@${s}" 2>/dev/null || echo unknown)"
+  log_info "slot=${s} (${INST_ID}): weston=${WESTON_STATUS} instance=${INSTANCE_STATUS}"
 done
 
 systemctl daemon-reload 2>/dev/null || true
@@ -114,11 +144,12 @@ if [[ ${#FAILED_SLOTS[@]} -eq 0 ]]; then
   echo ""
   echo "  已注册的服务（开机时自动调用 start_instance.sh）："
   for s in $(seq "$SLOT_START" "$SLOT_END"); do
+    echo "    obd-weston@${s}.service"
     echo "    obd-instance@${s}.service"
   done
   echo ""
   echo "  如需立即启动（不重启服务器）："
-  echo "    SERVER_ID=${SERVER_ID:-<SERVER_ID>} PUBLIC_WS_HOST=${PUBLIC_WS_HOST:-<HOST>} \\"
+  echo "    SERVER_ID=${SERVER_ID:-<SERVER_ID>} [PUBLIC_WS_HOST=<可选覆盖>] \\"
   printf "    systemctl start obd-instance@{%s..%s}\n" "$SLOT_START" "$SLOT_END"
   exit 0
 else

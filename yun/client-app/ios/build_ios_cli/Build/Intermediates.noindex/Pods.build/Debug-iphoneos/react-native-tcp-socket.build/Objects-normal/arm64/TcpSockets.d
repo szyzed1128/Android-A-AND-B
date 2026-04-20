@@ -1,0 +1,45 @@
+dependencies: \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/Darwin.modulemap \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/node_modules/react-native-tcp-socket/ios/TcpSockets.m \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Target\ Support\ Files/react-native-tcp-socket/react-native-tcp-socket-prefix.pch \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/UIKit.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/Foundation.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/DarwinFoundation1.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/dispatch.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/Security.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/CoreGraphics.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/QuartzCore.framework/Modules/module.modulemap \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTAssert.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTDefines.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTInspectorDevServerHelper.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTPackagerConnection.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTConvert.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTAnimationType.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBorderCurve.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBorderStyle.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTLog.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTUtils.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTPointerEvents.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTTextDecorationLineType.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/yoga/Yoga.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Cryptexes/OS/System/Library/Frameworks/WebKit.framework/Modules/module.modulemap \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTEventDispatcher.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBridge.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBridgeDelegate.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTJavaScriptLoader.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBridgeModule.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTJSThread.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBundleManager.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBridgeModuleDecorator.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTFrameUpdate.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTInvalidating.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBridgeConstants.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTConstants.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTEventDispatcherProtocol.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTBridgeProxy.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTInitializing.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/node_modules/react-native-tcp-socket/ios/TcpSocketClient.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Private/CocoaAsyncSocket/GCDAsyncSocket.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/node_modules/react-native-tcp-socket/ios/TcpSockets.h \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Headers/Public/React-Core/React/RCTEventEmitter.h

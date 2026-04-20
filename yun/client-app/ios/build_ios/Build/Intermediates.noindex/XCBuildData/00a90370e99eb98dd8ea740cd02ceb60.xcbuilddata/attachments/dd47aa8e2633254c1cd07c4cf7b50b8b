@@ -1,0 +1,21 @@
+{
+  "" : {
+    "const-values" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary.swiftconstvalues",
+    "dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary.d",
+    "diagnostics" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary.dia",
+    "emit-module-dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary-emit-module.dia",
+    "pch" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary.swiftdeps"
+  },
+  "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/node_modules/react-native-ble-manager/ios/BleManager.swift" : {
+    "index-unit-output-path" : "/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.o",
+    "llvm-bc" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.bc",
+    "object" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.o"
+  },
+  "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/node_modules/react-native-ble-manager/ios/Helper.swift" : {
+    "index-unit-output-path" : "/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.o",
+    "llvm-bc" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.bc",
+    "object" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios/Build/Intermediates.noindex/Pods.build/Release-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.o"
+  }
+}

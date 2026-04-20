@@ -1,0 +1,29 @@
+{
+  "" : {
+    "diagnostics" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary.dia",
+    "emit-module-dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary-emit-module.dia",
+    "pch" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/react-native-ble-manager-primary.swiftdeps"
+  },
+  "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/node_modules/react-native-ble-manager/ios/BleManager.swift" : {
+    "const-values" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.swiftconstvalues",
+    "dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.d",
+    "diagnostics" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.o",
+    "llvm-bc" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.bc",
+    "object" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.o",
+    "swift-dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8.swiftdeps",
+    "swiftmodule" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/BleManager-03f08f4566a50f3da2661f533e6e92d8~partial.swiftmodule"
+  },
+  "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/node_modules/react-native-ble-manager/ios/Helper.swift" : {
+    "const-values" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.swiftconstvalues",
+    "dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.d",
+    "diagnostics" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.o",
+    "llvm-bc" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.bc",
+    "object" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.o",
+    "swift-dependencies" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper.swiftdeps",
+    "swiftmodule" : "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/react-native-ble-manager.build/Objects-normal/arm64/Helper~partial.swiftmodule"
+  }
+}

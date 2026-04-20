@@ -15,6 +15,8 @@ const KEYS = {
   catalogProfiles: (brand: string) => `catalog:profiles:${encodeURIComponent(brand)}`,
   idlePool: 'instances:idle',         // ZSet：空闲实例池
   allInstances: 'instances:all',      // Set：所有已注册实例ID
+  disabledServers: 'servers:disabled',
+  disabledInstances: 'instances:disabled',
 };
 
 // TTL 配置（秒）
@@ -85,6 +87,12 @@ export class RedisService {
     return this.client.smembers(KEYS.allInstances);
   }
 
+  async removeInstance(id: string): Promise<void> {
+    await this.client.zrem(KEYS.idlePool, id);
+    await this.client.srem(KEYS.allInstances, id);
+    await this.client.del(KEYS.instance(id));
+  }
+
   async getAllSessionIds(): Promise<string[]> {
     const ids: string[] = [];
     let cursor = '0';
@@ -125,6 +133,42 @@ export class RedisService {
 
   async getIdlePoolSize(): Promise<number> {
     return this.client.zcard(KEYS.idlePool);
+  }
+
+  async getDisabledServerIds(): Promise<string[]> {
+    return this.client.smembers(KEYS.disabledServers);
+  }
+
+  async isServerDisabled(serverId: string): Promise<boolean> {
+    const result = await this.client.sismember(KEYS.disabledServers, serverId);
+    return result === 1;
+  }
+
+  async setServerDisabled(serverId: string, disabled: boolean): Promise<void> {
+    if (disabled) {
+      await this.client.sadd(KEYS.disabledServers, serverId);
+      return;
+    }
+    await this.client.srem(KEYS.disabledServers, serverId);
+  }
+
+  async getDisabledInstanceIds(): Promise<string[]> {
+    return this.client.smembers(KEYS.disabledInstances);
+  }
+
+  async isInstanceDisabled(instanceId: string): Promise<boolean> {
+    const result = await this.client.sismember(KEYS.disabledInstances, instanceId);
+    return result === 1;
+  }
+
+  async setInstanceDisabled(instanceId: string, disabled: boolean): Promise<void> {
+    if (disabled) {
+      await this.client.sadd(KEYS.disabledInstances, instanceId);
+      await this.client.hset(KEYS.instance(instanceId), { disabled: 'true' });
+      return;
+    }
+    await this.client.srem(KEYS.disabledInstances, instanceId);
+    await this.client.hdel(KEYS.instance(instanceId), 'disabled');
   }
 
   // ==================== 会话操作 ====================
@@ -241,6 +285,7 @@ export class RedisService {
       serverIp: data.serverIp,
       publicWsHost: data.publicWsHost || undefined,
       publicWsScheme: (data.publicWsScheme as InstanceInfo['publicWsScheme']) || undefined,
+      disabled: data.disabled === 'true' ? true : undefined,
       wsPort: parseInt(data.wsPort),
       agentPort: parseInt(data.agentPort),
       status: data.status as InstanceStatus,

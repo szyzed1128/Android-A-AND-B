@@ -1255,6 +1255,10 @@ export class BluetoothGateway {
     );
   }
 
+  isReadyForConnect(): boolean {
+    return !this.activeAdapter && !this.activeProtocol && !this.hasActiveSession();
+  }
+
   /**
    * 销毁所有适配器
    */

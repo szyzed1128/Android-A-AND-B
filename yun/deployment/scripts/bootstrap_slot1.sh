@@ -3,7 +3,8 @@
 # bootstrap_slot1.sh  —  新 EC2 上初始化官方 slot_1（Waydroid 基线实例）
 # =============================================================================
 # 用法：
-#   export SERVER_ID=ec2-apne1-a01 PUBLIC_WS_HOST=1.2.3.4
+#   export SERVER_ID=ec2-apne1-a01
+#   export PUBLIC_WS_HOST=1.2.3.4   # 可选，显式覆盖 Agent 自动探测到的公网地址
 #   export PUBLIC_WS_SCHEME=ws   # 可选，默认 ws
 #   ./bootstrap_slot1.sh
 #
@@ -26,7 +27,6 @@ source "${SCRIPT_DIR}/lib_instance_identity.sh"
 
 require_root
 _require_env SERVER_ID
-_require_env PUBLIC_WS_HOST
 : "${PUBLIC_WS_SCHEME:=ws}"
 
 derive_identity 1
@@ -187,9 +187,8 @@ After=network.target
 
 [Service]
 Type=simple
-Environment=XDG_RUNTIME_DIR=/run/user/0
-ExecStartPre=/bin/mkdir -p /run/user/0
-ExecStart=/usr/bin/weston --backend=headless-backend.so --no-config --socket=${WAYLAND_DISPLAY}
+EnvironmentFile=-/etc/obd-instance.env
+ExecStart=/bin/bash ${DEPLOY_ROOT}/scripts/run_weston_slot.sh 1
 Restart=always
 RestartSec=2
 StandardOutput=journal
@@ -204,50 +203,29 @@ cat > "${STARTUP_SH}" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
-ADB_TARGET="${ADB_TARGET}"
-PROBE_PORT="${PROBE_PORT}"
-PACKAGE="${APK_PACKAGE}"
-ACTIVITY="${APK_ACTIVITY}"
-APK_PATH="${APK_PATH}"
-LXC_NAME="${LXC_NAME}"
-LXC_BASE="${LXC_DIR}/lxc"
-BRIDGE_NAME="${BRIDGE_NAME}"
-WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
+SCRIPT_DIR="${DEPLOY_ROOT}/scripts"
+source "\${SCRIPT_DIR}/lib_instance_identity.sh"
+source "\${SCRIPT_DIR}/lib_runtime_common.sh"
+
+require_root
+derive_identity 1
+_LOG_PREFIX="[slot1]"
+
 WAYDROID_NET_SH="${WAYDROID_NET_SH}"
-DEFAULT_BRAND="${DEFAULT_BRAND}"
+MAX_CONTAINER_START_ATTEMPTS="\${MAX_CONTAINER_START_ATTEMPTS:-6}"
 
-log() { echo "[slot1] \$(date '+%H:%M:%S') \$*"; }
-die() { echo "[slot1] ERROR: \$*" >&2; exit 1; }
-
-is_wayland_ready() {
-  grep -q "\${WAYLAND_DISPLAY}\$" /proc/net/unix 2>/dev/null
-}
-
-container_running() {
-  lxc-info -P "\${LXC_BASE}" -n "\${LXC_NAME}" -sH 2>/dev/null | grep -q "RUNNING"
-}
-
-get_cpid() {
-  lxc-info -P "\${LXC_BASE}" -n "\${LXC_NAME}" 2>/dev/null | grep '^PID:' | awk '{print \$2}' | head -1
-}
-
-mkdir -p /run/user/0 /run/user/0/pulse
-touch /run/user/0/pulse/native
 mkdir -p /root/.local/share/waydroid/data
+prepare_runtime_dirs
 
 systemctl is-active weston.service >/dev/null 2>&1 || systemctl start weston.service
-for i in \$(seq 1 15); do
-  is_wayland_ready && break
-  sleep 1
-  [[ \$i -eq 15 ]] && die "weston socket \${WAYLAND_DISPLAY} 未就绪"
-done
-log "weston 已就绪"
+ensure_slot_wayland_socket 1 "\${WAYLAND_DISPLAY}" 20 "weston.service" || die "weston socket \${WAYLAND_DISPLAY} 未就绪"
+log_info "wayland socket 已就绪 (\${WAYLAND_DISPLAY})"
 
 sh "\${WAYDROID_NET_SH}" start >/dev/null 2>&1 || die "waydroid-net.sh start 失败"
 ip link show "\${BRIDGE_NAME}" >/dev/null 2>&1 || die "waydroid bridge \${BRIDGE_NAME} 不存在"
 ip -o link show "\${BRIDGE_NAME}" | grep -q 'UP' || die "waydroid bridge \${BRIDGE_NAME} 未处于 UP 状态"
 ip -4 addr show "\${BRIDGE_NAME}" | grep -q 'inet ' || die "waydroid bridge \${BRIDGE_NAME} 没有 IPv4 地址"
-log "waydroid 网络已就绪"
+log_info "waydroid 网络已就绪"
 
 systemctl is-active waydroid-container.service >/dev/null 2>&1 || systemctl start waydroid-container.service
 
@@ -286,32 +264,35 @@ except Exception as exc:
 PYEOF
 }
 
-if ! container_running; then
-  for i in \$(seq 1 12); do
+if ! is_container_running; then
+  for i in \$(seq 1 "\${MAX_CONTAINER_START_ATTEMPTS}"); do
+    ensure_slot_wayland_socket 1 "\${WAYLAND_DISPLAY}" 20 "weston.service" || die "weston socket \${WAYLAND_DISPLAY} 未就绪"
     if dbus_start_container; then
-      log "D-Bus Start(session) 已提交，attempt=\${i}"
-      break
+      log_info "D-Bus Start(session) 已提交，attempt=\${i}"
+    else
+      log_warn "D-Bus Start(session) 返回失败，继续等待容器进入 RUNNING，attempt=\${i}"
     fi
+    for j in \$(seq 1 30); do
+      is_container_running && break
+      sleep 1
+    done
+    is_container_running && break
+    [[ \$i -eq "\${MAX_CONTAINER_START_ATTEMPTS}" ]] && die "D-Bus 容器启动连续失败，ContainerManager / Wayland 仍未收敛"
+    log_warn "slot_1 容器未进入 RUNNING，5 秒后重试..."
     sleep 5
-    [[ \$i -eq 12 ]] && die "D-Bus 容器启动连续失败，ContainerManager 可能未就绪"
-    log "D-Bus ContainerManager 未就绪，5 秒后重试..."
   done
 fi
 
-for i in \$(seq 1 30); do
-  container_running && break
-  sleep 1
-  [[ \$i -eq 30 ]] && die "Waydroid 容器启动超时"
-done
-log "Waydroid 容器已运行"
+is_container_running || die "Waydroid 容器启动超时"
+log_info "Waydroid 容器已运行"
 
-CPID="\$(get_cpid)"
+CPID="\$(get_container_pid)"
 [[ -n "\${CPID}" ]] || die "无法获取容器 PID"
 nsenter -t "\${CPID}" -n -- ip link add dummy0 type dummy 2>/dev/null || true
 nsenter -t "\${CPID}" -n -- ip link set dummy0 up
 iptables -C FORWARD -i "\${BRIDGE_NAME}" -j ACCEPT 2>/dev/null || iptables -I FORWARD -i "\${BRIDGE_NAME}" -j ACCEPT
 iptables -C FORWARD -o "\${BRIDGE_NAME}" -j ACCEPT 2>/dev/null || iptables -I FORWARD -o "\${BRIDGE_NAME}" -j ACCEPT
-log "容器网络补丁已完成"
+log_info "容器网络补丁已完成"
 
 for i in \$(seq 1 30); do
   nsenter -t "\${CPID}" -n -- ss -tlnp 2>/dev/null | grep -q ':5555' && break
@@ -325,32 +306,27 @@ nohup socat \
   "EXEC:nsenter -t \${CPID} -n -- nc 127.0.0.1 5555" \
   >/dev/null 2>&1 &
 sleep 2
-log "socat ADB 代理已启动"
+log_info "socat ADB 代理已启动"
 
 adb disconnect "\${ADB_TARGET}" >/dev/null 2>&1 || true
 adb connect "\${ADB_TARGET}" >/dev/null 2>&1 || true
 adb devices | grep -q "^\${ADB_TARGET}[[:space:]].*device\$" || die "ADB 未在线：\${ADB_TARGET}"
-log "ADB 已连接"
+log_info "ADB 已连接"
 
-for i in \$(seq 1 60); do
-  BOOT="\$(adb -s "\${ADB_TARGET}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r\\n')"
-  [[ "\${BOOT}" == "1" ]] && break
-  sleep 3
-  [[ \$i -eq 60 ]] && die "Android boot_completed 超时"
-done
-log "Android boot_completed=1"
+wait_for_android_framework_ready "\${ADB_TARGET}" 180 3 || die "Android Framework 未就绪（boot_completed/package/activity）"
+log_info "Android Framework 已就绪"
 
-if ! adb -s "\${ADB_TARGET}" shell pm list packages 2>/dev/null | grep -q "\${PACKAGE}"; then
+if ! adb -s "\${ADB_TARGET}" shell pm list packages 2>/dev/null | grep -q "\${APK_PACKAGE}"; then
   adb -s "\${ADB_TARGET}" install -r "\${APK_PATH}" 2>&1 | tail -3
-  log "APK 安装完成"
+  log_info "APK 安装完成"
 else
-  log "APK 已安装"
+  log_info "APK 已安装"
 fi
 
-adb -s "\${ADB_TARGET}" shell am force-stop "\${PACKAGE}" >/dev/null 2>&1 || true
+adb -s "\${ADB_TARGET}" shell am force-stop "\${APK_PACKAGE}" >/dev/null 2>&1 || true
 sleep 2
-adb -s "\${ADB_TARGET}" shell am start -n "\${PACKAGE}/\${ACTIVITY}" >/dev/null 2>&1
-log "APK 已启动"
+adb -s "\${ADB_TARGET}" shell am start -n "\${APK_PACKAGE}/\${APK_ACTIVITY}" >/dev/null 2>&1
+log_info "APK 已启动"
 
 for i in \$(seq 1 40); do
   WS="\$(adb -s "\${ADB_TARGET}" shell ss -tlnp 2>/dev/null | grep ':8080' || true)"
@@ -358,11 +334,11 @@ for i in \$(seq 1 40); do
   sleep 5
   [[ \$i -eq 40 ]] && die "APK WebSocket :8080 启动超时"
 done
-log "APK WebSocket 已就绪"
+log_info "APK WebSocket 已就绪"
 
 adb -s "\${ADB_TARGET}" forward --remove "tcp:\${PROBE_PORT}" >/dev/null 2>&1 || true
 adb -s "\${ADB_TARGET}" forward "tcp:\${PROBE_PORT}" tcp:8080 >/dev/null
-log "adb forward tcp:\${PROBE_PORT} → tcp:8080 完成"
+log_info "adb forward tcp:\${PROBE_PORT} → tcp:8080 完成"
 
 HTTP_STATUS="\$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 \
   -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
@@ -371,7 +347,7 @@ HTTP_STATUS="\$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 \
   "http://127.0.0.1:\${PROBE_PORT}/ws" 2>/dev/null || true)"
 [[ -n "\${HTTP_STATUS}" ]] || HTTP_STATUS="000"
 [[ "\${HTTP_STATUS}" == "101" ]] || die "WebSocket 握手失败：\${HTTP_STATUS}"
-log "通道层验证通过（101）"
+log_info "通道层验证通过（101）"
 
 python3 - "\${PROBE_PORT}" "\${DEFAULT_BRAND}" <<'PYEOF'
 import asyncio
@@ -456,7 +432,7 @@ asyncio.run(apply_default())
 print("业务层验证通过")
 PYEOF
 
-log "slot_1 启动链路完成"
+log_info "slot_1 启动链路完成"
 EOF
 chmod +x "${STARTUP_SH}"
 
@@ -591,5 +567,5 @@ echo "    wsPort    = ${WS_PORT}"
 echo "    probePort = ${PROBE_PORT}"
 echo "    adbTarget = ${ADB_TARGET}"
 echo "  下一步:"
-echo "    SERVER_ID=${SERVER_ID} PUBLIC_WS_HOST=${PUBLIC_WS_HOST} SCHEDULER_URL=${SCHEDULER_API_URL} ${DEPLOY_ROOT}/scripts/create_instance.sh 2"
+echo "    SERVER_ID=${SERVER_ID} SCHEDULER_URL=${SCHEDULER_API_URL} [PUBLIC_WS_HOST=<可选覆盖>] ${DEPLOY_ROOT}/scripts/create_instance.sh 2"
 echo "═══════════════════════════════════════════════════════════"

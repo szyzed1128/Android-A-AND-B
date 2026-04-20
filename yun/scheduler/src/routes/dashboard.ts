@@ -3,6 +3,7 @@ import {
   getDashboardAnomalies,
   getDashboardInstances,
   getDashboardOverview,
+  getDashboardServers,
   getDashboardSessions,
 } from '../services/dashboardService';
 
@@ -21,6 +22,15 @@ router.get('/instances', async (_req: Request, res: Response) => {
   try {
     const instances = await getDashboardInstances();
     return res.json({ success: true, data: instances });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/servers', async (_req: Request, res: Response) => {
+  try {
+    const servers = await getDashboardServers();
+    return res.json({ success: true, data: servers });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

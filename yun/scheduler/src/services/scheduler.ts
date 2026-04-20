@@ -72,6 +72,11 @@ export async function reserveInstance(session: SessionInfo): Promise<{
       console.warn(`[Scheduler] 实例 ${instanceId} 不存在，跳过`);
       continue;
     }
+    if (!(await isInstanceSchedulableForReserve(instance))) {
+      console.warn(`[Scheduler] 实例 ${instanceId} 当前不可分配，跳过`);
+      await syncInstanceIdlePool(instanceId);
+      continue;
+    }
 
     try {
       // 标记为 reserved
@@ -137,9 +142,8 @@ async function getCatalogCandidates(): Promise<InstanceInfo[]> {
 
   for (const id of allIds) {
     const instance = await redis.getInstance(id);
+    if (!(await isInstanceUsableForCatalog(instance))) continue;
     if (!instance) continue;
-    if (instance.status !== 'idle' && instance.status !== 'reserved_for_user') continue;
-    if (instance.health === 'bad') continue;
     candidates.push(instance);
   }
 
@@ -318,7 +322,8 @@ async function findReservedInstanceForUser(deviceId: string): Promise<InstanceIn
       instance?.status === 'reserved_for_user' &&
       instance.reservedForDeviceId === deviceId &&
       instance.reservedUntil &&
-      instance.reservedUntil > now
+      instance.reservedUntil > now &&
+      !(await isInstanceBlocked(instance))
     ) {
       return instance;
     }
@@ -433,6 +438,7 @@ export async function handleAgentHealthReport(report: {
 }): Promise<void> {
   const redis = getRedis();
   const now = Date.now();
+  const serverDisabled = await redis.isServerDisabled(report.serverId);
 
   for (const inst of report.instances) {
     // 注册或更新实例信息
@@ -476,6 +482,7 @@ export async function handleAgentHealthReport(report: {
       serverIp: report.serverIp,
       publicWsHost: report.publicWsHost,
       publicWsScheme: report.publicWsScheme,
+      disabled: existing?.disabled ?? false,
       wsPort: inst.wsPort,
       agentPort: report.agentPort,
       status: effectiveStatus,
@@ -502,10 +509,47 @@ export async function handleAgentHealthReport(report: {
     // 3. 未处于调度器侧的保留/使用状态
     const schedulerOwnedStatuses: InstanceStatus[] = ['reserved_for_user', 'reserved', 'busy'];
     const isSchedulerOwned = existing ? schedulerOwnedStatuses.includes(existing.status) : false;
+    if (serverDisabled || instanceInfo.disabled) {
+      await redis.removeFromIdlePool(inst.id);
+      continue;
+    }
     if (effectiveStatus === 'idle' && inst.health === 'ok' && !existing?.sessionId && !isSchedulerOwned) {
       await redis.addToIdlePool(inst.id);
     } else {
       await redis.removeFromIdlePool(inst.id);
     }
   }
+}
+
+export async function isInstanceBlocked(instance: InstanceInfo | null): Promise<boolean> {
+  if (!instance) return true;
+  const redis = getRedis();
+  if (instance.disabled) return true;
+  return redis.isServerDisabled(instance.serverId);
+}
+
+export async function isInstanceSchedulableForReserve(instance: InstanceInfo | null): Promise<boolean> {
+  if (!instance) return false;
+  if (await isInstanceBlocked(instance)) return false;
+  return instance.status === 'idle' && instance.health === 'ok' && !instance.sessionId;
+}
+
+export async function isInstanceUsableForCatalog(instance: InstanceInfo | null): Promise<boolean> {
+  if (!instance) return false;
+  if (await isInstanceBlocked(instance)) return false;
+  if (instance.status !== 'idle' && instance.status !== 'reserved_for_user') return false;
+  if (instance.health === 'bad') return false;
+  return true;
+}
+
+export async function syncInstanceIdlePool(instanceId: string): Promise<boolean> {
+  const redis = getRedis();
+  const instance = await redis.getInstance(instanceId);
+  const schedulable = await isInstanceSchedulableForReserve(instance);
+  if (schedulable) {
+    await redis.addToIdlePool(instanceId);
+    return true;
+  }
+  await redis.removeFromIdlePool(instanceId);
+  return false;
 }

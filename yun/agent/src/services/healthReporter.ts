@@ -5,6 +5,8 @@
 
 import axios from 'axios';
 import { execSync } from 'child_process';
+import os from 'os';
+import { promises as fs } from 'fs';
 import { getAllInstanceStatuses, RuntimeStatus } from './instanceManager';
 import { AgentConfig } from '../config';
 
@@ -14,6 +16,7 @@ export function startHealthReporter(config: AgentConfig): void {
       const publicWsHost = await resolvePublicWsHost(config);
       const serverIp = await resolveServerIp(config);
       const statuses = getAllInstanceStatuses();
+      const resourceUsage = await getResourceUsage();
       const instances = statuses.map(s => ({
         id: s.id,
         wsPort: s.wsPort,
@@ -22,7 +25,7 @@ export function startHealthReporter(config: AgentConfig): void {
         failureCount: s.failureCount,
         lastError: s.lastError,
         statusChangedAt: s.statusChangedAt,
-        ...getResourceUsage(),
+        ...resourceUsage,
       }));
 
       await axios.post(`${config.schedulerUrl}/agent/health`, {
@@ -116,16 +119,15 @@ async function resolveServerIp(config: AgentConfig): Promise<string> {
   return fallback;
 }
 
-function getResourceUsage(): { cpu?: number; memory?: number } {
+async function getResourceUsage(): Promise<{ cpu?: number; memory?: number }> {
   try {
-    // 简单获取系统负载
-    const loadAvg = parseFloat(
-      execSync("cat /proc/loadavg 2>/dev/null | awk '{print $1}'").toString().trim()
-    );
-    const memInfo = execSync("free -m 2>/dev/null | awk 'NR==2{print $3}'").toString().trim();
+    const cpu = await getCpuPercent();
+    const totalMb = os.totalmem() / 1024 / 1024;
+    const freeMb = os.freemem() / 1024 / 1024;
+    const usedPercent = totalMb > 0 ? ((totalMb - freeMb) / totalMb) * 100 : undefined;
     return {
-      cpu: Math.round(loadAvg * 100) / 100,
-      memory: parseInt(memInfo) || undefined,
+      cpu: typeof cpu === 'number' ? Math.round(cpu * 100) / 100 : undefined,
+      memory: typeof usedPercent === 'number' ? Math.round(usedPercent * 100) / 100 : undefined,
     };
   } catch {
     return {};
@@ -138,4 +140,26 @@ function getServerIp(): string {
   } catch {
     return 'unknown';
   }
+}
+
+async function getCpuPercent(): Promise<number | undefined> {
+  const first = await readCpuSample();
+  await new Promise(resolve => setTimeout(resolve, 120));
+  const second = await readCpuSample();
+  const idleDiff = second.idle - first.idle;
+  const totalDiff = second.total - first.total;
+  if (totalDiff <= 0) return undefined;
+  return (1 - idleDiff / totalDiff) * 100;
+}
+
+async function readCpuSample(): Promise<{ idle: number; total: number }> {
+  const stat = await fs.readFile('/proc/stat', 'utf8');
+  const line = stat.split('\n').find(item => item.startsWith('cpu '));
+  if (!line) {
+    throw new Error('cpu stat 缺失');
+  }
+  const values = line.trim().split(/\s+/).slice(1).map(item => parseInt(item, 10));
+  const idle = (values[3] || 0) + (values[4] || 0);
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return { idle, total };
 }

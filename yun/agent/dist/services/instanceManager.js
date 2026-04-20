@@ -1,0 +1,165 @@
+"use strict";
+/**
+ * 实例管理器
+ * 执行 adb shell 命令，管理实例就绪流程（无限重试循环）
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.initInstances = initInstances;
+exports.getInstanceStatus = getInstanceStatus;
+exports.getAllInstanceStatuses = getAllInstanceStatuses;
+exports.triggerReset = triggerReset;
+exports.markBusy = markBusy;
+exports.execShell = execShell;
+const child_process_1 = require("child_process");
+const util_1 = require("util");
+const apkProbe_1 = require("./apkProbe");
+const execAsync = (0, util_1.promisify)(child_process_1.exec);
+const STARTUP_PROBE_CONCURRENCY = 2;
+const instances = new Map();
+const MAX_FAILURES_BEFORE_BAD = 5;
+/**
+ * 初始化所有实例（服务启动时调用）
+ */
+function initInstances(configs) {
+    for (const cfg of configs) {
+        instances.set(cfg.id, {
+            config: cfg,
+            status: 'probing',
+            statusChangedAt: Date.now(),
+            failureCount: 0,
+        });
+    }
+    bootstrapInstancesOnStartup(configs).catch(e => console.error(`[InstanceManager] 启动接管失败:`, e.message));
+    console.log(`[InstanceManager] 初始化 ${configs.length} 个实例`);
+}
+/**
+ * 获取实例状态
+ */
+function getInstanceStatus(instanceId) {
+    return instances.get(instanceId)?.status ?? null;
+}
+/**
+ * 获取所有实例状态
+ */
+function getAllInstanceStatuses() {
+    return Array.from(instances.entries()).map(([id, rt]) => ({
+        id,
+        status: rt.status,
+        wsPort: rt.config.wsPort,
+        statusChangedAt: rt.statusChangedAt,
+        failureCount: rt.failureCount,
+        lastError: rt.lastError,
+    }));
+}
+/**
+ * 触发实例重置（由调度后端调用，释放实例后）
+ * 异步执行，立即返回
+ */
+function triggerReset(instanceId) {
+    const rt = instances.get(instanceId);
+    if (!rt) {
+        console.warn(`[InstanceManager] triggerReset: 实例 ${instanceId} 不存在`);
+        return;
+    }
+    // 如果已在探针中，不重复触发
+    if (rt.status === 'probing' && rt.probingPromise) {
+        console.log(`[InstanceManager] ${instanceId} 已在就绪流程中，忽略重复触发`);
+        return;
+    }
+    setRuntimeStatus(rt, 'probing');
+    rt.failureCount = 0;
+    rt.lastError = undefined;
+    console.log(`[InstanceManager] ${instanceId} 触发重置`);
+    triggerReadinessLoop(instanceId).catch(e => console.error(`[InstanceManager] 就绪循环异常 ${instanceId}:`, e.message));
+}
+/**
+ * 标记实例为 busy（用户已连接）
+ */
+function markBusy(instanceId) {
+    const rt = instances.get(instanceId);
+    if (rt)
+        setRuntimeStatus(rt, 'busy');
+}
+/**
+ * 核心：实例就绪循环（无限重试直到成功或达到失败上限）
+ */
+async function triggerReadinessLoop(instanceId) {
+    const rt = instances.get(instanceId);
+    if (!rt)
+        return;
+    // 防止并发
+    if (rt.probingPromise) {
+        await rt.probingPromise;
+        return;
+    }
+    const promise = (async () => {
+        while (true) {
+            if (rt.failureCount >= MAX_FAILURES_BEFORE_BAD) {
+                console.error(`[InstanceManager] ${instanceId} 连续失败${rt.failureCount}次，标记为 bad`);
+                setRuntimeStatus(rt, 'bad');
+                rt.probingPromise = undefined;
+                return;
+            }
+            console.log(`[InstanceManager] ${instanceId} 开始就绪探针（第${rt.failureCount + 1}次）`);
+            const result = await (0, apkProbe_1.runReadinessProbe)(rt.config);
+            if (result.success) {
+                setRuntimeStatus(rt, 'idle');
+                rt.failureCount = 0;
+                rt.lastError = undefined;
+                rt.probingPromise = undefined;
+                console.log(`[InstanceManager] ${instanceId} ✅ 就绪，状态=idle`);
+                return;
+            }
+            else {
+                rt.failureCount++;
+                rt.lastError = result.error;
+                console.warn(`[InstanceManager] ${instanceId} 探针失败(${rt.failureCount}/${MAX_FAILURES_BEFORE_BAD}): ${result.error}`);
+                if (rt.failureCount >= MAX_FAILURES_BEFORE_BAD) {
+                    setRuntimeStatus(rt, 'bad');
+                }
+                await sleep(3000); // 失败后等3秒再重试
+            }
+        }
+    })();
+    rt.probingPromise = promise;
+    await promise;
+}
+async function bootstrapInstancesOnStartup(configs) {
+    let cursor = 0;
+    const startupWorkers = Array.from({ length: Math.min(STARTUP_PROBE_CONCURRENCY, configs.length) }, async () => {
+        while (cursor < configs.length) {
+            const cfg = configs[cursor++];
+            const rt = instances.get(cfg.id);
+            if (!rt)
+                continue;
+            console.log(`[InstanceManager] ${cfg.id} 启动冷探针（并发受限）`);
+            await triggerReadinessLoop(cfg.id);
+        }
+    });
+    await Promise.all(startupWorkers);
+}
+function setRuntimeStatus(rt, status) {
+    if (rt.status === status) {
+        return;
+    }
+    rt.status = status;
+    rt.statusChangedAt = Date.now();
+}
+/**
+ * 执行 shell 命令（供探针使用）
+ */
+async function execShell(cmd) {
+    try {
+        const { stdout, stderr } = await execAsync(cmd, { timeout: 30000 });
+        if (stderr && !stderr.includes('Warning')) {
+            console.warn(`[Shell] stderr: ${stderr.trim()}`);
+        }
+        return stdout.trim();
+    }
+    catch (err) {
+        throw new Error(`命令失败: ${cmd}\n${err.message}`);
+    }
+}
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

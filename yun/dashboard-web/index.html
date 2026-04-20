@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OBD 调度仪表盘</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>OBD 调度仪表盘</h1>
+          <p id="last-updated">等待首次刷新</p>
+        </div>
+        <div class="toolbar">
+          <label class="switch">
+            <input id="auto-refresh" type="checkbox" checked />
+            <span>自动刷新</span>
+          </label>
+          <label class="switch">
+            <input id="only-anomalies" type="checkbox" />
+            <span>仅看异常</span>
+          </label>
+          <button id="refresh-btn" type="button">刷新</button>
+        </div>
+      </header>
+
+      <section id="action-feedback" class="action-feedback info" hidden></section>
+
+      <section class="cards" id="overview-cards"></section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>服务器</h2>
+          <span id="servers-count" class="subtle"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>服务器</th>
+                <th>调度状态</th>
+                <th>实例统计</th>
+                <th>CPU</th>
+                <th>内存</th>
+                <th>健康年龄</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="servers-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>实例</h2>
+          <div class="panel-actions">
+            <button id="repair-bad-btn" type="button">批量修复 bad</button>
+            <span id="instances-count" class="subtle"></span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>实例</th>
+                <th>调度状态</th>
+                <th>Agent 状态</th>
+                <th>Session</th>
+                <th>健康</th>
+                <th>CPU</th>
+                <th>内存</th>
+                <th>健康年龄</th>
+                <th>保留</th>
+                <th>操作</th>
+                <th>错误</th>
+              </tr>
+            </thead>
+            <tbody id="instances-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>会话</h2>
+          <div class="panel-actions">
+            <input id="session-search" type="text" placeholder="搜索 sessionId / deviceId / 车型" />
+            <span id="sessions-count" class="subtle"></span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>设备</th>
+                <th>状态</th>
+                <th>实例</th>
+                <th>车型</th>
+                <th>会话时长</th>
+                <th>心跳年龄</th>
+                <th>实例状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>异常</h2>
+          <span id="anomalies-count" class="subtle"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>级别</th>
+                <th>类型</th>
+                <th>实例</th>
+                <th>Session</th>
+                <th>设备</th>
+                <th>说明</th>
+                <th>时长</th>
+              </tr>
+            </thead>
+            <tbody id="anomalies-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="logs-panel" hidden>
+        <div class="panel-header">
+          <h2>日志查看</h2>
+          <div class="panel-actions">
+            <button id="close-logs-btn" type="button">关闭</button>
+          </div>
+        </div>
+        <pre id="logs-output" class="logs-output"></pre>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

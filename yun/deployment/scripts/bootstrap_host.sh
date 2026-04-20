@@ -4,9 +4,9 @@
 # =============================================================================
 # 用法：
 #   export SERVER_ID=ec2-apne1-a01
-#   export PUBLIC_WS_HOST=1.2.3.4
 #   export SCHEDULER_URL=http://<scheduler-host>:8080/api
 #   export SERVER_IP_OVERRIDE=10.0.1.23   # 可选，强制 Agent 上报给 Scheduler 的控制面地址
+#   export PUBLIC_WS_HOST=1.2.3.4         # 可选，显式覆盖 Agent 自动探测到的公网地址
 #   export PUBLIC_WS_SCHEME=ws   # 可选，默认 ws
 #   ./bootstrap_host.sh
 #
@@ -36,7 +36,6 @@ source "${SCRIPT_DIR}/lib_instance_identity.sh"
 
 require_root
 _require_env SERVER_ID
-_require_env PUBLIC_WS_HOST
 _require_env SCHEDULER_URL
 : "${PUBLIC_WS_SCHEME:=ws}"
 : "${SERVER_IP_OVERRIDE:=}"
@@ -164,7 +163,7 @@ PYEOF
 
 merge_agent_env() {
   local env_path="$1"
-  python3 - "$env_path" "$SERVER_ID" "$PUBLIC_WS_HOST" "$PUBLIC_WS_SCHEME" \
+  python3 - "$env_path" "$SERVER_ID" "${PUBLIC_WS_HOST:-}" "$PUBLIC_WS_SCHEME" \
     "$SERVER_IP_OVERRIDE" "$SCHEDULER_URL" \
     "$SLOT1_INST_ID" "$SLOT1_WS_PORT" "$SLOT1_PROBE_PORT" "$SLOT1_ADB_TARGET" \
     "$APK_PACKAGE" "$APK_ACTIVITY" <<'PYEOF'
@@ -225,7 +224,10 @@ if not updated:
     instances.insert(0, slot1_identity)
 
 env_map["SERVER_ID"] = server_id
-env_map["PUBLIC_WS_HOST"] = public_ws_host
+if public_ws_host:
+    env_map["PUBLIC_WS_HOST"] = public_ws_host
+else:
+    env_map.pop("PUBLIC_WS_HOST", None)
 env_map["PUBLIC_WS_SCHEME"] = public_ws_scheme
 env_map["AGENT_PORT"] = "4000"
 if server_ip_override:
@@ -259,7 +261,7 @@ PYEOF
 log_step "bootstrap_host: 实例层宿主机基线安装"
 validate_scheduler_url
 APK_SRC_PATH="$(resolve_apk_src_path || true)"
-log_info "SERVER_ID=${SERVER_ID}  PUBLIC_WS_HOST=${PUBLIC_WS_HOST}  PUBLIC_WS_SCHEME=${PUBLIC_WS_SCHEME}"
+log_info "SERVER_ID=${SERVER_ID}  PUBLIC_WS_HOST=${PUBLIC_WS_HOST:-<agent-auto-detect-public-host>}  PUBLIC_WS_SCHEME=${PUBLIC_WS_SCHEME}"
 log_info "SCHEDULER_URL=${SCHEDULER_URL}"
 log_info "Ubuntu: $(lsb_release -rs 2>/dev/null || echo unknown)  arch=$(uname -m)"
 
@@ -414,7 +416,7 @@ merge_agent_env "${DEPLOY_ROOT}/agent/.env"
 cat > /etc/obd-instance.env <<EOF
 # 由 bootstrap_host.sh 生成
 SERVER_ID=${SERVER_ID}
-PUBLIC_WS_HOST=${PUBLIC_WS_HOST}
+PUBLIC_WS_HOST=${PUBLIC_WS_HOST:-}
 PUBLIC_WS_SCHEME=${PUBLIC_WS_SCHEME}
 AGENT_PORT=4000
 SCHEDULER_URL=${SCHEDULER_URL}
@@ -480,6 +482,6 @@ echo ""
 echo "═══════════════════════════════════════════════════════════"
 echo "  bootstrap_host 完成 ✓"
 echo "  下一步:"
-echo "    SERVER_ID=${SERVER_ID} PUBLIC_WS_HOST=${PUBLIC_WS_HOST} SCHEDULER_URL=${SCHEDULER_URL} PUBLIC_WS_SCHEME=${PUBLIC_WS_SCHEME} \\"
+echo "    SERVER_ID=${SERVER_ID} SCHEDULER_URL=${SCHEDULER_URL} PUBLIC_WS_SCHEME=${PUBLIC_WS_SCHEME} [PUBLIC_WS_HOST=<可选覆盖>] \\"
 echo "    ${DEPLOY_SCRIPTS_DIR}/bootstrap_slot1.sh"
 echo "═══════════════════════════════════════════════════════════"

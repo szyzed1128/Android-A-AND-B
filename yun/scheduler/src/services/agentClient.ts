@@ -21,6 +21,12 @@ interface ResetResponse {
   error?: string;
 }
 
+interface RuntimeRestartResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
+}
+
 export interface CatalogProfileResponseItem {
   profileIndex: number;
   name: string;
@@ -139,6 +145,31 @@ export class AgentClient {
 
   getBaseUrl(): string {
     return this.baseUrl;
+  }
+
+  async restartRuntime(instanceId: string): Promise<RuntimeRestartResponse> {
+    try {
+      const res = await this.http.post<RuntimeRestartResponse>(
+        `/instance/${instanceId}/restart-runtime`,
+        {},
+        { timeout: 300000 }
+      );
+      return res.data;
+    } catch (err: any) {
+      console.error(`[AgentClient] restartRuntime 失败 instance=${instanceId}:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  async getInstanceLogs(instanceId: string): Promise<any> {
+    const res = await this.http.get<{ success: boolean; data?: any; error?: string }>(
+      `/instance/${instanceId}/logs`,
+      { timeout: 30000 }
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.error || '读取实例日志失败');
+    }
+    return res.data.data;
   }
 }
 

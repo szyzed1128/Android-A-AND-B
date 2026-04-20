@@ -5,7 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { initSession, validateSession, updateHeartbeat } from '../services/tokenService';
-import { reserveInstance, disconnectSession, releaseInstance } from '../services/scheduler';
+import { reserveInstance, disconnectSession, releaseInstance, syncInstanceIdlePool } from '../services/scheduler';
 import { getRedis } from '../services/redis';
 import { ApiResponse, ReserveInstanceResponse, SessionStateResponse } from '../types';
 
@@ -163,7 +163,7 @@ router.post('/:id/cancel-reserve', async (req: Request, res: Response) => {
         {},
         ['sessionId', 'reservedForDeviceId', 'reservedUntil']
       );
-      await redis.addToIdlePool(session.instanceId);
+      await syncInstanceIdlePool(session.instanceId);
     }
 
     await redis.updateSession(session.sessionId, { status: 'init' }, ['instanceId']);

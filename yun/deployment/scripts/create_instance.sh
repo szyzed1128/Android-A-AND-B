@@ -19,6 +19,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib_instance_identity.sh"
+source "${SCRIPT_DIR}/lib_runtime_common.sh"
 
 # ─── 参数解析 ──────────────────────────────────────────────────────────────
 # 用法（三种等价写法）：
@@ -76,6 +77,7 @@ fi
 
 SLOT="$SLOT_START"
 derive_identity "$SLOT"
+MANAGED_WESTON_SERVICE="$(slot_weston_service_name "${SLOT}")"
 print_identity
 
 # ─── 前置检查 ──────────────────────────────────────────────────────────────
@@ -221,37 +223,32 @@ log_info "bridge ${BRIDGE_NAME} (${BRIDGE_ADDR}) 就绪"
 
 # ─── 步骤 7：启动 weston（为实例提供独立 wayland socket，坑二的修复）─────
 log_step "步骤7: 启动 weston (${WAYLAND_DISPLAY})"
-mkdir -p /run/user/0
-if ! is_wayland_ready; then
-  mkdir -p /run/user/0
-  XDG_RUNTIME_DIR=/run/user/0 nohup weston \
-    --backend=headless-backend.so \
-    --no-config \
-    --socket="${WAYLAND_DISPLAY}" \
-    > "/tmp/weston-${WAYLAND_DISPLAY}.log" 2>&1 &
-  # 等待 socket 出现（最多 15 秒）
-  for i in $(seq 1 15); do
-    is_wayland_ready && break
-    sleep 1
-    [[ $i -eq 15 ]] && die "weston ${WAYLAND_DISPLAY} 启动超时"
-  done
-  log_info "weston 已启动 (${WAYLAND_DISPLAY})"
+if ensure_slot_wayland_socket "${SLOT}" "${WAYLAND_DISPLAY}" 15 "${MANAGED_WESTON_SERVICE}"; then
+  log_info "wayland socket 已就绪 (${WAYLAND_DISPLAY})"
 else
-  log_info "wayland socket ${WAYLAND_DISPLAY} 已存在"
+  die "weston ${WAYLAND_DISPLAY} 启动超时"
 fi
 
 # ─── 步骤 8：准备 pulse 占位文件 ──────────────────────────────────────────
-mkdir -p /run/user/0/pulse
-touch /run/user/0/pulse/native
+prepare_runtime_dirs
 
 # ─── 步骤 9：启动 LXC 容器 ────────────────────────────────────────────────
 log_step "步骤9: 启动 LXC 容器 ${LXC_NAME}"
-lxc-start -P "${LXC_DIR}/lxc" -n "${LXC_NAME}" -- /init &
-for i in $(seq 1 30); do
+MAX_CONTAINER_START_ATTEMPTS="${MAX_CONTAINER_START_ATTEMPTS:-3}"
+for attempt in $(seq 1 "${MAX_CONTAINER_START_ATTEMPTS}"); do
+  ensure_slot_wayland_socket "${SLOT}" "${WAYLAND_DISPLAY}" 15 "${MANAGED_WESTON_SERVICE}" || \
+    die "weston ${WAYLAND_DISPLAY} 在容器启动前未就绪"
+  lxc-start -P "${LXC_DIR}/lxc" -n "${LXC_NAME}" -- /init &
+  for i in $(seq 1 30); do
+    is_container_running && break
+    sleep 1
+  done
   is_container_running && break
-  sleep 1
-  [[ $i -eq 30 ]] && die "容器 ${LXC_NAME} 启动超时"
+  log_warn "容器 ${LXC_NAME} 启动未成功，attempt=${attempt}/${MAX_CONTAINER_START_ATTEMPTS}，准备重试"
+  lxc-stop -P "${LXC_DIR}/lxc" -n "${LXC_NAME}" -k 2>/dev/null || true
+  sleep 2
 done
+is_container_running || die "容器 ${LXC_NAME} 启动超时"
 log_info "容器 ${LXC_NAME} 已进入 RUNNING 状态"
 
 # ─── 步骤 10：获取容器 PID（坑四：动态探测，不硬写）─────────────────────
@@ -285,15 +282,10 @@ sleep 2
 is_adb_online || die "ADB 连接 ${ADB_TARGET} 失败"
 log_info "ADB 已在线: ${ADB_TARGET}"
 
-# ─── 步骤 13：等待 Android 完全启动（坑五：boot_completed 是必要非充分条件）
-log_step "步骤13: 等待 Android boot_completed"
-for i in $(seq 1 60); do
-  BOOT="$(adb -s "${ADB_TARGET}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')"
-  [[ "$BOOT" == "1" ]] && break
-  sleep 3
-  [[ $i -eq 60 ]] && die "Android boot_completed 超时"
-done
-log_info "Android 启动完成 (boot_completed=1)"
+# ─── 步骤 13：等待 Android Framework 就绪（boot_completed 只是必要条件）──
+log_step "步骤13: 等待 Android Framework 就绪"
+wait_for_android_framework_ready "${ADB_TARGET}" 180 3 || die "Android Framework 未就绪（boot_completed/package/activity）"
+log_info "Android Framework 已就绪 (boot_completed + package/activity)"
 
 # ─── 步骤 14：安装 APK ────────────────────────────────────────────────────
 log_step "步骤14: 安装 APK"
@@ -515,11 +507,11 @@ ensure_public_tcp_port_open "${WS_PORT}" "slot_${SLOT_INDEX} WebSocket 入口"
 # ─── 步骤 20：持久化模板统一由 install_persist.sh 管理 ───────────────────
 # 问题1修复：不在 create_instance.sh 中写 systemd 模板。
 # create 此前写的模板不带 EnvironmentFile，与 install_persist.sh 的版本冲突，
-# 导致开机恢复时缺少 SERVER_ID / PUBLIC_WS_HOST 环境变量而失败。
+# 导致开机恢复时缺少 SERVER_ID 环境变量而失败。
 # 现在统一由 install_persist.sh 覆盖写唯一版本（含 EnvironmentFile）。
 log_step "步骤20: systemd 持久化说明"
 log_info "实例创建完成，如需开机自动恢复，运行:"
-log_info "  SERVER_ID=${SERVER_ID} PUBLIC_WS_HOST=${PUBLIC_WS_HOST} ${SCRIPT_DIR}/install_persist.sh ${SLOT_INDEX}"
+log_info "  SERVER_ID=${SERVER_ID} [PUBLIC_WS_HOST=<可选覆盖>] ${SCRIPT_DIR}/install_persist.sh ${SLOT_INDEX}"
 
 # ─── 步骤21：自动接入 Agent（问题2）──────────────────────────────────────
 # 问题A修复：成功横幅移到 Agent 注册完成之后，防止 Step21 失败时终端已显示"成功"而误导运维
@@ -628,7 +620,7 @@ echo "  本地探针端口:   127.0.0.1:${PROBE_PORT}"
 echo "  ADB 入口:       ${ADB_TARGET}"
 echo ""
 echo "  下一步——启用开机持久化（问题B修复：使用 install_persist.sh）："
-echo "    SERVER_ID=${SERVER_ID} PUBLIC_WS_HOST=${PUBLIC_WS_HOST} ${SCRIPT_DIR}/install_persist.sh ${SLOT_INDEX}"
+echo "    SERVER_ID=${SERVER_ID} [PUBLIC_WS_HOST=<可选覆盖>] ${SCRIPT_DIR}/install_persist.sh ${SLOT_INDEX}"
 echo ""
 echo "  AWS 环境需额外手动放行安全组端口 ${WS_PORT}/tcp"
 echo "═══════════════════════════════════════════════════════════"

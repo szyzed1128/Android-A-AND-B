@@ -3,12 +3,14 @@
  */
 
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { initRedis } from './services/redis';
 import { startHeartbeatMonitor, handleAgentHealthReport } from './services/scheduler';
 import sessionRouter from './routes/session';
 import instanceRouter from './routes/instance';
 import dashboardRouter from './routes/dashboard';
+import dashboardAdminRouter from './routes/dashboardAdmin';
 import catalogRouter from './routes/catalog';
 
 const app = express();
@@ -28,8 +30,9 @@ app.use('/session', sessionRouter);
 app.use('/instance', instanceRouter);
 app.use('/catalog', catalogRouter);
 app.use('/dashboard/api', dashboardRouter);
+app.use('/dashboard/api/admin', dashboardAdminRouter);
 
-const dashboardDir = path.resolve(__dirname, '../../dashboard-web');
+const dashboardDir = resolveDashboardDir();
 app.use('/dashboard', express.static(dashboardDir));
 
 // Agent 健康上报入口
@@ -59,11 +62,30 @@ async function main() {
     app.listen(PORT, () => {
       console.log(`[Scheduler] 调度服务已启动 port=${PORT}`);
       console.log(`[Scheduler] Redis=${REDIS_URL}`);
+      console.log(`[Scheduler] DashboardDir=${dashboardDir}`);
     });
   } catch (err: any) {
     console.error('[Scheduler] 启动失败:', err.message);
     process.exit(1);
   }
+}
+
+function resolveDashboardDir(): string {
+  const configured = (process.env.DASHBOARD_WEB_DIR || '').trim();
+  const candidates = Array.from(new Set([
+    configured || null,
+    path.resolve(process.cwd(), '../dashboard-web'),
+    path.resolve(__dirname, '../../dashboard-web'),
+  ].filter((item): item is string => Boolean(item))));
+
+  for (const candidate of candidates) {
+    const indexFile = path.join(candidate, 'index.html');
+    if (fs.existsSync(indexFile)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`[Scheduler] 未找到 dashboard-web 目录，候选路径: ${candidates.join(', ')}`);
 }
 
 main();

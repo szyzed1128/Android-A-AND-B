@@ -37,11 +37,13 @@
 #   D. 容器 PID 是动态值，每次运行时通过 get_container_pid 探测，绝不硬写
 # =============================================================================
 
-# ─── 必填环境变量（问题7：不能有危险的硬编码默认值）────────────────────────
-# 这两个变量必须在调用脚本前通过环境变量显式设置：
+# ─── 必填/可选环境变量（问题7：不能有危险的硬编码默认值）────────────────────
+# 必填：
 #   export SERVER_ID=ec2-apne1-a01
+# 可选（显式覆盖 Agent 自动探测的公网地址）：
 #   export PUBLIC_WS_HOST=1.2.3.4
-# 若未设置，derive_identity 会直接报错退出，防止生成错误身份或错误地址。
+# 若 SERVER_ID 未设置，derive_identity 会直接报错退出。
+# PUBLIC_WS_HOST 留空时，仅影响脚本打印出来的对外地址展示；真正运行时由 Agent 自动探测。
 __IDENTITY_ENV_LOADED=0
 _load_identity_env_from_file_once() {
   [[ "${__IDENTITY_ENV_LOADED}" == "1" ]] && return 0
@@ -61,12 +63,12 @@ _require_env() {
   _load_identity_env_from_file_once
   [[ -n "${!var:-}" ]] || {
     echo "[identity] 错误: 环境变量 ${var} 未设置。" >&2
-    echo "[identity] 用法示例: SERVER_ID=my-server PUBLIC_WS_HOST=1.2.3.4 $0 ..." >&2
+    echo "[identity] 用法示例: SERVER_ID=my-server $0 ..." >&2
     exit 1
   }
   [[ "${!var}" != PLEASE_SET_* ]] || {
     echo "[identity] 错误: 环境变量 ${var} 未设置。" >&2
-    echo "[identity] 用法示例: SERVER_ID=my-server PUBLIC_WS_HOST=1.2.3.4 $0 ..." >&2
+    echo "[identity] 用法示例: SERVER_ID=my-server $0 ..." >&2
     exit 1
   }
 }
@@ -100,7 +102,8 @@ derive_identity() {
 
   # 必填环境变量校验（问题7）
   _require_env SERVER_ID
-  _require_env PUBLIC_WS_HOST
+  _load_identity_env_from_file_once
+  [[ "${PUBLIC_WS_HOST:-}" == PLEASE_SET_* ]] && PUBLIC_WS_HOST=""
 
   # ── 静态派生字段 ──────────────────────────────────────────────────────────
 
@@ -168,8 +171,14 @@ derive_identity() {
   # 注意：live 环境 inst_1 实际用 8080，因为它是 Waydroid 官方实例直接暴露的。
   # 新 EC2 上所有实例统一走此公式，不存在该不一致。
 
-  # 对外 WebSocket URL（供 Scheduler 返回给 B 端）
-  INST_WS_URL="${PUBLIC_WS_SCHEME}://${PUBLIC_WS_HOST}:${WS_PORT}/ws"
+  # 对外 WebSocket URL（供脚本展示/提示）
+  # 真正运行时若未显式设置 PUBLIC_WS_HOST，则由 Agent 自动探测公网地址并上报给 Scheduler。
+  if [[ -n "${PUBLIC_WS_HOST:-}" ]]; then
+    INST_PUBLIC_HOST_DISPLAY="${PUBLIC_WS_HOST}"
+  else
+    INST_PUBLIC_HOST_DISPLAY="<agent-auto-detect-public-host>"
+  fi
+  INST_WS_URL="${PUBLIC_WS_SCHEME}://${INST_PUBLIC_HOST_DISPLAY}:${WS_PORT}/ws"
 
   # ── 协议固定字段（不随实例号变化，坑三的教训）──────────────────────────
   APK_INTERNAL_PORT=8080       # APK 内部监听端口，永远是 8080
@@ -188,7 +197,7 @@ derive_identity() {
   export BINDER_NAME HWBINDER_NAME VNDBINDER_NAME
   export BINDER_DEV HWBINDER_DEV VNDBINDER_DEV
   export WAYLAND_DISPLAY BRIDGE_NAME BRIDGE_IP BRIDGE_ADDR BRIDGE_SUBNET BRIDGE_MAC
-  export ADB_PORT ADB_TARGET PROBE_PORT WS_PORT INST_WS_URL
+  export ADB_PORT ADB_TARGET PROBE_PORT WS_PORT INST_PUBLIC_HOST_DISPLAY INST_WS_URL
   export APK_INTERNAL_PORT WS_PATH NGINX_CONF SYSTEMD_SERVICE
 }
 
@@ -587,6 +596,7 @@ print_identity() {
   echo "  ADB_TARGET      = ${ADB_TARGET}"
   echo "  PROBE_PORT      = ${PROBE_PORT}"
   echo "  WS_PORT         = ${WS_PORT}"
+  echo "  PUBLIC_WS_HOST  = ${PUBLIC_WS_HOST:-<agent-auto-detect-public-host>}"
   echo "  INST_WS_URL     = ${INST_WS_URL}"
   echo "  NGINX_CONF      = ${NGINX_CONF}"
   echo "─────────────────────────────────────────"

@@ -24,7 +24,7 @@ interface FreezeFrameItem {
   pid: string;
   name: string;
   value: string;
-  unit: number;
+  unit: number | string;  // A 端可能返回字符串单位（如 "%"、"kPa"）或数字代码
 }
 
 export default function FreezeFramePage() {
@@ -62,8 +62,9 @@ export default function FreezeFramePage() {
     });
   };
 
-  // 获取单位文本
-  const getUnitText = (unitCode: number): string => {
+  // 获取单位文本：A 端返回字符串时直接用，数字时查 UNITS_MAP
+  const getUnitText = (unitCode: number | string): string => {
+    if (typeof unitCode === 'string') return unitCode;
     return UNITS_MAP[unitCode] || '';
   };
 

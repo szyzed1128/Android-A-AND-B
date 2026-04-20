@@ -1587,11 +1587,23 @@ namespace OBDCloud.WebSocket
             CancelConnectAttempt($"BridgeConnectionClosed:{normalizedReason}");
             ClearPendingDisconnectCleanup($"BridgeConnectionClosed:{normalizedReason}");
 
+            if (string.IsNullOrWhiteSpace(activeSessionId))
+            {
+                Log($"[OBDCloudManager] Bridge 关闭时无活动 session，判定为探针/预连接断开，跳过阶段二同源断开 reason={normalizedReason}");
+                CleanupBridgeClosedState(normalizedReason, activeSessionId, "no-session");
+                return;
+            }
+
             if (TryInvokeStage2DisconnectOnBridgeLoss(normalizedReason, activeSessionId))
             {
                 return;
             }
 
+            CleanupBridgeClosedState(normalizedReason, activeSessionId, "fallback");
+        }
+
+        private void CleanupBridgeClosedState(string normalizedReason, string activeSessionId, string mode)
+        {
             try
             {
                 ResetOBDDataReaderWebSocket();
@@ -1603,7 +1615,7 @@ namespace OBDCloud.WebSocket
 
             try
             {
-                _bluetoothConnection?.ForceReset(reason: $"BridgeConnectionClosed:{normalizedReason}");
+                _bluetoothConnection?.ForceReset(reason: $"BridgeConnectionClosed:{mode}:{normalizedReason}");
             }
             catch (Exception ex)
             {
@@ -1619,7 +1631,7 @@ namespace OBDCloud.WebSocket
                 Log($"[OBDCloudManager] Bridge closed ResetSession 失败: {ex.Message}");
             }
 
-            Log($"[OBDCloudManager] Bridge 真失联兜底收口完成 reason={normalizedReason} sessionId={activeSessionId ?? "(空)"}");
+            Log($"[OBDCloudManager] Bridge 关闭收口完成 mode={mode} reason={normalizedReason} sessionId={activeSessionId ?? "(空)"}");
         }
 
         private bool TryInvokeStage2DisconnectOnBridgeLoss(string reason, string sessionId)
@@ -2126,20 +2138,41 @@ namespace OBDCloud.WebSocket
             Log($"[OBDCloudManager] OptQueue: GetRequests 生成 {rawCount} 条原始请求");
             if (rawCount == 0) return false;
 
-            // 3. 开启 CANOptimizeRequests 并调用 Optimize()
-            //    仅在本次调用前临时设置，Optimize 内部读取该值后立即生效。
-            //    TODO（UDS）：若需启用 mode22 合并，在此处增加：
-            //      canOptimizeMode22Prop?.SetValue(settings, true);
+            // 3. 开启 CANOptimizeRequests + CANOptimizeMode22 并调用 Optimize()
+            //    CANOptimizeRequests：启用 OBD mode01 批量合并（最多6条/帧）
+            //    CANOptimizeMode22：启用 UDS mode22 批量合并（最多3条/帧）
+            //      - 首次连接时字典为空，UDS 命令退化为逐条发送（安全）
+            //      - ReplaceQueue 内部的 SetupRequestForLearning 已挂上学习钩子，
+            //        每次成功响应后自动积累数据长度到 CANOptimizeMode22DataLengthDictionary
+            //      - 字典积累后下次调用 Optimize() 即可合并，无需用户操作
+            //    注意：CANOptimizeMode22 要求协议为 CAN11bit/CAN29bit，KWP 下 Optimize 内部自动跳过
             var settingsType = FindType("CarScannerXamarinForms.Settings.SharedSettings");
             var settingsCurrentProp = settingsType?.GetProperty("Current",
                 System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
             var settings = settingsCurrentProp?.GetValue(null);
             var canOptimizeProp = settingsType?.GetProperty("CANOptimizeRequests");
+            var canOptimizeMode22Prop = settingsType?.GetProperty("CANOptimizeMode22");
+            var selfLearningProp = settingsType?.GetProperty("CANOptimizeMode22SelfLearningMode");
+            var autoReoptProp = settingsType?.GetProperty("AutomaticReoptimization");
             if (settings != null && canOptimizeProp != null)
                 canOptimizeProp.SetValue(settings, true);
+            if (settings != null && canOptimizeMode22Prop != null)
+                canOptimizeMode22Prop.SetValue(settings, true);
+            // CANOptimizeMode22SelfLearningMode：ReplaceQueue() 自动挂 SetupRequestForLearning 的前提条件。
+            // 默认 true，但为持久化设置，显式兜底确保无论历史状态如何学习机制都能生效。
+            if (settings != null && selfLearningProp != null)
+                selfLearningProp.SetValue(settings, true);
+            // AutomaticReoptimization：字典积累后每轮结束自动重优化队列，合并新学到的 UDS 长度。
+            // 默认 true，显式设置避免依赖运行时历史状态。
+            if (settings != null && autoReoptProp != null)
+                autoReoptProp.SetValue(settings, true);
+
+            // 注意：不在此处手动调用 SetupRequestForLearning。
+            // 原版 ReplaceQueue() 在 CAN 协议 + CANOptimizeMode22SelfLearningMode=true 时
+            // 已自动对每条请求挂载学习回调（OBDDataReader.cs:832），无需重复挂载。
 
             IEnumerable<object> optimized = null;
-            var optimizerType  = FindType("CarScannerXamarinForms.OBD2.OBDRequestQueueOptimizer");
+            var optimizerType = FindType("CarScannerXamarinForms.OBD2.OBDRequestQueueOptimizer");
             var optimizeMethod = optimizerType?.GetMethod("Optimize",
                 System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
             if (optimizeMethod != null)

@@ -101,6 +101,8 @@ const BTScanListener = () => {
 const OBDCallbackBridge = () => {
   useEffect(() => {
     const OBD_CALLBACKS = [
+      'onConnectSuccess', 'onConnectError', 'onConnectFinish',
+      'onDisconnectSuccess', 'onDisconnectError', 'onDisconnectFinish',
       'onReadDTCSuccess', 'onReadDTCError', 'onReadDTCFinish',
       'onClearDTCSuccess', 'onClearDTCError', 'onClearDTCFinish',
       'onReadECUInfoSuccess', 'onReadECUInfoError',

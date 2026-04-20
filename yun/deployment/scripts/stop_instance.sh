@@ -19,6 +19,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib_instance_identity.sh"
+source "${SCRIPT_DIR}/lib_runtime_common.sh"
 
 _parse_args() {
   local start="" end=""
@@ -70,11 +71,9 @@ if is_container_running; then
   log_info "容器 ${LXC_NAME} 已停止"
 fi
 
-# 5. weston（只停属于本实例的 weston）
-if is_wayland_ready; then
-  pkill -f "weston.*${WAYLAND_DISPLAY}" 2>/dev/null || true
-  log_info "weston (${WAYLAND_DISPLAY}) 已停止"
-fi
+# 5. weston（优先停受管服务，再兜底清理孤儿进程）
+stop_slot_weston "${SLOT}" "${WAYLAND_DISPLAY}" "$(slot_weston_service_name "${SLOT}")"
+log_info "weston (${WAYLAND_DISPLAY}) 已停止"
 
 # 6. bridge
 if ip link show "${BRIDGE_NAME}" &>/dev/null; then

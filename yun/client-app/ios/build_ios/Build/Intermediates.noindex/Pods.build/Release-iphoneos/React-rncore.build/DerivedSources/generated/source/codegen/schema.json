@@ -1,0 +1,1075 @@
+{
+  "modules": {
+    "SafeAreaView": {
+      "type": "Component",
+      "components": {
+        "SafeAreaView": {
+          "paperComponentName": "RCTSafeAreaView",
+          "interfaceOnly": true,
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [],
+          "props": [],
+          "commands": []
+        }
+      }
+    },
+    "AndroidHorizontalScrollContentView": {
+      "type": "Component",
+      "components": {
+        "AndroidHorizontalScrollContentView": {
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [],
+          "props": [
+            {
+              "name": "removeClippedSubviews",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            }
+          ],
+          "commands": []
+        }
+      }
+    },
+    "AndroidProgressBar": {
+      "type": "Component",
+      "components": {
+        "AndroidProgressBar": {
+          "interfaceOnly": true,
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [],
+          "props": [
+            {
+              "name": "styleAttr",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringTypeAnnotation",
+                "default": null
+              }
+            },
+            {
+              "name": "typeAttr",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringTypeAnnotation",
+                "default": null
+              }
+            },
+            {
+              "name": "indeterminate",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "progress",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "DoubleTypeAnnotation",
+                "default": 0
+              }
+            },
+            {
+              "name": "animating",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": true
+              }
+            },
+            {
+              "name": "color",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "testID",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringTypeAnnotation",
+                "default": ""
+              }
+            }
+          ],
+          "commands": []
+        }
+      }
+    },
+    "AndroidSwipeRefreshLayout": {
+      "type": "Component",
+      "components": {
+        "AndroidSwipeRefreshLayout": {
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [
+            {
+              "name": "onRefresh",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": []
+                }
+              }
+            }
+          ],
+          "props": [
+            {
+              "name": "enabled",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": true
+              }
+            },
+            {
+              "name": "colors",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ArrayTypeAnnotation",
+                "elementType": {
+                  "type": "ReservedPropTypeAnnotation",
+                  "name": "ColorPrimitive"
+                }
+              }
+            },
+            {
+              "name": "progressBackgroundColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "size",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringEnumTypeAnnotation",
+                "default": "default",
+                "options": [
+                  "default",
+                  "large"
+                ]
+              }
+            },
+            {
+              "name": "progressViewOffset",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "FloatTypeAnnotation",
+                "default": 0
+              }
+            },
+            {
+              "name": "refreshing",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            }
+          ],
+          "commands": [
+            {
+              "name": "setNativeRefreshing",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "FunctionTypeAnnotation",
+                "params": [
+                  {
+                    "name": "value",
+                    "optional": false,
+                    "typeAnnotation": {
+                      "type": "BooleanTypeAnnotation"
+                    }
+                  }
+                ],
+                "returnTypeAnnotation": {
+                  "type": "VoidTypeAnnotation"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "PullToRefreshView": {
+      "type": "Component",
+      "components": {
+        "PullToRefreshView": {
+          "paperComponentName": "RCTRefreshControl",
+          "excludedPlatforms": [
+            "android"
+          ],
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [
+            {
+              "name": "onRefresh",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": []
+                }
+              }
+            }
+          ],
+          "props": [
+            {
+              "name": "tintColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "titleColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "title",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringTypeAnnotation",
+                "default": null
+              }
+            },
+            {
+              "name": "progressViewOffset",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "FloatTypeAnnotation",
+                "default": 0
+              }
+            },
+            {
+              "name": "refreshing",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            }
+          ],
+          "commands": [
+            {
+              "name": "setNativeRefreshing",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "FunctionTypeAnnotation",
+                "params": [
+                  {
+                    "name": "refreshing",
+                    "optional": false,
+                    "typeAnnotation": {
+                      "type": "BooleanTypeAnnotation"
+                    }
+                  }
+                ],
+                "returnTypeAnnotation": {
+                  "type": "VoidTypeAnnotation"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "InputAccessory": {
+      "type": "Component",
+      "components": {
+        "InputAccessory": {
+          "interfaceOnly": true,
+          "paperComponentName": "RCTInputAccessoryView",
+          "excludedPlatforms": [
+            "android"
+          ],
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [],
+          "props": [
+            {
+              "name": "backgroundColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            }
+          ],
+          "commands": []
+        }
+      }
+    },
+    "AndroidDrawerLayout": {
+      "type": "Component",
+      "components": {
+        "AndroidDrawerLayout": {
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [
+            {
+              "name": "onDrawerSlide",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": [
+                    {
+                      "name": "offset",
+                      "optional": false,
+                      "typeAnnotation": {
+                        "type": "FloatTypeAnnotation"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "onDrawerStateChanged",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": [
+                    {
+                      "name": "drawerState",
+                      "optional": false,
+                      "typeAnnotation": {
+                        "type": "Int32TypeAnnotation"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "onDrawerOpen",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": []
+                }
+              }
+            },
+            {
+              "name": "onDrawerClose",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": []
+                }
+              }
+            }
+          ],
+          "props": [
+            {
+              "name": "keyboardDismissMode",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringEnumTypeAnnotation",
+                "default": "none",
+                "options": [
+                  "none",
+                  "on-drag"
+                ]
+              }
+            },
+            {
+              "name": "drawerBackgroundColor",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "drawerPosition",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringEnumTypeAnnotation",
+                "default": "left",
+                "options": [
+                  "left",
+                  "right"
+                ]
+              }
+            },
+            {
+              "name": "drawerWidth",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "FloatTypeAnnotation",
+                "default": null
+              }
+            },
+            {
+              "name": "drawerLockMode",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringEnumTypeAnnotation",
+                "default": "unlocked",
+                "options": [
+                  "unlocked",
+                  "locked-closed",
+                  "locked-open"
+                ]
+              }
+            },
+            {
+              "name": "statusBarBackgroundColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            }
+          ],
+          "commands": [
+            {
+              "name": "openDrawer",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "FunctionTypeAnnotation",
+                "params": [],
+                "returnTypeAnnotation": {
+                  "type": "VoidTypeAnnotation"
+                }
+              }
+            },
+            {
+              "name": "closeDrawer",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "FunctionTypeAnnotation",
+                "params": [],
+                "returnTypeAnnotation": {
+                  "type": "VoidTypeAnnotation"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ActivityIndicatorView": {
+      "type": "Component",
+      "components": {
+        "ActivityIndicatorView": {
+          "paperComponentName": "RCTActivityIndicatorView",
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [],
+          "props": [
+            {
+              "name": "hidesWhenStopped",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "animating",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "color",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "size",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringEnumTypeAnnotation",
+                "default": "small",
+                "options": [
+                  "small",
+                  "large"
+                ]
+              }
+            }
+          ],
+          "commands": []
+        }
+      }
+    },
+    "UnimplementedNativeView": {
+      "type": "Component",
+      "components": {
+        "UnimplementedNativeView": {
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [],
+          "props": [
+            {
+              "name": "name",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringTypeAnnotation",
+                "default": ""
+              }
+            }
+          ],
+          "commands": []
+        }
+      }
+    },
+    "Switch": {
+      "type": "Component",
+      "components": {
+        "Switch": {
+          "paperComponentName": "RCTSwitch",
+          "excludedPlatforms": [
+            "android"
+          ],
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [
+            {
+              "name": "onChange",
+              "optional": true,
+              "bubblingType": "bubble",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": [
+                    {
+                      "name": "value",
+                      "optional": false,
+                      "typeAnnotation": {
+                        "type": "BooleanTypeAnnotation"
+                      }
+                    },
+                    {
+                      "name": "target",
+                      "optional": false,
+                      "typeAnnotation": {
+                        "type": "Int32TypeAnnotation"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "props": [
+            {
+              "name": "disabled",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "value",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "tintColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "onTintColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "thumbTintColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "thumbColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "trackColorForFalse",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "trackColorForTrue",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            }
+          ],
+          "commands": [
+            {
+              "name": "setValue",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "FunctionTypeAnnotation",
+                "params": [
+                  {
+                    "name": "value",
+                    "optional": false,
+                    "typeAnnotation": {
+                      "type": "BooleanTypeAnnotation"
+                    }
+                  }
+                ],
+                "returnTypeAnnotation": {
+                  "type": "VoidTypeAnnotation"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "AndroidSwitch": {
+      "type": "Component",
+      "components": {
+        "AndroidSwitch": {
+          "interfaceOnly": true,
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [
+            {
+              "name": "onChange",
+              "optional": true,
+              "bubblingType": "bubble",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": [
+                    {
+                      "name": "value",
+                      "optional": false,
+                      "typeAnnotation": {
+                        "type": "BooleanTypeAnnotation"
+                      }
+                    },
+                    {
+                      "name": "target",
+                      "optional": false,
+                      "typeAnnotation": {
+                        "type": "Int32TypeAnnotation"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "props": [
+            {
+              "name": "disabled",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "enabled",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": true
+              }
+            },
+            {
+              "name": "thumbColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "trackColorForFalse",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "trackColorForTrue",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "value",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "on",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "thumbTintColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            },
+            {
+              "name": "trackTintColor",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ReservedPropTypeAnnotation",
+                "name": "ColorPrimitive"
+              }
+            }
+          ],
+          "commands": [
+            {
+              "name": "setNativeValue",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "FunctionTypeAnnotation",
+                "params": [
+                  {
+                    "name": "value",
+                    "optional": false,
+                    "typeAnnotation": {
+                      "type": "BooleanTypeAnnotation"
+                    }
+                  }
+                ],
+                "returnTypeAnnotation": {
+                  "type": "VoidTypeAnnotation"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "TraceUpdateOverlay": {
+      "type": "Component",
+      "components": {
+        "TraceUpdateOverlay": {
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [],
+          "props": [],
+          "commands": [
+            {
+              "name": "draw",
+              "optional": false,
+              "typeAnnotation": {
+                "type": "FunctionTypeAnnotation",
+                "params": [
+                  {
+                    "name": "overlays",
+                    "optional": false,
+                    "typeAnnotation": {
+                      "type": "StringTypeAnnotation"
+                    }
+                  }
+                ],
+                "returnTypeAnnotation": {
+                  "type": "VoidTypeAnnotation"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ModalHostView": {
+      "type": "Component",
+      "components": {
+        "ModalHostView": {
+          "interfaceOnly": true,
+          "paperComponentName": "RCTModalHostView",
+          "extendsProps": [
+            {
+              "type": "ReactNativeBuiltInType",
+              "knownTypeName": "ReactNativeCoreViewProps"
+            }
+          ],
+          "events": [
+            {
+              "name": "onRequestClose",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": []
+                }
+              }
+            },
+            {
+              "name": "onShow",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": []
+                }
+              }
+            },
+            {
+              "name": "onDismiss",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": []
+                }
+              }
+            },
+            {
+              "name": "onOrientationChange",
+              "optional": true,
+              "bubblingType": "direct",
+              "typeAnnotation": {
+                "type": "EventTypeAnnotation",
+                "argument": {
+                  "type": "ObjectTypeAnnotation",
+                  "properties": [
+                    {
+                      "name": "orientation",
+                      "optional": false,
+                      "typeAnnotation": {
+                        "type": "StringEnumTypeAnnotation",
+                        "options": [
+                          "portrait",
+                          "landscape"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "props": [
+            {
+              "name": "animationType",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringEnumTypeAnnotation",
+                "default": "none",
+                "options": [
+                  "none",
+                  "slide",
+                  "fade"
+                ]
+              }
+            },
+            {
+              "name": "presentationStyle",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "StringEnumTypeAnnotation",
+                "default": "fullScreen",
+                "options": [
+                  "fullScreen",
+                  "pageSheet",
+                  "formSheet",
+                  "overFullScreen"
+                ]
+              }
+            },
+            {
+              "name": "transparent",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "statusBarTranslucent",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "hardwareAccelerated",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "visible",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "animated",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "BooleanTypeAnnotation",
+                "default": false
+              }
+            },
+            {
+              "name": "supportedOrientations",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "ArrayTypeAnnotation",
+                "elementType": {
+                  "type": "StringEnumTypeAnnotation",
+                  "default": "portrait",
+                  "options": [
+                    "portrait",
+                    "portrait-upside-down",
+                    "landscape",
+                    "landscape-left",
+                    "landscape-right"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "identifier",
+              "optional": true,
+              "typeAnnotation": {
+                "type": "Int32TypeAnnotation",
+                "default": 0
+              }
+            }
+          ],
+          "commands": []
+        }
+      }
+    }
+  }
+}

@@ -10,6 +10,7 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		13B07FC11A68108700A75B9A /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB11A68108700A75B9A /* LaunchScreen.storyboard */; };
+		7E8F90112233445566778899 /* LogBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 7E8F90102233445566778899 /* LogBridge.m */; };
 		A1B2C3D4E5F60718293A4B5C /* OBDMFiModuleIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5E /* OBDMFiModuleIOS.mm */; };
 		A1B2C3D4E5F60718293A4B5F /* ExternalAccessory.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B60 /* ExternalAccessory.framework */; };
 		A1B2C3D4E5F60718293A4B61 /* ios_MaterialCommunityIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B62 /* ios_MaterialCommunityIcons.ttf */; };
@@ -24,6 +25,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = OBDGatewayClient/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = OBDGatewayClient/main.m; sourceTree = "<group>"; };
 		43B3EEF3F3C30FFD28D05A24 /* libPods-OBDGatewayClient.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OBDGatewayClient.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7E8F90102233445566778899 /* LogBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LogBridge.m; path = OBDGatewayClient/LogBridge.m; sourceTree = "<group>"; };
 		6717D150C05351CF6C2B3296 /* Pods-OBDGatewayClient.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OBDGatewayClient.release.xcconfig"; path = "Target Support Files/Pods-OBDGatewayClient/Pods-OBDGatewayClient.release.xcconfig"; sourceTree = "<group>"; };
 		9BB551A6E7DA0D89EBD91B40 /* Pods-OBDGatewayClient.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OBDGatewayClient.debug.xcconfig"; path = "Target Support Files/Pods-OBDGatewayClient/Pods-OBDGatewayClient.debug.xcconfig"; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5D /* OBDMFiModuleIOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OBDMFiModuleIOS.h; path = OBDGatewayClient/OBDMFiModuleIOS.h; sourceTree = "<group>"; };
@@ -50,6 +52,7 @@
 			children = (
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
+				7E8F90102233445566778899 /* LogBridge.m */,
 				A1B2C3D4E5F60718293A4B5D /* OBDMFiModuleIOS.h */,
 				A1B2C3D4E5F60718293A4B5E /* OBDMFiModuleIOS.mm */,
 				13B07FB11A68108700A75B9A /* LaunchScreen.storyboard */,
@@ -110,6 +113,7 @@
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
+				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				3F293D1012D05A79315BB724 /* [CP] Embed Pods Frameworks */,
 				AAA87A28441B3B34188CBECC /* [CP] Copy Pods Resources */,
 			);
@@ -166,6 +170,22 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/.xcode.env",
+			);
+			name = "Bundle React Native code and images";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"../node_modules/react-native/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
+		};
 		2836715B906273F69D8005D7 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -196,9 +216,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OBDGatewayClient/Pods-OBDGatewayClient-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OBDGatewayClient/Pods-OBDGatewayClient-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -213,9 +237,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OBDGatewayClient/Pods-OBDGatewayClient-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OBDGatewayClient/Pods-OBDGatewayClient-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -229,6 +257,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E8F90112233445566778899 /* LogBridge.m in Sources */,
 				A1B2C3D4E5F60718293A4B5C /* OBDMFiModuleIOS.mm in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FBF1A68108700A75B9A /* main.m in Sources */,
@@ -244,6 +273,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 878N45KFG4;
 				INFOPLIST_FILE = OBDGatewayClient/Info.plist;
@@ -272,6 +302,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 878N45KFG4;
 				INFOPLIST_FILE = OBDGatewayClient/Info.plist;
@@ -362,10 +393,7 @@
 					"-DFOLLY_USE_LIBCPP=1",
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
@@ -433,10 +461,7 @@
 					"-DFOLLY_USE_LIBCPP=1",
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

@@ -1,10 +1,13 @@
 /**
  * VehicleConfigPage - 车辆配置页
  *
- * 品牌选择 → 配置选择两步流程
+ * 新架构：
+ * - 品牌/车型目录来自调度层 catalog API
+ * - 页面只保存用户选择，不直接对 A 端执行 applyProfile
+ * - 真正申请实例时，由调度层把选择应用到分配到的实例
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,144 +22,97 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useAppContext } from '../context/AppContext';
-import { useCloudBridge } from '../hooks/useCloudBridge';
 import { useSchedulerActions } from '../hooks/useScheduler';
-import { Profile } from '../services/CloudBridge';
+import { SchedulerCatalogProfile } from '../services/SchedulerClient';
 
 export default function VehicleConfigPage() {
   const navigation = useNavigation<any>();
-  const { setSelectedProfile, cloudConnected, appStartTime } = useAppContext();
-  const { getBrands, getProfiles, applyProfile } = useCloudBridge();
-  const { syncCar } = useSchedulerActions();
+  const { setSelectedProfile, schedulerReady } = useAppContext();
+  const { syncCar, getCatalogBrands, getCatalogProfiles } = useSchedulerActions();
 
   const [brands, setBrands] = useState<string[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = useState<SchedulerCatalogProfile[]>([]);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [initProgress, setInitProgress] = useState(0);
 
-  // 初始化等待（后端需要约20秒加载）
   useEffect(() => {
-    const SAFE_THRESHOLD = 20 * 1000;
-    const elapsed = Date.now() - appStartTime;
-    const remaining = Math.max(0, SAFE_THRESHOLD - elapsed);
-
-    if (remaining > 0) {
-      const interval = setInterval(() => {
-        const now = Date.now() - appStartTime;
-        const progress = Math.min(100, (now / SAFE_THRESHOLD) * 100);
-        setInitProgress(progress);
-
-        if (progress >= 100) {
-          clearInterval(interval);
-          setIsInitializing(false);
-        }
-      }, 100);
-
-      return () => clearInterval(interval);
-    } else {
-      setIsInitializing(false);
+    if (!schedulerReady) {
+      setBrands([]);
+      setProfiles([]);
+      setSelectedBrand(null);
+      return;
     }
-  }, [appStartTime]);
 
-  // 加载品牌列表
-  useEffect(() => {
-    if (!isInitializing && cloudConnected) {
-      loadBrands();
-    }
-  }, [isInitializing, cloudConnected]);
+    loadBrands();
+  }, [schedulerReady]);
 
   const loadBrands = async () => {
     setLoading(true);
     try {
-      const data = await getBrands();
+      const data = await getCatalogBrands();
       setBrands(data || []);
-    } catch (e) {
-      console.error('Load brands error:', e);
+    } catch (err: any) {
+      console.error('[VehicleConfig] loadBrands 失败:', err);
+      Alert.alert('错误', err.message || '读取品牌列表失败');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const loadProfiles = async (brand: string) => {
     setLoading(true);
     try {
-      const data = await getProfiles(brand);
+      const data = await getCatalogProfiles(brand);
       setProfiles(data || []);
-    } catch (e) {
-      console.error('Load profiles error:', e);
+    } catch (err: any) {
+      console.error('[VehicleConfig] loadProfiles 失败:', err);
+      Alert.alert('错误', err.message || '读取车型配置失败');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // 选择品牌
   const handleBrandSelect = (brand: string) => {
     setSelectedBrand(brand);
     setSearchKeyword('');
     loadProfiles(brand);
   };
 
-  // 选择配置
-  const handleProfileSelect = async (profile: Profile, index: number) => {
+  const handleProfileSelect = async (profile: SchedulerCatalogProfile) => {
     if (!selectedBrand) return;
 
     setLoading(true);
     try {
-      await applyProfile(selectedBrand, index);
-      setSelectedProfile({ brand: selectedBrand, name: profile.Name });
-      // 同步车型到调度后端（异步，不阻塞 UI）
-      syncCar(selectedBrand, profile.Name).catch(e =>
-        console.warn('[VehicleConfig] syncCar 失败:', e.message)
-      );
-      Alert.alert('成功', '配置已应用');
-      setTimeout(() => navigation.goBack(), 500);
-    } catch (e) {
-      Alert.alert('错误', '应用配置失败');
+      await syncCar(selectedBrand, profile.profileIndex, profile.name);
+      setSelectedProfile({
+        brand: selectedBrand,
+        name: profile.name,
+        profileIndex: profile.profileIndex,
+      });
+      Alert.alert('成功', '车型已保存，申请实例时会自动应用到分配的 A 端实例');
+      setTimeout(() => navigation.goBack(), 300);
+    } catch (err: any) {
+      Alert.alert('错误', err.message || '保存车型失败');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // 返回处理
   const handleBack = () => {
     if (selectedBrand) {
       setSelectedBrand(null);
       setProfiles([]);
-    } else {
-      navigation.goBack();
+      return;
     }
+    navigation.goBack();
   };
 
-  // 过滤品牌
-  const filteredBrands = brands.filter(brand =>
+  const filteredBrands = brands.filter((brand) =>
     brand.toLowerCase().includes(searchKeyword.toLowerCase())
   );
 
-  // 初始化中
-  if (isInitializing) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-            <Icon name="arrow-left" size={24} color="#323233" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>车辆配置</Text>
-          <View style={styles.headerButton} />
-        </View>
-        <View style={styles.initContainer}>
-          <ActivityIndicator size="large" color="#1989fa" />
-          <Text style={styles.initText}>正在初始化后端...</Text>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${initProgress}%` }]} />
-          </View>
-          <Text style={styles.initHint}>{Math.round(initProgress)}%</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // 未连接云端
-  if (!cloudConnected) {
+  if (!schedulerReady) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -167,9 +123,9 @@ export default function VehicleConfigPage() {
           <View style={styles.headerButton} />
         </View>
         <View style={styles.emptyContainer}>
-          <Icon name="cloud-off-outline" size={48} color="#c8c9cc" />
-          <Text style={styles.emptyText}>未连接云端服务</Text>
-          <Text style={styles.emptyHint}>请先在首页连接云端</Text>
+          <Icon name="server-network-off" size={48} color="#c8c9cc" />
+          <Text style={styles.emptyText}>调度层尚未就绪</Text>
+          <Text style={styles.emptyHint}>请先回首页输入服务器 IP 并完成调度初始化</Text>
         </View>
       </SafeAreaView>
     );
@@ -177,7 +133,6 @@ export default function VehicleConfigPage() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* 标题栏 */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
           <Icon name="arrow-left" size={24} color="#323233" />
@@ -188,7 +143,6 @@ export default function VehicleConfigPage() {
         <View style={styles.headerButton} />
       </View>
 
-      {/* 搜索栏（仅品牌页） */}
       {!selectedBrand && (
         <View style={styles.searchBar}>
           <Icon name="magnify" size={20} color="#969799" />
@@ -207,7 +161,6 @@ export default function VehicleConfigPage() {
         </View>
       )}
 
-      {/* 加载中 */}
       {loading && (
         <View style={styles.loadingBar}>
           <ActivityIndicator size="small" color="#1989fa" />
@@ -215,7 +168,6 @@ export default function VehicleConfigPage() {
         </View>
       )}
 
-      {/* 品牌列表 */}
       {!selectedBrand && (
         <FlatList
           data={filteredBrands}
@@ -232,28 +184,27 @@ export default function VehicleConfigPage() {
           ListEmptyComponent={
             !loading ? (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>暂无数据</Text>
+                <Text style={styles.emptyText}>暂无品牌数据</Text>
               </View>
             ) : null
           }
         />
       )}
 
-      {/* 配置列表 */}
       {selectedBrand && (
         <FlatList
           data={profiles}
-          keyExtractor={(item, index) => `${item.Name}-${index}`}
-          renderItem={({ item, index }) => (
+          keyExtractor={(item) => `${item.profileIndex}-${item.name}`}
+          renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.listItem}
-              onPress={() => handleProfileSelect(item, index)}
+              onPress={() => handleProfileSelect(item)}
             >
               <View style={styles.profileInfo}>
-                <Text style={styles.listItemText}>{item.Name}</Text>
-                {item.Description && (
-                  <Text style={styles.profileDesc}>{item.Description}</Text>
-                )}
+                <Text style={styles.listItemText}>{item.name}</Text>
+                {item.description ? (
+                  <Text style={styles.profileDesc}>{item.description}</Text>
+                ) : null}
               </View>
               <Icon name="chevron-right" size={20} color="#c8c9cc" />
             </TouchableOpacity>
@@ -320,72 +271,49 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
+    color: '#969799',
+    fontSize: 13,
   },
   listItem: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    alignItems: 'center',
     backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f2f3f5',
   },
   listItemText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#323233',
   },
   profileInfo: {
     flex: 1,
+    marginRight: 12,
   },
   profileDesc: {
+    marginTop: 4,
     fontSize: 12,
     color: '#969799',
-    marginTop: 4,
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    alignItems: 'center',
+    paddingVertical: 80,
   },
   emptyText: {
-    fontSize: 14,
-    color: '#969799',
     marginTop: 12,
+    fontSize: 16,
+    color: '#969799',
   },
   emptyHint: {
-    fontSize: 12,
-    color: '#c8c9cc',
-    marginTop: 4,
-  },
-  initContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  initText: {
-    fontSize: 16,
-    color: '#323233',
-    marginTop: 16,
-  },
-  initHint: {
-    fontSize: 14,
-    color: '#969799',
     marginTop: 8,
-  },
-  progressBar: {
-    width: '80%',
-    height: 4,
-    backgroundColor: '#ebedf0',
-    borderRadius: 2,
-    marginTop: 16,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#1989fa',
+    fontSize: 13,
+    color: '#c8c9cc',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    lineHeight: 20,
   },
 });

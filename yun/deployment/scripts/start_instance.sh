@@ -19,6 +19,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib_instance_identity.sh"
+source "${SCRIPT_DIR}/lib_runtime_common.sh"
 
 resolve_agent_instance_id() {
   local health_url="http://127.0.0.1:${AGENT_PORT}/health"
@@ -72,6 +73,7 @@ fi
 
 SLOT="$SLOT_START"
 derive_identity "$SLOT"
+MANAGED_WESTON_SERVICE="$(slot_weston_service_name "${SLOT}")"
 log_info "恢复实例运行时: slot=${SLOT} / ${INST_ID}"
 : "${AGENT_PORT:=4000}"
 
@@ -126,30 +128,30 @@ iptables -C FORWARD -o "${BRIDGE_NAME}" -j ACCEPT 2>/dev/null || \
 log_info "bridge ${BRIDGE_NAME} 就绪"
 
 # ─── 4. weston ────────────────────────────────────────────────────────────
-mkdir -p /run/user/0
-if ! is_wayland_ready; then
-  XDG_RUNTIME_DIR=/run/user/0 nohup weston \
-    --backend=headless-backend.so --no-config \
-    --socket="${WAYLAND_DISPLAY}" \
-    > "/tmp/weston-${WAYLAND_DISPLAY}.log" 2>&1 &
-  for i in $(seq 1 15); do
-    is_wayland_ready && break; sleep 1
-    [[ $i -eq 15 ]] && die "weston ${WAYLAND_DISPLAY} 启动超时"
-  done
-  log_info "weston (${WAYLAND_DISPLAY}) 已启动"
-fi
-
-mkdir -p /run/user/0/pulse; touch /run/user/0/pulse/native
+ensure_slot_wayland_socket "${SLOT}" "${WAYLAND_DISPLAY}" 20 "${MANAGED_WESTON_SERVICE}" || \
+  die "weston ${WAYLAND_DISPLAY} 启动超时"
+log_info "wayland socket ${WAYLAND_DISPLAY} 已就绪"
+prepare_runtime_dirs
 
 # ─── 5. LXC 容器 ─────────────────────────────────────────────────────────
 if ! is_container_running; then
-  lxc-start -P "${LXC_DIR}/lxc" -n "${LXC_NAME}" -- /init &
-  for i in $(seq 1 30); do
-    is_container_running && break; sleep 1
-    [[ $i -eq 30 ]] && die "容器 ${LXC_NAME} 启动超时"
+  MAX_CONTAINER_START_ATTEMPTS="${MAX_CONTAINER_START_ATTEMPTS:-3}"
+  for attempt in $(seq 1 "${MAX_CONTAINER_START_ATTEMPTS}"); do
+    ensure_slot_wayland_socket "${SLOT}" "${WAYLAND_DISPLAY}" 20 "${MANAGED_WESTON_SERVICE}" || \
+      die "weston ${WAYLAND_DISPLAY} 在容器启动前未就绪"
+    lxc-start -P "${LXC_DIR}/lxc" -n "${LXC_NAME}" -- /init &
+    for i in $(seq 1 30); do
+      is_container_running && break
+      sleep 1
+    done
+    is_container_running && break
+    log_warn "容器 ${LXC_NAME} 启动未成功，attempt=${attempt}/${MAX_CONTAINER_START_ATTEMPTS}，准备重试"
+    lxc-stop -P "${LXC_DIR}/lxc" -n "${LXC_NAME}" -k 2>/dev/null || true
+    sleep 2
   done
-  log_info "容器 ${LXC_NAME} 已启动"
+  is_container_running || die "容器 ${LXC_NAME} 启动超时"
 fi
+log_info "容器 ${LXC_NAME} 已启动"
 
 # ─── 6. socat（坑四：必须用当前新 PID）──────────────────────────────────
 CPID="$(get_container_pid)"
@@ -173,12 +175,10 @@ adb connect "${ADB_TARGET}" >/dev/null 2>&1
 sleep 2
 is_adb_online || die "ADB ${ADB_TARGET} 连接失败"
 
-# ─── 8. 等待 boot + 启动 APK ─────────────────────────────────────────────
-for i in $(seq 1 60); do
-  BOOT="$(adb -s "${ADB_TARGET}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')"
-  [[ "$BOOT" == "1" ]] && break; sleep 3
-  [[ $i -eq 60 ]] && die "boot_completed 超时"
-done
+# ─── 8. 等待 framework + 启动 APK ────────────────────────────────────────
+wait_for_android_framework_ready "${ADB_TARGET}" 180 3 || \
+  die "Android Framework 未就绪（boot_completed/package/activity）"
+log_info "Android Framework 已就绪"
 
 adb -s "${ADB_TARGET}" shell am force-stop "${APK_PACKAGE}" >/dev/null 2>&1 || true
 sleep 2

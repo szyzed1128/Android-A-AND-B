@@ -1,0 +1,12 @@
+module react_native_ble_manager {
+  umbrella header "react-native-ble-manager-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+
+module react_native_ble_manager.Swift {
+  header "/Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/build_ios_cli/Build/Products/Debug-iphoneos/react-native-ble-manager/Swift Compatibility Header/react_native_ble_manager-Swift.h"
+  requires objc
+}

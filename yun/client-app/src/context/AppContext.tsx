@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 // 类型定义
-type SelectedProfile = { brand: string; name: string } | null;
+type SelectedProfile = { brand: string; name: string; profileIndex: number } | null;
 type SelectedDevice = { name: string; address: string; protocol: 'ble' | 'classic' | 'mfi' } | null;
 export type ScannedDevice = {
   name: string;
@@ -67,6 +67,26 @@ type AppContextValue = {
   setSessionId: React.Dispatch<React.SetStateAction<string | null>>;
   schedulerReady: boolean;
   setSchedulerReady: React.Dispatch<React.SetStateAction<boolean>>;
+  schedulerBaseUrl: string;
+  setSchedulerBaseUrl: React.Dispatch<React.SetStateAction<string>>;
+  schedulerInitializing: boolean;
+  setSchedulerInitializing: React.Dispatch<React.SetStateAction<boolean>>;
+  schedulerInitError: string | null;
+  setSchedulerInitError: React.Dispatch<React.SetStateAction<string | null>>;
+  schedulerInitStage: string;
+  setSchedulerInitStage: React.Dispatch<React.SetStateAction<string>>;
+  schedulerInitAttemptAt: number | null;
+  setSchedulerInitAttemptAt: React.Dispatch<React.SetStateAction<number | null>>;
+  schedulerInitSuccessAt: number | null;
+  setSchedulerInitSuccessAt: React.Dispatch<React.SetStateAction<number | null>>;
+  schedulerDeviceId: string | null;
+  setSchedulerDeviceId: React.Dispatch<React.SetStateAction<string | null>>;
+  schedulerHealthChecking: boolean;
+  setSchedulerHealthChecking: React.Dispatch<React.SetStateAction<boolean>>;
+  schedulerHealthMessage: string | null;
+  setSchedulerHealthMessage: React.Dispatch<React.SetStateAction<string | null>>;
+  schedulerRefreshToken: number;
+  bumpSchedulerRefreshToken: () => void;
   assignedWsUrl: string | null;        // 调度分配的 ws 地址
   setAssignedWsUrl: React.Dispatch<React.SetStateAction<string | null>>;
 };
@@ -124,7 +144,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // 调度系统
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [schedulerReady, setSchedulerReady] = useState<boolean>(false);
+  const [schedulerBaseUrl, setSchedulerBaseUrl] = useState<string>('');
+  const [schedulerInitializing, setSchedulerInitializing] = useState<boolean>(false);
+  const [schedulerInitError, setSchedulerInitError] = useState<string | null>(null);
+  const [schedulerInitStage, setSchedulerInitStage] = useState<string>('空闲');
+  const [schedulerInitAttemptAt, setSchedulerInitAttemptAt] = useState<number | null>(null);
+  const [schedulerInitSuccessAt, setSchedulerInitSuccessAt] = useState<number | null>(null);
+  const [schedulerDeviceId, setSchedulerDeviceId] = useState<string | null>(null);
+  const [schedulerHealthChecking, setSchedulerHealthChecking] = useState<boolean>(false);
+  const [schedulerHealthMessage, setSchedulerHealthMessage] = useState<string | null>(null);
+  const [schedulerRefreshToken, setSchedulerRefreshToken] = useState<number>(0);
   const [assignedWsUrl, setAssignedWsUrl] = useState<string | null>(null);
+  const bumpSchedulerRefreshToken = useCallback(() => {
+    setSchedulerRefreshToken(prev => prev + 1);
+  }, []);
 
   return (
     <AppContext.Provider
@@ -156,6 +189,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setSessionId,
         schedulerReady,
         setSchedulerReady,
+        schedulerBaseUrl,
+        setSchedulerBaseUrl,
+        schedulerInitializing,
+        setSchedulerInitializing,
+        schedulerInitError,
+        setSchedulerInitError,
+        schedulerInitStage,
+        setSchedulerInitStage,
+        schedulerInitAttemptAt,
+        setSchedulerInitAttemptAt,
+        schedulerInitSuccessAt,
+        setSchedulerInitSuccessAt,
+        schedulerDeviceId,
+        setSchedulerDeviceId,
+        schedulerHealthChecking,
+        setSchedulerHealthChecking,
+        schedulerHealthMessage,
+        setSchedulerHealthMessage,
+        schedulerRefreshToken,
+        bumpSchedulerRefreshToken,
         assignedWsUrl,
         setAssignedWsUrl,
       }}

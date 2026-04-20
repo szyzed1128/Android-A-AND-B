@@ -1,0 +1,3 @@
+dependencies: \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/node_modules/react-native/ReactCommon/react/renderer/components/legacyviewmanagerinterop/LegacyViewManagerInteropShadowNode.cpp \
+  /Users/zed/Documents/Programe/CarUI/NewUI/yun/client-app/ios/Pods/Target\ Support\ Files/React-Fabric/React-Fabric-prefix.pch

@@ -637,7 +637,7 @@ nsenter -t 50539 -n ...
 | `adb_target` | Agent 用的 ADB 地址 |
 | `probe_port` | 宿主机本地探针端口 |
 | `ws_port` | 对外业务端口 |
-| `public_ws_host` | 对外公网域名或 IP |
+| `public_ws_host` | 对外公网域名或 IP（可选覆盖；默认由 Agent 自动探测） |
 
 ## 6.2 运行时动态字段
 
@@ -690,7 +690,7 @@ adb_target: 127.0.0.1:${adb_port}
 
 probe_port: ${PROBE_BASE_PORT + slot_index - 1}
 ws_port: ${WS_BASE_PORT + slot_index - 1}
-public_ws_host: ${PUBLIC_WS_HOST}
+public_ws_host: ${PUBLIC_WS_HOST:-<agent-auto-detect-public-host>}
 ```
 
 ---

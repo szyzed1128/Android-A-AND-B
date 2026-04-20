@@ -1,16 +1,16 @@
 /**
  * ECUInfoResultPage - ECU信息结果页
  *
- * 折叠显示各 ECU 的详细信息
+ * 用 SectionList 按 ECU 分组显示，同组内条目无分隔线，整体如连续文本
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
+  SectionList,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,131 +26,71 @@ interface InfoItem {
   value: string;
 }
 
-interface ECUInfoResult {
-  ecuIndex: number;
-  ecuName: string;
-  infoList: InfoItem[];
-  loading: boolean;
-  error?: string;
-  expanded: boolean;
+interface Section {
+  title: string;
+  data: InfoItem[];
 }
 
 export default function ECUInfoResultPage() {
   const navigation = useNavigation<any>();
   const route = useRoute<ECUInfoResultRouteProp>();
-  const { indices, ecuList } = route.params;
+  const { indices } = route.params;
   const { readECUInfoAsync } = useCloudBridge();
 
-  const [results, setResults] = useState<ECUInfoResult[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 初始化并读取
-  useEffect(() => {
-    initResults();
-    startReading();
-  }, []);
-
-  const initResults = () => {
-    const initialResults: ECUInfoResult[] = indices.map(index => ({
-      ecuIndex: index,
-      ecuName: ecuList[index]?.name || `ECU ${index}`,
-      infoList: [],
-      loading: true,
-      expanded: true, // 默认展开
-    }));
-    setResults(initialResults);
-  };
-
-  const startReading = async () => {
+  const startReading = useCallback(() => {
     setLoading(true);
+    setError(null);
+    setSections([]);
 
     readECUInfoAsync(indices, {
-      onProgress: (ecuIndex: number, infoList: InfoItem[]) => {
-        setResults(prev => prev.map(r => {
-          if (r.ecuIndex === ecuIndex) {
-            return { ...r, infoList, loading: false };
-          }
-          return r;
-        }));
+      onSuccess: (data: any) => {
+        if (Array.isArray(data)) {
+          setSections(data as Section[]);
+        }
       },
-      onError: (ecuIndex: number, error: string) => {
-        setResults(prev => prev.map(r => {
-          if (r.ecuIndex === ecuIndex) {
-            return { ...r, error, loading: false };
-          }
-          return r;
-        }));
+      onError: (_ecuIndex: number, err: string) => {
+        setError(err);
       },
       onFinish: () => {
         setLoading(false);
       },
     });
-  };
+  }, [indices]);
 
-  // 切换展开
-  const toggleExpand = (ecuIndex: number) => {
-    setResults(prev => prev.map(r => {
-      if (r.ecuIndex === ecuIndex) {
-        return { ...r, expanded: !r.expanded };
-      }
-      return r;
-    }));
-  };
+  useEffect(() => {
+    startReading();
+  }, []);
 
-  // 渲染 ECU 信息
-  const renderECUInfo = ({ item }: { item: ECUInfoResult }) => (
-    <View style={styles.ecuSection}>
-      <TouchableOpacity
-        style={styles.ecuHeader}
-        onPress={() => toggleExpand(item.ecuIndex)}
-      >
-        <View style={styles.ecuHeaderLeft}>
-          <Icon
-            name={item.expanded ? 'chevron-down' : 'chevron-right'}
-            size={20}
-            color="#969799"
-          />
-          <Text style={styles.ecuName}>{item.ecuName}</Text>
-        </View>
-        {item.loading ? (
-          <ActivityIndicator size="small" color="#1989fa" />
-        ) : (
-          <Text style={styles.ecuCount}>
-            {item.infoList.length} 项
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      {item.expanded && (
-        <View style={styles.ecuContent}>
-          {item.error ? (
-            <View style={styles.errorContainer}>
-              <Icon name="alert-circle-outline" size={20} color="#ee0a24" />
-              <Text style={styles.errorText}>{item.error}</Text>
-            </View>
-          ) : item.loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#1989fa" />
-              <Text style={styles.loadingText}>读取中...</Text>
-            </View>
-          ) : item.infoList.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>无信息</Text>
-            </View>
-          ) : (
-            item.infoList.map((info, index) => (
-              <View key={`${info.key}-${index}`} style={styles.infoItem}>
-                <Text style={styles.infoKey}>{info.key}</Text>
-                <Text style={styles.infoValue}>{info.value}</Text>
-              </View>
-            ))
-          )}
-        </View>
-      )}
-    </View>
+  const renderSectionHeader = ({ section }: { section: Section }) => (
+    section.title ? (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{section.title}</Text>
+      </View>
+    ) : null
   );
 
-  const loadingCount = results.filter(r => r.loading).length;
+  const renderItem = ({ item, index, section }: { item: InfoItem; index: number; section: Section }) => {
+    const isLast = index === section.data.length - 1;
+    return (
+      <View style={[styles.row, isLast && styles.rowLast]}>
+        {item.value ? (
+          <Text style={styles.rowText}>
+            <Text style={styles.rowKey}>{item.key}</Text>
+            <Text style={styles.separator}>: </Text>
+            <Text style={styles.rowValue}>{item.value}</Text>
+          </Text>
+        ) : (
+          <Text style={styles.rowTextDesc}>{item.key}</Text>
+        )}
+      </View>
+    );
+  };
+
+  const totalCount = sections.reduce((sum, s) => sum + s.data.length, 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -159,29 +99,39 @@ export default function ECUInfoResultPage() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
           <Icon name="arrow-left" size={24} color="#323233" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>ECU信息结果</Text>
+        <Text style={styles.headerTitle}>ECU信息</Text>
         <TouchableOpacity onPress={startReading} style={styles.headerButton} disabled={loading}>
           <Icon name="refresh" size={24} color={loading ? '#c8c9cc' : '#1989fa'} />
         </TouchableOpacity>
       </View>
 
-      {/* 状态栏 */}
-      {loadingCount > 0 && (
-        <View style={styles.statusBar}>
-          <ActivityIndicator size="small" color="#1989fa" />
-          <Text style={styles.statusText}>
-            正在读取 {loadingCount} 个ECU...
-          </Text>
+      {loading ? (
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color="#1989fa" />
+          <Text style={styles.loadingText}>正在读取 ECU 信息...</Text>
         </View>
+      ) : error ? (
+        <View style={styles.centerBox}>
+          <Icon name="alert-circle-outline" size={32} color="#ee0a24" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={startReading}>
+            <Text style={styles.retryText}>重试</Text>
+          </TouchableOpacity>
+        </View>
+      ) : totalCount === 0 ? (
+        <View style={styles.centerBox}>
+          <Text style={styles.emptyText}>未读取到 ECU 信息</Text>
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item, idx) => `${item.key}-${idx}`}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={false}
+        />
       )}
-
-      {/* 结果列表 */}
-      <FlatList
-        data={results}
-        keyExtractor={(item) => `ecu-${item.ecuIndex}`}
-        renderItem={renderECUInfo}
-        contentContainerStyle={styles.listContent}
-      />
     </SafeAreaView>
   );
 }
@@ -189,7 +139,7 @@ export default function ECUInfoResultPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f8fa',
+    backgroundColor: '#f0f1f3',
   },
   header: {
     flexDirection: 'row',
@@ -210,100 +160,92 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#323233',
   },
-  statusBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
-  },
-  statusText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
-  },
   listContent: {
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
-  ecuSection: {
+  /* -------- 分组标题 -------- */
+  sectionHeader: {
+    marginTop: 12,
+    marginBottom: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: '#fff',
-    borderRadius: 8,
-    marginBottom: 12,
-    overflow: 'hidden',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e8e8e8',
   },
-  ecuHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    backgroundColor: '#f5f6f7',
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
   },
-  ecuHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  /* -------- 数据行（同一 ECU 组内无分隔线） -------- */
+  row: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
   },
-  ecuName: {
-    marginLeft: 8,
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#323233',
+  rowLast: {
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingBottom: 12,
   },
-  ecuCount: {
+  rowText: {
     fontSize: 13,
+    lineHeight: 19,
+    color: '#323233',
+    flexShrink: 1,
+  },
+  rowKey: {
+    color: '#646566',
+  },
+  separator: {
     color: '#969799',
   },
-  ecuContent: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#eee',
+  rowValue: {
+    color: '#323233',
   },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  /* 无 value 的描述行（较长的说明文字等） */
+  rowTextDesc: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#969799',
+    fontStyle: 'italic',
   },
-  errorText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#ee0a24',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
+  /* -------- 公共状态 -------- */
+  centerBox: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: 32,
   },
   loadingText: {
-    marginLeft: 8,
+    marginTop: 12,
     fontSize: 14,
     color: '#666',
   },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
+  errorText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#ee0a24',
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
     color: '#969799',
   },
-  infoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#1989fa',
+    borderRadius: 6,
   },
-  infoKey: {
-    flex: 1,
+  retryText: {
     fontSize: 14,
-    color: '#666',
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: 14,
-    color: '#323233',
-    textAlign: 'right',
+    color: '#fff',
+    fontWeight: '500',
   },
 });

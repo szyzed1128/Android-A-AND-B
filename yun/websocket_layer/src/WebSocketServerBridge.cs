@@ -89,9 +89,18 @@ namespace OBDCloud.WebSocket
                 Log($"[WS-Server] Client accepted {remote}");
 
                 // 只保留一个客户端连接，新的连接覆盖旧的
+                var hadExistingClient = false;
                 lock (_clientLock)
                 {
-                    CloseClient();
+                    hadExistingClient = _client != null || _stream != null || _clientReady;
+                }
+                if (hadExistingClient)
+                {
+                    CloseClient("Client replaced by new connection", notify: true);
+                }
+
+                lock (_clientLock)
+                {
                     _client = client;
                     _stream = client.GetStream();
                     try
@@ -201,13 +210,19 @@ namespace OBDCloud.WebSocket
                 while (!ct.IsCancellationRequested && _client != null && _client.Connected)
                 {
                     var frame = await ReadFrameAsync(stream, ct).ConfigureAwait(false);
-                    if (frame == null) break;
+                    if (frame == null)
+                    {
+                        if (!ct.IsCancellationRequested)
+                        {
+                            CloseClientForStream(stream, "Client disconnected (EOF)", notify: true);
+                        }
+                        break;
+                    }
                     _lastClientSeenUtc = DateTime.UtcNow;
 
                     if (frame.Opcode == 0x08)
                     {
-                        ConnectionClosed?.Invoke(this, "Client closed connection");
-                        CloseClient();
+                        CloseClientForStream(stream, "Client closed connection", notify: true);
                         break;
                     }
 
@@ -264,10 +279,16 @@ namespace OBDCloud.WebSocket
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                // ignore
+            }
             catch (Exception ex)
             {
-                ConnectionClosed?.Invoke(this, $"WebSocket receive error: {ex.Message}");
-                CloseClient();
+                if (!ct.IsCancellationRequested)
+                {
+                    CloseClientForStream(stream, $"WebSocket receive error: {ex.Message}", notify: true);
+                }
             }
         }
 
@@ -414,7 +435,7 @@ namespace OBDCloud.WebSocket
             catch (Exception ex)
             {
                 Console.WriteLine($"[WS-Server] SendFrame error: {ex.Message}");
-                CloseClient();
+                CloseClient($"WebSocket send error: {ex.Message}", notify: true);
             }
             finally
             {
@@ -548,9 +569,31 @@ namespace OBDCloud.WebSocket
             await Task.CompletedTask.ConfigureAwait(false);
         }
 
-        private void CloseClient()
+        private void CloseClientForStream(NetworkStream stream, string reason, bool notify)
         {
-            Log("[WS-Server] Client closed");
+            bool isCurrentStream;
+            lock (_clientLock)
+            {
+                isCurrentStream = ReferenceEquals(_stream, stream);
+            }
+
+            if (!isCurrentStream)
+            {
+                Log($"[WS-Server] Ignore close for stale stream reason={reason ?? "(空)"}");
+                return;
+            }
+
+            CloseClient(reason, notify);
+        }
+
+        private void CloseClient(string reason = null, bool notify = false)
+        {
+            var hadClient = _stream != null || _client != null || _clientReady || !_pendingRequests.IsEmpty;
+            if (hadClient)
+            {
+                Log($"[WS-Server] Client closed reason={reason ?? "(空)"} notify={notify}");
+            }
+
             try { _stream?.Close(); } catch { }
             try { _client?.Close(); } catch { }
             _stream = null;
@@ -561,6 +604,15 @@ namespace OBDCloud.WebSocket
                 kvp.Value.TrySetException(new Exception("WebSocket客户端断开"));
             }
             _pendingRequests.Clear();
+
+            if (notify && hadClient)
+            {
+                try
+                {
+                    ConnectionClosed?.Invoke(this, string.IsNullOrWhiteSpace(reason) ? "Client disconnected" : reason);
+                }
+                catch { }
+            }
         }
 
         private static string DescribeData(object data)

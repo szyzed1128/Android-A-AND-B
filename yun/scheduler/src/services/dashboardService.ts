@@ -26,6 +26,25 @@ export interface DashboardInstanceRow extends InstanceInfo {
   statusAgeMs?: number;
   agentStatusAgeMs?: number;
   reservedRemainingMs?: number;
+  serverDisabled?: boolean;
+}
+
+export interface DashboardServerRow {
+  serverId: string;
+  serverIp?: string;
+  publicWsHost?: string;
+  agentPort?: number;
+  totalInstances: number;
+  idleInstances: number;
+  badInstances: number;
+  reservedInstances: number;
+  busyInstances: number;
+  probingInstances: number;
+  disabled: boolean;
+  cpu?: number;
+  memory?: number;
+  lastHealthAt?: number;
+  healthAgeMs?: number;
 }
 
 export interface DashboardSessionRow extends SessionInfo {
@@ -83,6 +102,7 @@ export async function getDashboardInstances(): Promise<DashboardInstanceRow[]> {
   const redis = getRedis();
   const now = Date.now();
   const ids = await redis.getAllInstanceIds();
+  const disabledServers = new Set(await redis.getDisabledServerIds());
   const rawInstances = await Promise.all(ids.map(id => redis.getInstance(id)));
 
   return rawInstances
@@ -93,8 +113,56 @@ export async function getDashboardInstances(): Promise<DashboardInstanceRow[]> {
       statusAgeMs: typeof item.statusSince === 'number' ? now - item.statusSince : undefined,
       agentStatusAgeMs: typeof item.agentStatusSince === 'number' ? now - item.agentStatusSince : undefined,
       reservedRemainingMs: typeof item.reservedUntil === 'number' ? item.reservedUntil - now : undefined,
+      serverDisabled: disabledServers.has(item.serverId),
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+export async function getDashboardServers(): Promise<DashboardServerRow[]> {
+  const instances = await getDashboardInstances();
+  const grouped = new Map<string, DashboardServerRow>();
+
+  for (const instance of instances) {
+    const current = grouped.get(instance.serverId) || {
+      serverId: instance.serverId,
+      serverIp: instance.serverIp,
+      publicWsHost: instance.publicWsHost,
+      agentPort: instance.agentPort,
+      totalInstances: 0,
+      idleInstances: 0,
+      badInstances: 0,
+      reservedInstances: 0,
+      busyInstances: 0,
+      probingInstances: 0,
+      disabled: Boolean(instance.serverDisabled),
+      cpu: instance.cpu,
+      memory: instance.memory,
+      lastHealthAt: instance.lastHealthAt,
+      healthAgeMs: instance.healthAgeMs,
+    };
+
+    current.totalInstances += 1;
+    current.disabled = current.disabled || Boolean(instance.serverDisabled);
+    if (instance.status === 'idle') current.idleInstances += 1;
+    if (instance.status === 'bad') current.badInstances += 1;
+    if (instance.status === 'reserved' || instance.status === 'reserved_for_user') current.reservedInstances += 1;
+    if (instance.status === 'busy') current.busyInstances += 1;
+    if (instance.status === 'probing' || instance.agentStatus === 'probing') current.probingInstances += 1;
+
+    if ((instance.lastHealthAt || 0) > (current.lastHealthAt || 0)) {
+      current.serverIp = instance.serverIp;
+      current.publicWsHost = instance.publicWsHost;
+      current.agentPort = instance.agentPort;
+      current.cpu = instance.cpu;
+      current.memory = instance.memory;
+      current.lastHealthAt = instance.lastHealthAt;
+      current.healthAgeMs = instance.healthAgeMs;
+    }
+
+    grouped.set(instance.serverId, current);
+  }
+
+  return Array.from(grouped.values()).sort((left, right) => left.serverId.localeCompare(right.serverId));
 }
 
 export async function getDashboardSessions(

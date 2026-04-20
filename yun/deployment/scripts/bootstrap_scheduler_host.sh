@@ -73,11 +73,12 @@ npm ci --quiet 2>/dev/null || npm install --quiet 2>/dev/null
 npm run build >/dev/null
 
 mkdir -p "${DEPLOY_ROOT}/scheduler"
-rm -rf "${DEPLOY_ROOT}/scheduler/dist" "${DEPLOY_ROOT}/dashboard-web"
+rm -rf "${DEPLOY_ROOT}/scheduler/dist" "${DEPLOY_ROOT}/dashboard-web" "${DEPLOY_ROOT}/scheduler/dashboard-web"
 cp -R dist "${DEPLOY_ROOT}/scheduler/"
 cp package.json "${DEPLOY_ROOT}/scheduler/"
 cp package-lock.json "${DEPLOY_ROOT}/scheduler/" 2>/dev/null || true
 cp -R "${DASHBOARD_SRC}" "${DEPLOY_ROOT}/dashboard-web"
+ln -s ../dashboard-web "${DEPLOY_ROOT}/scheduler/dashboard-web"
 (
   cd "${DEPLOY_ROOT}/scheduler"
   npm ci --production --quiet >/dev/null 2>&1 || npm install --production --quiet >/dev/null 2>&1
@@ -157,6 +158,7 @@ systemctl is-active redis-server >/dev/null 2>&1 && log_info "✓ redis-server" 
 systemctl is-active obd-scheduler >/dev/null 2>&1 && log_info "✓ obd-scheduler" || { log_error "✗ obd-scheduler 未运行"; ERRORS=$((ERRORS + 1)); }
 systemctl is-active nginx >/dev/null 2>&1 && log_info "✓ nginx" || { log_error "✗ nginx 未运行"; ERRORS=$((ERRORS + 1)); }
 [[ -d "${DEPLOY_ROOT}/dashboard-web" ]] && log_info "✓ dashboard-web" || { log_error "✗ dashboard-web 未部署"; ERRORS=$((ERRORS + 1)); }
+[[ -L "${DEPLOY_ROOT}/scheduler/dashboard-web" ]] && log_info "✓ scheduler/dashboard-web 软链" || { log_error "✗ scheduler/dashboard-web 未指向正式 dashboard-web"; ERRORS=$((ERRORS + 1)); }
 curl -fsS --max-time 3 http://127.0.0.1:3000/health >/dev/null && log_info "✓ Scheduler Node" || { log_error "✗ Scheduler Node 不可用"; ERRORS=$((ERRORS + 1)); }
 curl -fsS --max-time 3 http://127.0.0.1:8080/health >/dev/null && log_info "✓ Scheduler Nginx 入口" || { log_error "✗ Scheduler Nginx 入口不可用"; ERRORS=$((ERRORS + 1)); }
 

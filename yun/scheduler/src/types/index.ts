@@ -21,6 +21,7 @@ export interface InstanceInfo {
   serverIp: string;        // 调度层访问 Agent 的控制地址（可为内网）
   publicWsHost?: string;   // B 端连接实例 WebSocket 的对外地址
   publicWsScheme?: 'ws' | 'wss';
+  disabled?: boolean;      // 实例级摘除开关；true 时不再进入调度池
   wsPort: number;          // APK WebSocket端口
   agentPort: number;       // 本地Agent HTTP端口
   status: InstanceStatus;
@@ -30,8 +31,8 @@ export interface InstanceInfo {
   reservedForDeviceId?: string;  // reserved_for_user时记录设备ID
   reservedUntil?: number;  // reserved_for_user的到期时间戳
   health?: HealthStatus;
-  cpu?: number;
-  memory?: number;
+  cpu?: number;      // 宿主机 CPU 使用率(%)
+  memory?: number;   // 宿主机内存使用率(%)
   agentStatus?: AgentRuntimeStatus;
   agentStatusSince?: number;
   failureCount?: number;

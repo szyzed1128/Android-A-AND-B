@@ -44,7 +44,7 @@ async function getOrCreateDeviceId(): Promise<string> {
  *   - 输入中的不完整 IP（如 "47."、"47.1"）
  *   - 少于 4 个字符的任何输入
  */
-function deriveSchedulerUrl(cloudHost: string): string {
+export function deriveSchedulerUrl(cloudHost: string): string {
   const host = cloudHost.replace(/^wss?:\/\//i, '').replace(/\/.*$/, '').trim();
 
   // 默认值（空字符串）或太短，不处理
@@ -66,30 +66,158 @@ function deriveSchedulerUrl(cloudHost: string): string {
  * 同时返回操作方法供调用方便
  */
 export function useScheduler() {
-  const { setSessionId, setSchedulerReady, cloudHost } = useAppContext();
+  const {
+    setSessionId,
+    setSelectedProfile,
+    setSelectedDevice,
+    setSchedulerReady,
+    setSchedulerBaseUrl,
+    setSchedulerInitializing,
+    setSchedulerInitError,
+    setSchedulerInitStage,
+    setSchedulerInitAttemptAt,
+    setSchedulerInitSuccessAt,
+    setSchedulerDeviceId,
+    setSchedulerHealthChecking,
+    setSchedulerHealthMessage,
+    setAssignedWsUrl,
+    cloudHost,
+    schedulerRefreshToken,
+  } = useAppContext();
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef<AppStateStatus>('active');
   const initializedRef = useRef(false);
+  const initializingRef = useRef(false);
 
-  const initSession = useCallback(async () => {
-    if (initializedRef.current) return;
-    if (!SchedulerClient.getBaseUrl()) {
-      console.log('[useScheduler] 调度后端地址未设置，跳过初始化');
+  const initSession = useCallback(async (force = false) => {
+    if (initializingRef.current) return;
+    if (!force && initializedRef.current) return;
+
+    setSchedulerInitAttemptAt(Date.now());
+    setSchedulerInitStage('准备调度地址');
+    const url = deriveSchedulerUrl(cloudHost);
+    setSchedulerBaseUrl(url);
+
+    if (!url) {
+      SchedulerClient.setBaseUrl('');
+      SchedulerClient.setSessionId(null);
+      setSessionId(null);
+      setSchedulerReady(false);
+      setAssignedWsUrl(null);
+      setSchedulerInitializing(false);
+      setSchedulerInitStage('等待输入完整 IP');
+      initializedRef.current = false;
+      const trimmedHost = cloudHost.trim();
+      setSchedulerInitError(trimmedHost ? '请输入完整服务器 IP' : null);
+      console.log('[useScheduler] 调度后端地址未设置或格式不完整，跳过初始化');
       return;
     }
+
+    SchedulerClient.setBaseUrl(url);
+    setSchedulerReady(false);
+    setSchedulerInitializing(true);
+    setSchedulerInitError(null);
+    setSchedulerHealthMessage(null);
+    setAssignedWsUrl(null);
+    initializingRef.current = true;
+
     try {
+      setSchedulerInitStage('准备 deviceId');
       const deviceId = await getOrCreateDeviceId();
+      setSchedulerDeviceId(deviceId);
+      setSchedulerInitStage('发送 session/init');
       const sessionId = await SchedulerClient.initSession(deviceId);
       setSessionId(sessionId);
+      setSchedulerInitStage('恢复会话配置');
+      const sessionState = await SchedulerClient.getSessionState();
+
+      if (
+        sessionState.carBrand &&
+        typeof sessionState.profileIndex === 'number' &&
+        sessionState.profileName
+      ) {
+        setSelectedProfile({
+          brand: sessionState.carBrand,
+          name: sessionState.profileName,
+          profileIndex: sessionState.profileIndex,
+        });
+      } else {
+        setSelectedProfile(null);
+      }
+
+      if (sessionState.btAddress && sessionState.btProtocol) {
+        setSelectedDevice({
+          name: sessionState.btName || sessionState.btAddress,
+          address: sessionState.btAddress,
+          protocol: sessionState.btProtocol,
+        });
+      } else {
+        setSelectedDevice(null);
+      }
+
       setSchedulerReady(true);
+      setSchedulerInitError(null);
+      setSchedulerInitSuccessAt(Date.now());
+      setSchedulerInitStage('初始化成功');
       initializedRef.current = true;
       console.log('[useScheduler] 会话初始化成功 sessionId=', sessionId);
     } catch (err: any) {
+      SchedulerClient.setSessionId(null);
+      setSessionId(null);
+      setSchedulerReady(false);
+      setSchedulerInitError(err.message || '调度初始化失败');
+      setSchedulerInitStage('初始化失败');
+      initializedRef.current = false;
       // 调度后端暂不可达（非致命），用 log 不用 warn/error，避免开发模式弹窗。
       // 不自动重试：等待两个时机自然触发 —— ① cloudHost 变化 ② App 回到前台
       console.log('[useScheduler] 调度后端暂不可达，等待重试时机:', err.message);
+    } finally {
+      setSchedulerInitializing(false);
+      initializingRef.current = false;
     }
-  }, [setSessionId, setSchedulerReady]);
+  }, [
+    cloudHost,
+    setAssignedWsUrl,
+    setSchedulerBaseUrl,
+    setSchedulerInitError,
+    setSchedulerInitAttemptAt,
+    setSchedulerInitStage,
+    setSchedulerInitializing,
+    setSchedulerInitSuccessAt,
+    setSchedulerReady,
+    setSchedulerDeviceId,
+    setSchedulerHealthMessage,
+    setSelectedDevice,
+    setSelectedProfile,
+    setSessionId,
+  ]);
+
+  const checkSchedulerHealth = useCallback(async () => {
+    const url = deriveSchedulerUrl(cloudHost);
+    setSchedulerBaseUrl(url);
+
+    if (!url) {
+      setSchedulerHealthMessage('请输入完整服务器 IP');
+      return;
+    }
+
+    SchedulerClient.setBaseUrl(url);
+    setSchedulerHealthChecking(true);
+    setSchedulerHealthMessage(null);
+    try {
+      const health = await SchedulerClient.checkHealth();
+      setSchedulerHealthMessage(`健康检查成功：status=${health.status} redis=${health.redis || '-'}`);
+    } catch (err: any) {
+      setSchedulerHealthMessage(`健康检查失败：${err.message || '未知错误'}`);
+    } finally {
+      setSchedulerHealthChecking(false);
+    }
+  }, [
+    cloudHost,
+    setSchedulerBaseUrl,
+    setSchedulerHealthChecking,
+    setSchedulerHealthMessage,
+  ]);
 
   // 监听 cloudHost 变化，自动更新 SchedulerClient 的 baseUrl
   // 加 800ms 防抖：用户在输入框逐字输入时不触发，停止输入后才执行
@@ -97,17 +225,22 @@ export function useScheduler() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const url = deriveSchedulerUrl(cloudHost);
+      setSchedulerBaseUrl(url);
       if (url) {
-        SchedulerClient.setBaseUrl(url);
         console.log('[useScheduler] 调度后端地址已更新:', url);
-        // baseUrl 刚变有效，重置 initializedRef 让 initSession 重新执行
-        initializedRef.current = false;
-        initSession();
       }
+      initializedRef.current = false;
+      initSession(true);
     }, 800); // 800ms 防抖：用户停止输入后再触发
 
     return () => clearTimeout(timer);
-  }, [cloudHost, initSession]);
+  }, [cloudHost, initSession, setSchedulerBaseUrl]);
+
+  useEffect(() => {
+    if (schedulerRefreshToken <= 0) return;
+    initializedRef.current = false;
+    initSession(true);
+  }, [initSession, schedulerRefreshToken]);
 
   const startHeartbeat = useCallback(() => {
     if (heartbeatTimerRef.current) return;
@@ -133,7 +266,7 @@ export function useScheduler() {
         startHeartbeat();
         // 若会话尚未初始化成功（例如之前服务器不可达），趁此机会重试
         if (!initializedRef.current) {
-          initSession();
+          initSession(true);
         }
       } else if (nextState === 'background') {
         console.log('[useScheduler] App 进入后台');
@@ -143,7 +276,7 @@ export function useScheduler() {
   }, [startHeartbeat, initSession]);
 
   useEffect(() => {
-    initSession();
+    initSession(true);
     startHeartbeat();
     return () => { stopHeartbeat(); };
   }, [initSession, startHeartbeat, stopHeartbeat]);
@@ -158,9 +291,9 @@ export function useScheduler() {
       }
     }, []),
 
-    syncCar: useCallback(async (carBrand: string, carModel: string) => {
+    syncCar: useCallback(async (carBrand: string, profileIndex: number, profileName: string) => {
       try {
-        await SchedulerClient.setCar(carBrand, carModel);
+        await SchedulerClient.setCar(carBrand, profileIndex, profileName);
       } catch (err: any) {
         console.log('[Scheduler] syncCar 跳过（调度未就绪）:', err.message);
       }
@@ -172,13 +305,27 @@ export function useScheduler() {
       return result.wsUrl;
     }, []),
 
+    getCatalogBrands: useCallback(async (): Promise<string[]> => {
+      return SchedulerClient.getCatalogBrands();
+    }, []),
+
+    getCatalogProfiles: useCallback(async (brand: string) => {
+      return SchedulerClient.getCatalogProfiles(brand);
+    }, []),
+
     notifyDisconnect: useCallback(async () => {
       await SchedulerClient.disconnect();
+    }, []),
+
+    releasePreparedInstance: useCallback(async () => {
+      await SchedulerClient.release();
     }, []),
 
     notifyRunning: useCallback(async () => {
       await SchedulerClient.updateStatus('running');
     }, []),
+
+    checkSchedulerHealth,
   };
 }
 
@@ -189,6 +336,35 @@ export function useScheduler() {
  * 只有 App.tsx 的 BluetoothBridgeBootstrap 调用完整的 useScheduler()
  */
 export function useSchedulerActions() {
+  const {
+    cloudHost,
+    setSchedulerBaseUrl,
+    setSchedulerHealthChecking,
+    setSchedulerHealthMessage,
+  } = useAppContext();
+
+  const checkSchedulerHealth = async () => {
+    const url = deriveSchedulerUrl(cloudHost);
+    setSchedulerBaseUrl(url);
+
+    if (!url) {
+      setSchedulerHealthMessage('请输入完整服务器 IP');
+      return;
+    }
+
+    SchedulerClient.setBaseUrl(url);
+    setSchedulerHealthChecking(true);
+    setSchedulerHealthMessage(null);
+    try {
+      const health = await SchedulerClient.checkHealth();
+      setSchedulerHealthMessage(`健康检查成功：status=${health.status} redis=${health.redis || '-'}`);
+    } catch (err: any) {
+      setSchedulerHealthMessage(`健康检查失败：${err.message || '未知错误'}`);
+    } finally {
+      setSchedulerHealthChecking(false);
+    }
+  };
+
   return {
     syncDevice: async (btAddress: string, btProtocol: string, btName?: string) => {
       try {
@@ -198,9 +374,9 @@ export function useSchedulerActions() {
       }
     },
 
-    syncCar: async (carBrand: string, carModel: string) => {
+    syncCar: async (carBrand: string, profileIndex: number, profileName: string) => {
       try {
-        await SchedulerClient.setCar(carBrand, carModel);
+        await SchedulerClient.setCar(carBrand, profileIndex, profileName);
       } catch (err: any) {
         console.log('[Scheduler] syncCar 跳过（调度未就绪）:', err.message);
       }
@@ -212,12 +388,30 @@ export function useSchedulerActions() {
       return result.wsUrl;
     },
 
+    cancelReserve: async () => {
+      await SchedulerClient.cancelReserve();
+    },
+
+    getCatalogBrands: async (): Promise<string[]> => {
+      return SchedulerClient.getCatalogBrands();
+    },
+
+    getCatalogProfiles: async (brand: string) => {
+      return SchedulerClient.getCatalogProfiles(brand);
+    },
+
     notifyDisconnect: async () => {
       await SchedulerClient.disconnect();
+    },
+
+    releasePreparedInstance: async () => {
+      await SchedulerClient.release();
     },
 
     notifyRunning: async () => {
       await SchedulerClient.updateStatus('running');
     },
+
+    checkSchedulerHealth,
   };
 }

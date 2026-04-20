@@ -16,6 +16,8 @@
 - `scripts/status_instance.sh`
 - `scripts/install_persist.sh`
 - `scripts/lib_instance_identity.sh`
+- `scripts/lib_runtime_common.sh`
+- `scripts/run_weston_slot.sh`
 
 配套自动化 skill（仓库外安装态）：
 
@@ -33,6 +35,7 @@
 
 - 当前正式生产链路是 **独立调度层 EC2 + 实例层 EC2**
 - 实例层机器 **不应再部署本机 scheduler**
+- 实例层机器的公网地址默认由 Agent 自动探测；`PUBLIC_WS_HOST` 只作为显式覆盖项
 - `deployment/archive/` 下均为历史 PoC、迁移草案、审计材料或旧运行时残留
 - 自动化 agent / skill 不应把 `deployment/archive/` 当作正式入口
 - 自动化 agent / skill 应优先使用 `~/.codex/skills/obd-deployment`，并只读取本目录下的正式文档与脚本

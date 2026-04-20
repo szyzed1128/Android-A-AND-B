@@ -17,6 +17,7 @@ export interface AgentConfig {
   agentPort: number;         // Agent HTTP 监听端口
   schedulerUrl: string;      // 调度后端地址
   healthReportIntervalMs: number;  // 健康上报间隔
+  deploymentScriptsDir: string; // 实例运行时脚本目录
   serverIpOverride?: string; // 调度层回调 Agent 时使用的控制面地址（可选，优先于自动探测）
   publicWsHost?: string;     // 对 B 端可见的实例公网/域名地址（可选，优先于自动探测）
   publicWsScheme: 'ws' | 'wss'; // B 端连接实例时使用的协议
@@ -41,6 +42,7 @@ const config: AgentConfig = {
   agentPort: parseInt(getEnv('AGENT_PORT', '4000')),
   schedulerUrl: getEnv('SCHEDULER_URL', 'http://scheduler:3000'),
   healthReportIntervalMs: 60 * 1000,
+  deploymentScriptsDir: getEnv('DEPLOYMENT_SCRIPTS_DIR', '/opt/cardemo/scripts'),
   serverIpOverride: process.env.SERVER_IP_OVERRIDE || undefined,
   publicWsHost: process.env.PUBLIC_WS_HOST || undefined,
   publicWsScheme: getEnv('PUBLIC_WS_SCHEME', 'ws') === 'wss' ? 'wss' : 'ws',

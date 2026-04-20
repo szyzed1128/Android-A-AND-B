@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NEWUI_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 YUN_TOOLS_DIR="${NEWUI_DIR}/yun/tools"
 # automator.py 固定输出此文件名（不可改），用于本地测试
-APK_SRC="${NEWUI_DIR}/Release_com.companyname.cardemo-Signed.apk"
+APK_SRC="${NEWUI_DIR}/build_output/Release_com.companyname.cardemo-Signed.apk"
 # 服务器专用副本，与本地测试 APK 区分，不会相互覆盖
 APK_SERVER_SRC="${NEWUI_DIR}/Release_com.companyname.cardemo-Server-Signed.apk"
 APK_REMOTE_DIR="/opt/cardemo"
@@ -82,14 +82,10 @@ log "✓ 传输完成"
 log "远程安装 APK..."
 ssh ${SSH_OPTS} "${SERVER_USER}@${SERVER_IP}" bash << 'REMOTE_SCRIPT'
 set -e
-ADB_TARGET="192.168.240.112:5555"
+ADB_TARGET="localhost:5555"
 APK_PATH="/opt/cardemo/Release_com.companyname.cardemo-Server-Signed.apk"
 PACKAGE="com.companyname.cardemo"
 ACTIVITY="crc64b16463db6be126c1.MainActivity"
-
-# 确保 ADB 已连接
-adb connect "${ADB_TARGET}" || true
-sleep 2
 
 # 安装 APK
 echo "安装 APK..."
@@ -104,7 +100,7 @@ sleep 5
 
 # 重建端口 forward
 echo "重建 adb forward..."
-adb -s "${ADB_TARGET}" forward tcp:8080 tcp:8080
+adb -s "${ADB_TARGET}" forward tcp:18080 tcp:8080
 
 echo "✓ 部署完成"
 REMOTE_SCRIPT

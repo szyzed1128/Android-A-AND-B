@@ -390,6 +390,11 @@ class BLEAdapter {
     return this.sessionId;
   }
 
+  isConnectedTo(address: string): boolean {
+    if (!this.connectedPeripheralId || !this.sessionId) return false;
+    return this.connectedPeripheralId === String(address || '').trim();
+  }
+
   private removeListeners(): void {
     for (const listener of this.listeners) {
       listener.remove();
@@ -1232,6 +1237,12 @@ class MFiAdapter {
     return this.sessionId;
   }
 
+  isConnectedTo(address: string): boolean {
+    if (!this.sessionId || !this.selectedAddress) return false;
+    const normalizedAddress = this.normalizeAddress(address);
+    return (normalizedAddress || address) === this.selectedAddress;
+  }
+
   destroy(): void {
     this.log('destroy', 'adapter destroy');
     if (this.dataSubscription) {
@@ -1689,6 +1700,8 @@ export class BluetoothGateway {
   private activeAdapter: BLEAdapter | ClassicBluetoothAdapter | MFiAdapter | null = null;
   private activeProtocol: BluetoothProtocol | null = null;
   private eventHandler: BluetoothEventHandler;
+  private pendingConnectKey: string | null = null;
+  private pendingConnectPromise: Promise<string> | null = null;
 
   private dataReceivedListeners: Array<(sessionId: string, base64Data: string) => void> = [];
   private deviceDiscoveredListeners: Array<(device: ExtendedBTDeviceInfo) => void> = [];
@@ -1743,6 +1756,38 @@ export class BluetoothGateway {
     this.bleAdapter = new BLEAdapter(this.eventHandler);
     this.classicAdapter = new ClassicBluetoothAdapter(this.eventHandler);
     this.mfiAdapter = new MFiAdapter(this.eventHandler);
+  }
+
+  private buildConnectKey(protocol: BluetoothProtocol, address: string): string {
+    return `${protocol}:${String(address || '').trim()}`;
+  }
+
+  private setActiveAdapterForProtocol(protocol: BluetoothProtocol): void {
+    switch (protocol) {
+      case 'ble':
+        this.activeAdapter = this.bleAdapter;
+        break;
+      case 'classic':
+        this.activeAdapter = this.classicAdapter;
+        break;
+      case 'mfi':
+        this.activeAdapter = this.mfiAdapter;
+        break;
+    }
+    this.activeProtocol = protocol;
+  }
+
+  private getConnectedSessionForTarget(protocol: BluetoothProtocol, address: string): string | null {
+    switch (protocol) {
+      case 'ble':
+        return this.bleAdapter.isConnectedTo(address) ? this.bleAdapter.getSessionId() : null;
+      case 'classic':
+        return this.classicAdapter.isConnectedTo(address) ? this.classicAdapter.getSessionId() : null;
+      case 'mfi':
+        return this.mfiAdapter.isConnectedTo(address) ? this.mfiAdapter.getSessionId() : null;
+      default:
+        return null;
+    }
   }
 
   addDataReceivedListener(listener: (sessionId: string, base64Data: string) => void): () => void {
@@ -1823,41 +1868,58 @@ export class BluetoothGateway {
   async connect(protocol: BluetoothProtocol, address: string): Promise<string> {
     await this.stopScan();
 
-    console.log(`[BluetoothGateway][iOS] connect protocol=${protocol} address=${address}`);
+    const connectKey = this.buildConnectKey(protocol, address);
+    if (this.pendingConnectPromise) {
+      if (this.pendingConnectKey === connectKey) {
+        console.log(`[BluetoothGateway][iOS] 复用进行中的连接 promise key=${connectKey}`);
+        return this.pendingConnectPromise;
+      }
+      throw new Error('已有其他蓝牙连接进行中');
+    }
 
-    if (protocol === 'classic' && this.classicAdapter.isConnectedTo(address)) {
-      const existing = this.classicAdapter.getSessionId();
-      if (existing) {
-        console.log('[BluetoothGateway][iOS] 已连接目标经典蓝牙，跳过重连');
-        this.activeAdapter = this.classicAdapter;
-        this.activeProtocol = 'classic';
-        return existing;
+    const existing = this.getConnectedSessionForTarget(protocol, address);
+    if (existing) {
+      console.log(`[BluetoothGateway][iOS] 已连接目标设备，复用现有 session=${existing}`);
+      this.setActiveAdapterForProtocol(protocol);
+      return existing;
+    }
+
+    const connectPromise = (async (): Promise<string> => {
+      console.log(`[BluetoothGateway][iOS] connect protocol=${protocol} address=${address}`);
+
+      await this.disconnect();
+
+      let sessionId: string;
+      switch (protocol) {
+        case 'ble':
+          sessionId = await this.bleAdapter.connect(address);
+          break;
+        case 'classic':
+          sessionId = await this.classicAdapter.connect(address);
+          break;
+        case 'mfi':
+          sessionId = await this.mfiAdapter.connect(address);
+          break;
+        default:
+          throw new Error(`未知协议: ${protocol}`);
+      }
+
+      this.setActiveAdapterForProtocol(protocol);
+      console.log(`[BluetoothGateway][iOS] connect success protocol=${protocol} session=${sessionId}`);
+      return sessionId;
+    })();
+
+    this.pendingConnectKey = connectKey;
+    this.pendingConnectPromise = connectPromise;
+
+    try {
+      return await connectPromise;
+    } finally {
+      if (this.pendingConnectKey === connectKey && this.pendingConnectPromise === connectPromise) {
+        this.pendingConnectKey = null;
+        this.pendingConnectPromise = null;
       }
     }
-
-    await this.disconnect();
-
-    let sessionId: string;
-    switch (protocol) {
-      case 'ble':
-        sessionId = await this.bleAdapter.connect(address);
-        this.activeAdapter = this.bleAdapter;
-        break;
-      case 'classic':
-        sessionId = await this.classicAdapter.connect(address);
-        this.activeAdapter = this.classicAdapter;
-        break;
-      case 'mfi':
-        sessionId = await this.mfiAdapter.connect(address);
-        this.activeAdapter = this.mfiAdapter;
-        break;
-      default:
-        throw new Error(`未知协议: ${protocol}`);
-    }
-
-    this.activeProtocol = protocol;
-    console.log(`[BluetoothGateway][iOS] connect success protocol=${protocol} session=${sessionId}`);
-    return sessionId;
   }
 
   async send(base64Data: string): Promise<void> {
@@ -1887,6 +1949,10 @@ export class BluetoothGateway {
       this.bleAdapter.getSessionId?.() ||
       this.mfiAdapter.getSessionId?.()
     );
+  }
+
+  isReadyForConnect(): boolean {
+    return !this.pendingConnectPromise && !this.activeAdapter && !this.activeProtocol && !this.hasActiveSession();
   }
 
   destroy(): void {

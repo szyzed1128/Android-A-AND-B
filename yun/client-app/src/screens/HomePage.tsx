@@ -37,6 +37,17 @@ type GlobalConnectAttempt = {
   startedAt: number;
 };
 
+const RESERVE_RETRY_INTERVAL_MS = 3000;
+
+function formatTime(ts?: number | null): string {
+  if (!ts) return '-';
+  const date = new Date(ts);
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
 let activeGlobalConnectAttempt: GlobalConnectAttempt | null = null;
 let nextGlobalConnectAttemptId = 1;
 
@@ -79,26 +90,47 @@ export default function HomePage() {
     setCloudHost,
     elmTimeoutMs,
     setElmTimeoutMs,
+    sessionId,
     schedulerReady,
+    schedulerBaseUrl,
+    schedulerInitializing,
+    schedulerInitError,
+    schedulerInitStage,
+    schedulerInitAttemptAt,
+    schedulerInitSuccessAt,
+    schedulerDeviceId,
+    schedulerHealthChecking,
+    schedulerHealthMessage,
+    bumpSchedulerRefreshToken,
     setAssignedWsUrl,
+    assignedWsUrl,
   } = useAppContext();
 
   const { connectOBD, disconnectOBD, connectCloud, disconnectCloud, getOBDSessionId } = useCloudBridge();
-  const { reserveInstance, notifyDisconnect, notifyRunning, syncDevice, syncCar } = useSchedulerActions();
+  const {
+    reserveInstance,
+    cancelReserve,
+    notifyDisconnect,
+    releasePreparedInstance,
+    notifyRunning,
+    checkSchedulerHealth,
+  } = useSchedulerActions();
 
   // 启用蓝牙桥接（连接CloudBridge和本地蓝牙）
 
-  // 开发模式：云端连接状态
-  const [cloudConnecting, setCloudConnecting] = useState(false);
   // OBD 连接中状态（包含调度预留阶段）
   const [obdConnecting, setObdConnecting] = useState(false);
   // 调度预留中（正在向调度后端申请实例）
   const [reserving, setReserving] = useState(false);
+  const [waitingForInstance, setWaitingForInstance] = useState(false);
+  const [reserveStatusText, setReserveStatusText] = useState<string | null>(null);
   // 断开中遮罩（等待 A 端真实 Disconnected 后才消失）
   const [disconnecting, setDisconnecting] = useState(false);
   const connectInFlightRef = useRef(false);
   const userCancelledRef = useRef(false);
   const ownedConnectAttemptIdRef = useRef<number | null>(null);
+  const reserveFlowIdRef = useRef(0);
+  const reserveCancelledRef = useRef(false);
   const disconnectingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const disconnectPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -115,6 +147,37 @@ export default function HomePage() {
     connectionStatus === 'ConnectingToELM' ||
     connectionStatus === 'ConnectingToECU';
   const isFullyConnected = connectionStatus === 'ConnectedToECU';
+  const hasPreparedInstance = !!assignedWsUrl;
+  const configurationLocked = isConnected || obdConnecting || reserving || disconnecting || hasPreparedInstance;
+
+  const isNoIdleInstanceError = (message?: string): boolean => {
+    if (!message) return false;
+    return message.includes('当前没有空闲实例');
+  };
+
+  const waitBeforeReserveRetry = async (flowId: number, delayMs: number): Promise<boolean> => {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < delayMs) {
+      if (reserveCancelledRef.current || reserveFlowIdRef.current !== flowId) {
+        return false;
+      }
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    return !reserveCancelledRef.current && reserveFlowIdRef.current === flowId;
+  };
+
+  const cancelReserveFlow = async () => {
+    reserveCancelledRef.current = true;
+    reserveFlowIdRef.current += 1;
+    setWaitingForInstance(false);
+    setReserving(false);
+    setReserveStatusText('已取消等待实例');
+    try {
+      await cancelReserve();
+    } catch (err: any) {
+      console.warn('[HomePage] cancelReserve 失败:', err.message);
+    }
+  };
 
   // ELM/ECU 状态
   const getElmStatus = () => {
@@ -151,15 +214,15 @@ export default function HomePage() {
     { text: '故障码', icon: 'alert-circle', disabled: !isFullyConnected, screen: 'DTCSelection' },
     { text: '冻结帧', icon: 'snowflake', disabled: !isFullyConnected, screen: 'FreezeFrame' },
     { text: 'ECU信息', icon: 'information', disabled: !isFullyConnected, screen: 'ECUInfoSelection' },
-    { text: '车辆配置', icon: 'cog', disabled: isConnected, screen: 'VehicleConfig' },
-    { text: '蓝牙连接', icon: 'bluetooth', disabled: isConnected, screen: 'Bluetooth' },
+    { text: '车辆配置', icon: 'cog', disabled: configurationLocked, screen: 'VehicleConfig' },
+    { text: '蓝牙连接', icon: 'bluetooth', disabled: configurationLocked, screen: 'Bluetooth' },
   ];
 
   // 菜单点击
   const handleMenuClick = (item: MenuItemType) => {
     if (item.disabled) {
-      if (isConnected && (item.text === '车辆配置' || item.text === '蓝牙连接')) {
-        Alert.alert('提示', '请先断开连接');
+      if ((configurationLocked || isConnected) && (item.text === '车辆配置' || item.text === '蓝牙连接')) {
+        Alert.alert('提示', hasPreparedInstance ? '实例已预留，请先连接或断开后再修改配置' : '请先断开连接');
         return;
       }
       Alert.alert('提示', '请先连接车辆');
@@ -170,6 +233,11 @@ export default function HomePage() {
 
   // 连接/断开
   const handleConnect = async () => {
+    if (reserving) {
+      await cancelReserveFlow();
+      return;
+    }
+
     const localConnecting = connectInFlightRef.current || obdConnecting;
 
     // 断开连接（连接中再次点击视为取消连接）
@@ -210,6 +278,7 @@ export default function HomePage() {
             notifyDisconnect().catch(e =>
               console.warn('[HomePage] notifyDisconnect 失败:', e.message)
             );
+            setAssignedWsUrl(null);
           }
         } else if (hasLocalSession) {
           console.log('[HomePage] 取消连接：仅断开本地蓝牙，会话尚未同步到云端');
@@ -266,6 +335,14 @@ export default function HomePage() {
       return;
     }
 
+    if (!selectedProfile) {
+      Alert.alert('提示', '请先选择车型配置', [
+        { text: '去选择', onPress: () => navigation.navigate('VehicleConfig') },
+        { text: '取消', style: 'cancel' },
+      ]);
+      return;
+    }
+
     // 强制走调度模式：必须等 schedulerReady = true 才能连接
     // （手动模式降级暂时注释掉，确保始终走新调度框架）
     const useSchedulerMode = true; // schedulerReady;
@@ -282,49 +359,92 @@ export default function HomePage() {
     }
     */
 
-    const attempt = beginGlobalConnectAttempt();
-    if (!attempt) {
-      console.log('[HomePage] 创建全局连接尝试失败：已有进行中的连接');
-      return;
-    }
-
-    // 开始连接
-    ownedConnectAttemptIdRef.current = attempt.id;
-    userCancelledRef.current = false;
-    connectInFlightRef.current = true;
-    setObdConnecting(true);
+    let attempt: GlobalConnectAttempt | null = null;
 
     try {
-      // 【调度模式】步骤0：向调度后端申请实例，获取 wsUrl
-      let assignedUrl: string | undefined;
-      if (useSchedulerMode) {
-        console.log('[HomePage] 调度模式：向调度后端申请实例...');
+      if (!assignedWsUrl) {
+        const reserveFlowId = reserveFlowIdRef.current + 1;
+        reserveFlowIdRef.current = reserveFlowId;
+        reserveCancelledRef.current = false;
         setReserving(true);
+        setWaitingForInstance(false);
+        setReserveStatusText('正在申请实例...');
         try {
-          assignedUrl = await reserveInstance();
-          setAssignedWsUrl(assignedUrl);
-          console.log('[HomePage] 调度分配成功 wsUrl=', assignedUrl);
-        } finally {
-          setReserving(false);
-        }
+          console.log('[HomePage] 调度模式：开始申请实例...');
+          let reserveAttempt = 0;
+          let hasEnteredWaitingState = false;
 
-        if (userCancelledRef.current) {
-          console.log('[HomePage] 调度完成但用户已取消，释放已分配实例');
-          // 通知调度后端释放刚分配的实例（保留5分钟，以防用户立刻重试）
-          notifyDisconnect().catch(e =>
-            console.warn('[HomePage] 取消后 notifyDisconnect 失败:', e.message)
-          );
-          setAssignedWsUrl(null);
-          finishGlobalConnectAttempt(attempt.id, '用户取消：调度完成后');
-          ownedConnectAttemptIdRef.current = null;
-          connectInFlightRef.current = false;
-          setObdConnecting(false);
+          while (!reserveCancelledRef.current && reserveFlowIdRef.current === reserveFlowId) {
+            reserveAttempt++;
+            setReserveStatusText(
+              hasEnteredWaitingState
+                ? `暂无空闲实例，等待中（第${reserveAttempt}次重试）`
+                : `正在申请实例（第${reserveAttempt}次）...`
+            );
+
+            try {
+              const reservedWsUrl = await reserveInstance();
+              if (reserveCancelledRef.current || reserveFlowIdRef.current !== reserveFlowId) {
+                await cancelReserve();
+                return;
+              }
+
+              setReserveStatusText(`实例已分配，正在连接 ${reservedWsUrl}`);
+              const cloudOk = await connectCloud(reservedWsUrl);
+              if (!cloudOk) {
+                disconnectCloud();
+                throw new Error('连接分配实例失败');
+              }
+
+              setAssignedWsUrl(reservedWsUrl);
+              setWaitingForInstance(false);
+              setReserveStatusText(`实例已就绪：${reservedWsUrl}`);
+              console.log('[HomePage] 调度分配成功 wsUrl=', reservedWsUrl);
+              Alert.alert('实例已就绪', '实例已分配并已连接到对应实例，点击“开始连接”即可正式连接车辆');
+              return;
+            } catch (reserveError: any) {
+              const message = reserveError?.message || '申请实例失败';
+              if (!isNoIdleInstanceError(message)) {
+                throw reserveError;
+              }
+
+              console.log(`[HomePage] 当前无空闲实例，等待重试 attempt=${reserveAttempt}`);
+              hasEnteredWaitingState = true;
+              setWaitingForInstance(true);
+              setReserveStatusText(`暂无空闲实例，等待中（第${reserveAttempt}次重试）`);
+
+              const shouldContinue = await waitBeforeReserveRetry(
+                reserveFlowId,
+                RESERVE_RETRY_INTERVAL_MS
+              );
+              if (!shouldContinue) {
+                return;
+              }
+            }
+          }
           return;
+        } finally {
+          setWaitingForInstance(false);
+          if (reserveFlowIdRef.current === reserveFlowId || reserveCancelledRef.current) {
+            setReserving(false);
+          }
         }
+        return;
+      }
 
-        // 连接到调度分配的 CloudBridge ws 地址
-        const cloudOk = await connectCloud(assignedUrl);
-        if (!cloudOk) throw new Error('连接调度实例失败');
+      attempt = beginGlobalConnectAttempt();
+      if (!attempt) {
+        console.log('[HomePage] 创建全局连接尝试失败：已有进行中的连接');
+        return;
+      }
+
+      ownedConnectAttemptIdRef.current = attempt.id;
+      userCancelledRef.current = false;
+      connectInFlightRef.current = true;
+      setObdConnecting(true);
+
+      if (useSchedulerMode && !cloudConnected) {
+        throw new Error('实例通道未建立，请重新申请实例');
       }
 
       // 【蓝牙连接】B 端先本地连接蓝牙，获取 sessionId 后再通知 A 端
@@ -343,6 +463,8 @@ export default function HomePage() {
         await gateway.disconnect();
         finishGlobalConnectAttempt(attempt.id, '用户取消：本地蓝牙连接完成后立即断开');
         ownedConnectAttemptIdRef.current = null;
+        connectInFlightRef.current = false;
+        setObdConnecting(false);
         return;
       }
 
@@ -367,14 +489,17 @@ export default function HomePage() {
       userCancelledRef.current = false;
       // 断开蓝牙
       await getBluetoothGateway()?.disconnect();
+      disconnectCloud();
       // 调度模式：连接失败时通知调度后端释放实例（不保留，直接归池）
       if (schedulerReady) {
-        notifyDisconnect().catch(e =>
-          console.warn('[HomePage] 连接失败后 notifyDisconnect 失败:', e.message)
+        releasePreparedInstance().catch(err =>
+          console.warn('[HomePage] 连接失败后 releasePreparedInstance 失败:', err.message)
         );
         setAssignedWsUrl(null);
       }
-      finishGlobalConnectAttempt(attempt.id, `连接失败:${e?.message || 'unknown'}`);
+      if (attempt) {
+        finishGlobalConnectAttempt(attempt.id, `连接失败:${e?.message || 'unknown'}`);
+      }
       ownedConnectAttemptIdRef.current = null;
       connectInFlightRef.current = false;
       setObdConnecting(false);
@@ -477,30 +602,6 @@ export default function HomePage() {
     console.log(`[HomePage UI] =====================================`);
   }, [connectionStatus, elmStatus, ecuStatus, isConnected, isFullyConnected, obdConnecting]);
 
-  // 开发模式：连接/断开云端
-  const handleCloudConnect = async () => {
-    if (cloudConnected) {
-      disconnectCloud();
-      return;
-    }
-
-    if (!cloudHost.trim()) {
-      Alert.alert('提示', '请输入云端IP地址');
-      return;
-    }
-
-    setCloudConnecting(true);
-    try {
-      const success = await connectCloud();
-      if (!success) {
-        Alert.alert('连接失败', '无法连接到云端服务，请检查IP地址和网络');
-      }
-    } catch (e) {
-      Alert.alert('连接失败', '连接出错');
-    }
-    setCloudConnecting(false);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* 标题栏 */}
@@ -536,38 +637,91 @@ export default function HomePage() {
           ))}
         </View>
 
-        {/* 开发模式：云端连接 */}
+        {/* 开发模式：调度状态面板 */}
         <View style={styles.devSection}>
-          <Text style={styles.devSectionTitle}>开发调试</Text>
+          <Text style={styles.devSectionTitle}>调度调试</Text>
           <View style={styles.cloudConnectRow}>
             <TextInput
               style={styles.cloudHostInput}
               value={cloudHost}
               onChangeText={setCloudHost}
-              placeholder="云端IP地址"
+              placeholder="调度层服务器 IP"
               placeholderTextColor="#c8c9cc"
-              editable={!cloudConnected && !cloudConnecting}
+              editable={!configurationLocked}
             />
             <TouchableOpacity
               style={[
                 styles.cloudConnectButton,
-                cloudConnected && styles.cloudDisconnectButton,
+                (!cloudHost.trim() || schedulerInitializing) && styles.cloudConnectButtonDisabled,
               ]}
-              onPress={handleCloudConnect}
-              disabled={cloudConnecting}
+              onPress={bumpSchedulerRefreshToken}
+              disabled={!cloudHost.trim() || schedulerInitializing}
             >
-              {cloudConnecting ? (
+              {schedulerInitializing ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.cloudConnectButtonText}>
-                  {cloudConnected ? '断开' : '连接'}
+                  重试初始化
                 </Text>
               )}
             </TouchableOpacity>
           </View>
+          <View style={styles.schedulerActionRow}>
+            <TouchableOpacity
+              style={[
+                styles.schedulerSecondaryButton,
+                schedulerHealthChecking && styles.schedulerSecondaryButtonDisabled,
+              ]}
+              onPress={checkSchedulerHealth}
+              disabled={schedulerHealthChecking}
+            >
+              {schedulerHealthChecking ? (
+                <ActivityIndicator size="small" color="#1989fa" />
+              ) : (
+                <Text style={styles.schedulerSecondaryButtonText}>健康检查</Text>
+              )}
+            </TouchableOpacity>
+          </View>
           <Text style={styles.cloudStatusText}>
-            云端状态: {cloudConnected ? '已连接' : '未连接'}
+            调度地址: {schedulerBaseUrl || '未就绪'}
           </Text>
+          <Text style={styles.cloudStatusText}>
+            调度状态: {schedulerInitializing ? '初始化中' : schedulerReady ? '已就绪' : '未就绪'}
+          </Text>
+          <Text style={styles.cloudStatusText}>
+            初始化阶段: {schedulerInitStage}
+          </Text>
+          <Text style={styles.cloudStatusText}>
+            最近尝试: {formatTime(schedulerInitAttemptAt)}
+          </Text>
+          <Text style={styles.cloudStatusText}>
+            最近成功: {formatTime(schedulerInitSuccessAt)}
+          </Text>
+          <Text style={styles.cloudStatusText}>
+            调度会话: {sessionId || '无'}
+          </Text>
+          <Text style={styles.cloudStatusText}>
+            DeviceId: {schedulerDeviceId || '无'}
+          </Text>
+          <Text style={styles.cloudStatusText}>
+            A 端 WebSocket: {cloudConnected ? '已连接' : '未连接'}
+          </Text>
+          {reserveStatusText ? (
+            <Text style={styles.cloudStatusText}>实例申请: {reserveStatusText}</Text>
+          ) : null}
+          {assignedWsUrl ? (
+            <Text style={styles.cloudStatusText}>已准备实例: {assignedWsUrl}</Text>
+          ) : null}
+          {schedulerHealthMessage ? (
+            <Text style={styles.schedulerHealthText}>{schedulerHealthMessage}</Text>
+          ) : null}
+          {schedulerInitError ? (
+            <Text style={styles.schedulerErrorText}>最近错误: {schedulerInitError}</Text>
+          ) : (
+            <Text style={styles.schedulerHintText}>
+              输入服务器 IP 后会自动初始化调度会话；主按钮第一次申请实例，第二次才正式连接。
+            </Text>
+          )}
 
           {/* ELM327 ATST 超时覆盖 */}
           <View style={styles.timeoutRow}>
@@ -623,7 +777,21 @@ export default function HomePage() {
           activeOpacity={0.8}
         >
           <Text style={styles.connectButtonText}>
-            {isConnected ? '断开连接' : (reserving ? '分配实例中...' : obdConnecting ? '取消连接' : '开始连接')}
+            {isConnected
+              ? '断开连接'
+              : reserving
+                ? waitingForInstance
+                  ? '取消等待'
+                  : '申请实例中...'
+                : obdConnecting
+                  ? '取消连接'
+                  : !selectedDevice
+                    ? '先选择蓝牙设备'
+                    : !selectedProfile
+                      ? '先选择车型'
+                      : hasPreparedInstance
+                        ? '开始连接'
+                        : '申请实例'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -779,6 +947,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  schedulerActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
   cloudHostInput: {
     flex: 1,
     borderWidth: 1,
@@ -790,25 +963,62 @@ const styles = StyleSheet.create({
     color: '#323233',
   },
   cloudConnectButton: {
-    backgroundColor: '#07c160',
+    backgroundColor: '#1989fa',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 6,
-    minWidth: 70,
+    minWidth: 96,
     alignItems: 'center',
   },
-  cloudDisconnectButton: {
-    backgroundColor: '#ee0a24',
+  cloudConnectButtonDisabled: {
+    backgroundColor: '#c8c9cc',
   },
   cloudConnectButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
   },
+  schedulerSecondaryButton: {
+    borderWidth: 1,
+    borderColor: '#1989fa',
+    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minWidth: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  schedulerSecondaryButtonDisabled: {
+    borderColor: '#c8c9cc',
+  },
+  schedulerSecondaryButtonText: {
+    color: '#1989fa',
+    fontSize: 13,
+    fontWeight: '500',
+  },
   cloudStatusText: {
     marginTop: 8,
     fontSize: 12,
     color: '#969799',
+  },
+  schedulerHealthText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#1989fa',
+    lineHeight: 18,
+  },
+  schedulerHintText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#c8c9cc',
+    lineHeight: 18,
+  },
+  schedulerErrorText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#ee0a24',
+    lineHeight: 18,
   },
   timeoutRow: {
     flexDirection: 'row',
